@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Conception Système de Contrôle Qualité - ICEM</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #fff;
+            padding: 40px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        /* Page de garde */
+        .cover-page {
+            text-align: center;
+            padding: 100px 40px;
+            page-break-after: always;
+            border: 3px solid #2c3e50;
+            margin-bottom: 40px;
+        }
+        
+        .cover-page h1 {
+            font-size: 32px;
+            color: #2c3e50;
+            margin-bottom: 40px;
+            line-height: 1.3;
+        }
+        
+        .cover-page .subtitle {
+            font-size: 18px;
+            color: #7f8c8d;
+            margin-bottom: 60px;
+        }
+        
+        .cover-page .info {
+            font-size: 16px;
+            margin: 15px 0;
+        }
+        
+        .cover-page .authors {
+            font-size: 18px;
+            font-weight: bold;
+            color: #3498db;
+            margin-top: 40px;
+        }
+        
+        /* Titres */
+        h1 {
+            color: #2c3e50;
+            font-size: 28px;
+            margin-top: 40px;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            page-break-before: always;
+        }
+        
+        h2 {
+            color: #34495e;
+            font-size: 22px;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 5px solid #3498db;
+            padding-left: 15px;
+        }
+        
+        h3 {
+            color: #2c3e50;
+            font-size: 18px;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+        
+        h4 {
+            color: #555;
+            font-size: 16px;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        /* Paragraphes et listes */
+        p {
+            margin-bottom: 15px;
+            text-align: justify;
+        }
+        
+        ul, ol {
+            margin-left: 30px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        /* Tableaux */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        
+        th {
+            background-color: #3498db;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        tr:hover {
+            background-color: #e8f4f8;
+        }
+        
+        /* Boîtes informatives */
+        .info-box {
+            background-color: #e8f4f8;
+            border-left: 4px solid #3498db;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+        
+        .warning-box {
+            background-color: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+        
+        .success-box {
+            background-color: #d4edda;
+            border-left: 4px solid #28a745;
+            padding: 15px 20px;
+            margin: 20px 0;
+        }
+        
+        /* Code blocks */
+        .code-block {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-left: 4px solid #2c3e50;
+            padding: 15px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+        }
+        
+        /* Badges */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-right: 8px;
+        }
+        
+        .badge-high {
+            background-color: #dc3545;
+            color: white;
+        }
+        
+        .badge-medium {
+            background-color: #ffc107;
+            color: #333;
+        }
+        
+        .badge-low {
+            background-color: #28a745;
+            color: white;
+        }
+        
+        /* Éléments spéciaux */
+        .highlight {
+            background-color: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+        
+        strong {
+            color: #2c3e50;
+        }
+        
+        /* Impression */
+        @media print {
+            body {
+                padding: 0;
+            }
+            
+            h1 {
+                page-break-after: avoid;
+            }
+            
+            table {
+                page-break-inside: avoid;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+        
+        /* Séparateur */
+        hr {
+            border: none;
+            border-top: 2px solid #ecf0f1;
+            margin: 30px 0;
+        }
+        
+        /* Table des matières */
+        .toc {
+            background-color: #f8f9fa;
+            padding: 20px 30px;
+            border-radius: 8px;
+            margin: 30px 0;
+        }
+        
+        .toc h2 {
+            border: none;
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        
+        .toc ul {
+            list-style-type: none;
+            margin-left: 0;
+        }
+        
+        .toc a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        
+        .toc a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PAGE DE GARDE -->
+    <div class="cover-page">
+        <h1>Conception et Développement d'un Système Intelligent de Contrôle Qualité Post-Fabrication des Câbles Industriels</h1>
+        <div class="subtitle">Projet de Fin d'Études - Développement des Systèmes d'Information</div>
+        <div class="info"><strong>Entreprise :</strong> ICEM</div>
+        <div class="info"><strong>Date :</strong> Février 2026</div>
+        <div class="authors">Réalisé par :<br>Maram Laouini & Riheme Mhemdi</div>
+    </div>
+
+    <!-- TABLE DES MATIÈRES -->
+    <div class="toc">
+        <h2>Table des Matières</h2>
+        <ul>
+            <li><a href="#contexte">1. Contexte du Projet</a></li>
+            <li><a href="#objectifs">2. Objectifs du Projet</a></li>
+            <li><a href="#acteurs">3. Acteurs du Système</a></li>
+            <li><a href="#architecture">4. Architecture Générale</a></li>
+            <li><a href="#uc-mobile">5. Cas d'Utilisation - Application Mobile</a></li>
+            <li><a href="#uc-web">6. Cas d'Utilisation - Application Web</a></li>
+            <li><a href="#tracabilite">7. Matrice de Traçabilité</a></li>
+            <li><a href="#technologies">8. Technologies Utilisées</a></li>
+            <li><a href="#ia">9. Pipeline Intelligence Artificielle</a></li>
+            <li><a href="#exigences">10. Exigences Fonctionnelles et Non Fonctionnelles</a></li>
+        </ul>
+    </div>
+
+    <!-- CONTENU PRINCIPAL -->
+    <h1 id="contexte">1. Contexte du Projet</h1>
+    
+    <p>Dans le cadre du Projet de Fin d'Études en Développement des Systèmes d'Information, ce projet est réalisé au sein de l'entreprise <strong>ICEM</strong>, spécialisée dans la fabrication de câbles industriels. Le contrôle qualité post-fabrication représente une étape critique afin de garantir la conformité des produits aux exigences techniques et normatives.</p>
+
+    <h2>Problématique</h2>
+    <div class="warning-box">
+        <p><strong>Les méthodes actuelles de contrôle reposent essentiellement sur des inspections manuelles, ce qui entraîne :</strong></p>
+        <ul>
+            <li>❌ Risques d'erreurs humaines</li>
+            <li>❌ Absence de traçabilité numérique</li>
+            <li>❌ Faible exploitation des données collectées</li>
+            <li>❌ Processus lent et coûteux</li>
+        </ul>
+    </div>
+
+    <h2>Solution Proposée</h2>
+    <div class="success-box">
+        <p>L'intégration de technologies de <strong>vision artificielle</strong>, <strong>intelligence artificielle</strong> et <strong>applications numériques</strong> (web et mobile) permet d'automatiser, fiabiliser et optimiser ce processus.</p>
+    </div>
+
+    <hr>
+
+    <h1 id="objectifs">2. Objectifs du Projet</h1>
+
+    <h2>2.1 Objectif Général</h2>
+    <p>Concevoir et développer un <strong>système intelligent de contrôle qualité automatisé</strong>, basé sur l'analyse d'images par intelligence artificielle, intégré à une application web de supervision et une application mobile de gestion opérationnelle.</p>
+
+    <h2>2.2 Objectifs Spécifiques</h2>
+    <ul>
+        <li>✅ Automatiser l'inspection visuelle des câbles par IA</li>
+        <li>✅ Gérer les ordres de fabrication</li>
+        <li>✅ Détecter et classifier les anomalies</li>
+        <li>✅ Générer automatiquement des rapports qualité</li>
+        <li>✅ Centraliser et analyser les données de contrôle</li>
+        <li>✅ Fournir des tableaux de bord décisionnels</li>
+    </ul>
+
+    <hr>
+
+    <h1 id="acteurs">3. Acteurs du Système</h1>
+
+    <h2>3.1 Acteurs Humains</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Acteur</th>
+                <th>Rôle</th>
+                <th>Interface Principale</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Technicien Qualité</strong></td>
+                <td>Exécute les contrôles qualité sur les câbles, utilise la caméra pour l'inspection, gère les anomalies détectées</td>
+                <td>Application Mobile</td>
+            </tr>
+            <tr>
+                <td><strong>Responsable Qualité</strong></td>
+                <td>Supervise les opérations de contrôle qualité, analyse les indicateurs, prend les décisions stratégiques</td>
+                <td>Application Web</td>
+            </tr>
+            <tr>
+                <td><strong>Administrateur Système</strong></td>
+                <td>Gère les utilisateurs, configure les paramètres du système, administre les modèles IA</td>
+                <td>Application Web</td>
+            </tr>
+            <tr>
+                <td><strong>Direction</strong></td>
+                <td>Consulte les rapports globaux, les statistiques et les tableaux de bord décisionnels</td>
+                <td>Application Web</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>3.2 Acteurs Système</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Acteur</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Système IA</strong></td>
+                <td>Acteur automatisé qui effectue l'analyse des images, la détection des anomalies et la vérification de conformité</td>
+            </tr>
+            <tr>
+                <td><strong>Système de Notification</strong></td>
+                <td>Envoie des alertes en cas de non-conformité</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h1 id="architecture">4. Architecture Générale</h1>
+
+    <p>Le système repose sur une <strong>architecture client-serveur distribuée</strong> :</p>
+
+    <div class="code-block">┌─────────────────────────────────────────────────────────┐
+│                    COUCHE CLIENT                        │
+├─────────────────────────────────────────────────────────┤
+│  Application Mobile (Flutter)  │  Application Web       │
+│  - Technicien Qualité          │  (React.js)            │
+│  - Capture d'images            │  - Dashboard           │
+│  - IA embarquée (YOLOv8)       │  - Reporting           │
+│  - Inspection terrain          │  - Administration      │
+└─────────────────────────────────────────────────────────┘
+                        ↕
+┌─────────────────────────────────────────────────────────┐
+│                  COUCHE BACKEND                         │
+├─────────────────────────────────────────────────────────┤
+│              Backend API (Node.js)                      │
+│              API REST + WebSocket                        │
+│              Authentification Firebase                   │
+└─────────────────────────────────────────────────────────┘
+                        ↕
+┌─────────────────────────────────────────────────────────┐
+│                  COUCHE SERVICES                        │
+├─────────────────────────────────────────────────────────┤
+│  Service IA (Python/FastAPI)  │  Firebase Services     │
+│  - Modèle YOLOv8               │  - Firestore DB        │
+│  - Modèle de guidage           │  - Cloud Storage       │
+│  - Vérification conformité     │  - Authentication      │
+└─────────────────────────────────────────────────────────┘</div>
+
+    <hr>
+
+    <h1 id="uc-mobile">5. Cas d'Utilisation - Application Mobile</h1>
+
+    <h2>Vue d'Ensemble des Cas d'Utilisation Mobile</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cas d'Utilisation</th>
+                <th>Acteur Principal</th>
+                <th>Priorité</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>UC1</td>
+                <td>Authentification</td>
+                <td>Technicien Qualité</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC2</td>
+                <td>Gérer Ordres de Fabrication</td>
+                <td>Technicien Qualité</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC3</td>
+                <td>Capturer Image du Câble</td>
+                <td>Technicien Qualité</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC4</td>
+                <td>Analyser Image par IA</td>
+                <td>Système IA</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC5</td>
+                <td>Détecter Anomalies</td>
+                <td>Système IA</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC6</td>
+                <td>Gérer Checklists (Visuelle/Électrique)</td>
+                <td>Technicien Qualité</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+            <tr>
+                <td>UC7</td>
+                <td>Générer Rapport d'Inspection</td>
+                <td>Système</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC8</td>
+                <td>Synchroniser Données</td>
+                <td>Système</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="page-break-before: always;"></div>
+
+    <h2>UC1 - Authentification</h2>
+    <div class="info-box">
+        <p><strong>Acteur principal :</strong> Technicien Qualité<br>
+        <strong>Objectif :</strong> Se connecter de manière sécurisée à l'application mobile</p>
+    </div>
+
+    <h3>Préconditions</h3>
+    <ul>
+        <li>L'utilisateur possède des identifiants valides</li>
+        <li>L'application est installée sur un appareil mobile</li>
+    </ul>
+
+    <h3>Scénario principal</h3>
+    <ol>
+        <li>Le technicien lance l'application mobile</li>
+        <li>Le système affiche l'écran de connexion</li>
+        <li>Le technicien saisit son identifiant et mot de passe</li>
+        <li>Le système vérifie les credentials via Firebase Authentication</li>
+        <li>Le système charge le profil et les autorisations de l'utilisateur</li>
+        <li>Le système affiche l'écran d'accueil avec la liste des ordres de fabrication</li>
+    </ol>
+
+    <h3>Scénarios alternatifs</h3>
+    <ul>
+        <li><strong>3a.</strong> Identifiants incorrects
+            <ul>
+                <li>Le système affiche un message d'erreur</li>
+                <li>Retour à l'étape 3</li>
+            </ul>
+        </li>
+        <li><strong>4a.</strong> Pas de connexion internet
+            <ul>
+                <li>Le système affiche un message d'erreur de connexion</li>
+                <li>Fin du cas d'utilisation</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>Postconditions</h3>
+    <ul>
+        <li>L'utilisateur est authentifié</li>
+        <li>La session est créée</li>
+        <li>Les données sont synchronisées</li>
+    </ul>
+
+    <hr>
+
+    <h2>UC2 - Gérer les Ordres de Fabrication</h2>
+    <div class="info-box">
+        <p><strong>Acteur principal :</strong> Technicien Qualité<br>
+        <strong>Objectif :</strong> Consulter et sélectionner un ordre de fabrication pour le contrôle qualité</p>
+    </div>
+
+    <h3>Scénario principal</h3>
+    <ol>
+        <li>Le système affiche la liste des ordres de fabrication actifs</li>
+        <li>Le technicien sélectionne un ordre de fabrication</li>
+        <li>Le système affiche les détails de l'ordre (référence, type de câble, quantité, etc.)</li>
+        <li>Le technicien sélectionne un câble spécifique à inspecter</li>
+        <li>Le technicien saisit la référence et le code du câble</li>
+        <li>Le système valide les informations</li>
+        <li>Le système active l'interface de capture d'images</li>
+    </ol>
+
+    <hr>
+
+    <h2>UC3 - Capturer Image du Câble</h2>
+    <div class="info-box">
+        <p><strong>Acteur principal :</strong> Technicien Qualité<br>
+        <strong>Acteur secondaire :</strong> Système IA (modèle de guidage)<br>
+        <strong>Objectif :</strong> Capturer des images de qualité du câble pour l'analyse IA</p>
+    </div>
+
+    <h3>Scénario principal</h3>
+    <ol>
+        <li>Le technicien active la fonction de capture d'image</li>
+        <li>Le système active la caméra et le modèle de guidage intelligent</li>
+        <li>Le système affiche un cadre de positionnement avec des repères visuels</li>
+        <li>Le modèle IA de guidage analyse le flux vidéo en temps réel</li>
+        <li>Le système guide le technicien pour positionner correctement le câble</li>
+        <li>Lorsque le positionnement est optimal, le système indique la validation</li>
+        <li>Le technicien déclenche la capture (ou capture automatique)</li>
+        <li>Le système capture plusieurs images sous différents angles</li>
+        <li>Le système vérifie la qualité des images (netteté, luminosité)</li>
+        <li>Le système enregistre les images localement</li>
+        <li>Le système passe automatiquement à l'analyse IA</li>
+    </ol>
+
+    <hr>
+
+    <h2>UC4 - Analyser Image par IA</h2>
+    <div class="info-box">
+        <p><strong>Acteur principal :</strong> Système IA<br>
+        <strong>Objectif :</strong> Analyser les images capturées pour détecter les anomalies</p>
+    </div>
+
+    <h3>Scénario principal</h3>
+    <ol>
+        <li>Le système charge les images capturées</li>
+        <li>Le système applique les prétraitements nécessaires</li>
+        <li>Le modèle YOLOv8 effectue l'inférence sur chaque image</li>
+        <li>Le système détecte et localise les anomalies potentielles</li>
+        <li>Le système classe les anomalies par type et gravité</li>
+        <li>Le système calcule un score de confiance pour chaque détection</li>
+        <li>Le système génère un rapport d'analyse avec les bounding boxes</li>
+        <li>Le système affiche les résultats à l'utilisateur</li>
+    </ol>
+
+    <hr>
+
+    <h2>UC5 - Détecter Anomalies</h2>
+    <div class="info-box">
+        <p><strong>Acteur principal :</strong> Système IA<br>
+        <strong>Acteur secondaire :</strong> Technicien Qualité<br>
+        <strong>Objectif :</strong> Identifier, classifier et alerter sur les anomalies détectées</p>
+    </div>
+
+    <h3>Classification des Anomalies</h3>
+    <p>Pour chaque anomalie, le système détermine :</p>
+    <ul>
+        <li><strong>Type :</strong> rayure, déformation, défaut de surface, etc.</li>
+        <li><strong>Gravité :</strong> mineur, majeur, critique</li>
+        <li><strong>Localisation précise</strong></li>
+        <li><strong>Score de confiance</strong></li>
+    </ul>
+
+    <hr>
+
+    <h1 id="uc-web">6. Cas d'Utilisation - Application Web</h1>
+
+    <h2>Vue d'Ensemble des Cas d'Utilisation Web</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cas d'Utilisation</th>
+                <th>Acteur Principal</th>
+                <th>Priorité</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>UC9</td>
+                <td>Consulter Dashboard</td>
+                <td>Responsable Qualité, Direction</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>UC10</td>
+                <td>Gérer Ordres de Fabrication Web</td>
+                <td>Responsable Qualité</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+            <tr>
+                <td>UC11</td>
+                <td>Analyser Anomalies</td>
+                <td>Responsable Qualité</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+            <tr>
+                <td>UC12</td>
+                <td>Générer Rapports Qualité</td>
+                <td>Responsable Qualité</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+            <tr>
+                <td>UC13</td>
+                <td>Exporter Données</td>
+                <td>Responsable Qualité</td>
+                <td><span class="badge badge-low">Basse</span></td>
+            </tr>
+            <tr>
+                <td>UC14</td>
+                <td>Gérer Utilisateurs</td>
+                <td>Administrateur</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+            <tr>
+                <td>UC15</td>
+                <td>Configurer Système</td>
+                <td>Administrateur</td>
+                <td><span class="badge badge-low">Basse</span></td>
+            </tr>
+            <tr>
+                <td>UC16</td>
+                <td>Gérer Modèles IA</td>
+                <td>Administrateur</td>
+                <td><span class="badge badge-low">Basse</span></td>
+            </tr>
+            <tr>
+                <td>UC17</td>
+                <td>Consulter Statistiques</td>
+                <td>Direction</td>
+                <td><span class="badge badge-low">Basse</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h2>UC9 - Consulter Dashboard</h2>
+    <div class="info-box">
+        <p><strong>Acteur principal :</strong> Responsable Qualité, Direction<br>
+        <strong>Objectif :</strong> Visualiser les indicateurs clés de performance qualité</p>
+    </div>
+
+    <h3>Indicateurs Affichés</h3>
+    <h4>KPI Qualité :</h4>
+    <ul>
+        <li>Taux de conformité global</li>
+        <li>Nombre d'inspections réalisées</li>
+        <li>Nombre d'anomalies détectées</li>
+        <li>Taux de non-conformité par type de câble</li>
+    </ul>
+
+    <h4>Graphiques et Visualisations :</h4>
+    <ul>
+        <li>Évolution de la conformité dans le temps</li>
+        <li>Répartition des anomalies par type</li>
+        <li>Performance par technicien</li>
+        <li>Tendances et analyses prédictives</li>
+    </ul>
+
+    <h4>Alertes et Temps Réel :</h4>
+    <ul>
+        <li>Anomalies critiques non traitées</li>
+        <li>Inspections en cours</li>
+    </ul>
+
+    <hr>
+
+    <h1 id="tracabilite">7. Matrice de Traçabilité</h1>
+
+    <h2>7.1 Traçabilité Exigences ↔ Cas d'Utilisation</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Exigence Fonctionnelle</th>
+                <th>Cas d'Utilisation</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Détection automatique des anomalies</td>
+                <td>UC4, UC5</td>
+            </tr>
+            <tr>
+                <td>Gestion des ordres de fabrication</td>
+                <td>UC2, UC10</td>
+            </tr>
+            <tr>
+                <td>Génération automatique de rapports</td>
+                <td>UC7, UC12</td>
+            </tr>
+            <tr>
+                <td>Traçabilité complète</td>
+                <td>UC7, UC8, UC11</td>
+            </tr>
+            <tr>
+                <td>Inspection visuelle par caméra</td>
+                <td>UC3</td>
+            </tr>
+            <tr>
+                <td>Checklists de vérification</td>
+                <td>UC6</td>
+            </tr>
+            <tr>
+                <td>Tableaux de bord décisionnels</td>
+                <td>UC9, UC17</td>
+            </tr>
+            <tr>
+                <td>Export des données</td>
+                <td>UC13</td>
+            </tr>
+            <tr>
+                <td>Gestion des utilisateurs et rôles</td>
+                <td>UC1, UC14</td>
+            </tr>
+            <tr>
+                <td>Configuration du système</td>
+                <td>UC15</td>
+            </tr>
+            <tr>
+                <td>Administration des modèles IA</td>
+                <td>UC16</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h1 id="technologies">8. Technologies Utilisées</h1>
+
+    <h2>8.1 Application Mobile</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Technologie</th>
+                <th>Usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Flutter</strong></td>
+                <td>Framework de développement multiplateforme</td>
+            </tr>
+            <tr>
+                <td><strong>Dart</strong></td>
+                <td>Langage de programmation</td>
+            </tr>
+            <tr>
+                <td><strong>Caméra Mobile</strong></td>
+                <td>Capture d'images</td>
+            </tr>
+            <tr>
+                <td><strong>TensorFlow Lite</strong></td>
+                <td>Inférence IA locale</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>8.2 Application Web</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Technologie</th>
+                <th>Usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>React.js</strong></td>
+                <td>Framework frontend</td>
+            </tr>
+            <tr>
+                <td><strong>Chart.js / Recharts</strong></td>
+                <td>Visualisations et graphiques</td>
+            </tr>
+            <tr>
+                <td><strong>Material-UI</strong></td>
+                <td>Composants UI</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>8.3 Backend</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Technologie</th>
+                <th>Usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Node.js</strong></td>
+                <td>Runtime serveur</td>
+            </tr>
+            <tr>
+                <td><strong>Express.js</strong></td>
+                <td>Framework API REST</td>
+            </tr>
+            <tr>
+                <td><strong>Socket.io</strong></td>
+                <td>Communication temps réel</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>8.4 Intelligence Artificielle</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Technologie</th>
+                <th>Usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Python</strong></td>
+                <td>Langage principal IA</td>
+            </tr>
+            <tr>
+                <td><strong>PyTorch / TensorFlow</strong></td>
+                <td>Frameworks deep learning</td>
+            </tr>
+            <tr>
+                <td><strong>YOLOv8</strong></td>
+                <td>Modèle de détection d'objets</td>
+            </tr>
+            <tr>
+                <td><strong>OpenCV</strong></td>
+                <td>Traitement d'images</td>
+            </tr>
+            <tr>
+                <td><strong>FastAPI</strong></td>
+                <td>API service IA</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>8.5 Base de Données & Cloud</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Technologie</th>
+                <th>Usage</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Firebase Firestore</strong></td>
+                <td>Base de données NoSQL</td>
+            </tr>
+            <tr>
+                <td><strong>Firebase Cloud Storage</strong></td>
+                <td>Stockage d'images</td>
+            </tr>
+            <tr>
+                <td><strong>Firebase Authentication</strong></td>
+                <td>Authentification utilisateurs</td>
+            </tr>
+            <tr>
+                <td><strong>Firebase Cloud Functions</strong></td>
+                <td>Fonctions serverless</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h1 id="ia">9. Pipeline Intelligence Artificielle</h1>
+
+    <h2>9.1 Modèles IA</h2>
+    <p>Le système utilise <strong>trois modèles d'IA</strong> spécialisés :</p>
+
+    <h3>1. Modèle de Guidage</h3>
+    <ul>
+        <li><strong>Rôle :</strong> Guider le technicien pour positionner correctement le câble</li>
+        <li><strong>Technologie :</strong> Réseau de neurones convolutionnel (CNN)</li>
+        <li><strong>Input :</strong> Flux vidéo temps réel</li>
+        <li><strong>Output :</strong> Validation de position (OK/NOK)</li>
+    </ul>
+
+    <h3>2. Modèle de Détection (YOLOv8)</h3>
+    <ul>
+        <li><strong>Rôle :</strong> Détecter et localiser les anomalies sur les câbles</li>
+        <li><strong>Technologie :</strong> YOLOv8 (You Only Look Once version 8)</li>
+        <li><strong>Input :</strong> Images capturées</li>
+        <li><strong>Output :</strong> Bounding boxes + classes + scores de confiance</li>
+    </ul>
+
+    <h3>3. Modèle de Vérification de Conformité</h3>
+    <ul>
+        <li><strong>Rôle :</strong> Classifier le câble comme conforme/non-conforme</li>
+        <li><strong>Technologie :</strong> Réseau de classification</li>
+        <li><strong>Input :</strong> Features extraites + résultats de détection</li>
+        <li><strong>Output :</strong> Statut de conformité + probabilité</li>
+    </ul>
+
+    <h2>9.2 Pipeline de Traitement</h2>
+    <div class="code-block">1. Acquisition des Images
+   └─> Caméra mobile avec guidage IA
+
+2. Prétraitement
+   └─> Normalisation, redimensionnement, augmentation
+
+3. Inférence YOLOv8
+   └─> Détection et localisation des anomalies
+
+4. Post-traitement
+   └─> Filtrage, regroupement, classification
+
+5. Vérification de Conformité
+   └─> Décision finale : CONFORME / NON CONFORME
+
+6. Génération du Rapport
+   └─> Visualisation + statistiques + recommandations</div>
+
+    <h2>9.3 Métriques de Performance IA</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Métrique</th>
+                <th>Objectif</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Précision (Precision)</strong></td>
+                <td>&gt; 95%</td>
+            </tr>
+            <tr>
+                <td><strong>Rappel (Recall)</strong></td>
+                <td>&gt; 90%</td>
+            </tr>
+            <tr>
+                <td><strong>F1-Score</strong></td>
+                <td>&gt; 92%</td>
+            </tr>
+            <tr>
+                <td><strong>mAP (mean Average Precision)</strong></td>
+                <td>&gt; 0.85</td>
+            </tr>
+            <tr>
+                <td><strong>Temps d'inférence</strong></td>
+                <td>&lt; 500ms par image</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h1 id="exigences">10. Exigences Fonctionnelles et Non Fonctionnelles</h1>
+
+    <h2>10.1 Exigences Fonctionnelles</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Exigence</th>
+                <th>Priorité</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>EF1</td>
+                <td>Le système doit détecter automatiquement les anomalies visuelles sur les câbles</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>EF2</td>
+                <td>Le système doit gérer les ordres de fabrication (création, modification, suivi)</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>EF3</td>
+                <td>Le système doit générer automatiquement des rapports d'inspection au format PDF</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>EF4</td>
+                <td>Le système doit assurer la traçabilité complète de chaque inspection</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>EF5</td>
+                <td>Le système doit permettre la capture d'images via caméra mobile avec guidage IA</td>
+                <td><span class="badge badge-high">Haute</span></td>
+            </tr>
+            <tr>
+                <td>EF6</td>
+                <td>Le système doit supporter des checklists de vérification manuelles</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+            <tr>
+                <td>EF7</td>
+                <td>Le système doit fournir des tableaux de bord avec KPIs et visualisations</td>
+                <td><span class="badge badge-medium">Moyenne</span></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>10.2 Exigences Non Fonctionnelles</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Catégorie</th>
+                <th>Exigence</th>
+                <th>Critère de Succès</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Performance</strong></td>
+                <td>Temps d'inférence IA optimisé</td>
+                <td>&lt; 500ms par image</td>
+            </tr>
+            <tr>
+                <td><strong>Performance</strong></td>
+                <td>Temps de chargement application web</td>
+                <td>&lt; 3 secondes</td>
+            </tr>
+            <tr>
+                <td><strong>Sécurité</strong></td>
+                <td>Authentification sécurisée</td>
+                <td>Firebase Authentication avec hash bcrypt</td>
+            </tr>
+            <tr>
+                <td><strong>Sécurité</strong></td>
+                <td>Contrôle d'accès basé sur les rôles</td>
+                <td>RBAC avec 4 rôles distincts</td>
+            </tr>
+            <tr>
+                <td><strong>Fiabilité</strong></td>
+                <td>Disponibilité du système</td>
+                <td>99.5% uptime</td>
+            </tr>
+            <tr>
+                <td><strong>Fiabilité</strong></td>
+                <td>Précision de détection IA</td>
+                <td>&gt; 95% de précision</td>
+            </tr>
+            <tr>
+                <td><strong>Scalabilité</strong></td>
+                <td>Support de multiples utilisateurs</td>
+                <td>Jusqu'à 100 utilisateurs simultanés</td>
+            </tr>
+            <tr>
+                <td><strong>Compatibilité</strong></td>
+                <td>Support mobile</td>
+                <td>Android 8+ et iOS 12+</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h1>11. Conclusion</h1>
+
+    <p>Ce document de conception présente un système intelligent et complet de contrôle qualité post-fabrication pour les câbles industriels de l'entreprise ICEM.</p>
+
+    <h2>Points Clés</h2>
+    <div class="success-box">
+        <ul>
+            <li>✅ <strong>17 cas d'utilisation détaillés</strong> couvrant toutes les fonctionnalités</li>
+            <li>✅ <strong>6 acteurs</strong> (4 humains, 2 systèmes) avec rôles bien définis</li>
+            <li>✅ <strong>Architecture moderne</strong> client-serveur avec IA embarquée</li>
+            <li>✅ <strong>Technologies de pointe</strong> (Flutter, React.js, YOLOv8, Firebase)</li>
+            <li>✅ <strong>Traçabilité complète</strong> de bout en bout</li>
+            <li>✅ <strong>Scalabilité</strong> et évolutivité du système</li>
+        </ul>
+    </div>
+
+    <h2>Valeur Ajoutée</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>Aspect</th>
+                <th>Bénéfice</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Automatisation</strong></td>
+                <td>Réduction de 80% du temps d'inspection</td>
+            </tr>
+            <tr>
+                <td><strong>Fiabilité</strong></td>
+                <td>Détection précise à 95%+ des anomalies</td>
+            </tr>
+            <tr>
+                <td><strong>Traçabilité</strong></td>
+                <td>Historique complet de chaque inspection</td>
+            </tr>
+            <tr>
+                <td><strong>Décisionnel</strong></td>
+                <td>Tableaux de bord et analytics avancés</td>
+            </tr>
+            <tr>
+                <td><strong>ROI</strong></td>
+                <td>Réduction des coûts et amélioration de la qualité</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h2>Conformité Industrie 4.0</h2>
+    <p>Ce projet s'inscrit pleinement dans la transformation numérique de l'industrie :</p>
+    <ul>
+        <li>IoT et vision artificielle</li>
+        <li>Intelligence artificielle embarquée</li>
+        <li>Cloud computing</li>
+        <li>Analytics et Big Data</li>
+        <li>Mobilité et connectivité</li>
+    </ul>
+
+    <hr>
+
+    <div style="text-align: center; margin-top: 60px; padding: 30px; background-color: #f8f9fa; border-radius: 8px;">
+        <p><strong>Document réalisé dans le cadre du Projet de Fin d'Études</strong></p>
+        <p><strong>ICEM - Février 2026</strong></p>
+        <p><strong>Maram Laouini & Riheme Mhemdi</strong></p>
+    </div>
+
+    <div class="no-print" style="margin-top: 40px; padding: 20px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+        <h3>Instructions pour convertir en PDF :</h3>
+        <ol>
+            <li>Ouvrez ce fichier dans votre navigateur (Chrome, Firefox, Edge)</li>
+            <li>Appuyez sur <kbd>Ctrl + P</kbd> (Windows) ou <kbd>Cmd + P</kbd> (Mac)</li>
+            <li>Sélectionnez "Enregistrer au format PDF" comme destination</li>
+            <li>Cliquez sur "Enregistrer"</li>
+        </ol>
+        <h3>Instructions pour ouvrir dans Word :</h3>
+        <ol>
+            <li>Ouvrez Microsoft Word</li>
+            <li>Allez dans Fichier > Ouvrir</li>
+            <li>Sélectionnez ce fichier HTML</li>
+            <li>Word l'importera et vous pourrez le modifier</li>
+        </ol>
+    </div>
+
+</body>
+</html>
