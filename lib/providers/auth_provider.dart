@@ -52,12 +52,66 @@ class AuthProvider with ChangeNotifier {
         return false;
       }
     } catch (e) {
-      _errorMessage = 'Login failed. Please try again.';
+      _errorMessage = _handleAuthError(e);
       _isLoading = false;
       notifyListeners();
       print('Login error: $e');
       return false;
     }
+  }
+
+  /// Signup with email, password, and role
+  Future<bool> signup({
+    required String email,
+    required String password,
+    required String fullName,
+    required UserRole role,
+  }) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+
+    try {
+      final user = await _authService.signup(
+        email: email,
+        password: password,
+        fullName: fullName,
+        role: role,
+      );
+
+      if (user != null) {
+        _currentUser = user;
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } else {
+        _errorMessage = 'Signup failed';
+        _isLoading = false;
+        notifyListeners();
+        return false;
+      }
+    } catch (e) {
+      _errorMessage = _handleAuthError(e);
+      _isLoading = false;
+      notifyListeners();
+      print('Signup error: $e');
+      return false;
+    }
+  }
+
+  String _handleAuthError(dynamic e) {
+    if (e.toString().contains('user-not-found')) {
+      return 'No user found for that email.';
+    } else if (e.toString().contains('wrong-password')) {
+      return 'Wrong password provided.';
+    } else if (e.toString().contains('email-already-in-use')) {
+      return 'The account already exists for that email.';
+    } else if (e.toString().contains('invalid-email')) {
+      return 'The email address is not valid.';
+    } else if (e.toString().contains('weak-password')) {
+      return 'The password is too weak.';
+    }
+    return 'Authentication failed. Please try again.';
   }
 
   /// Logout current user

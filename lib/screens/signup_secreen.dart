@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:testflutter/screens/login_screen.dart';
 import 'package:testflutter/widgets/custom_scaffold.dart';
 import 'package:testflutter/theme/theme.dart';
+import 'package:provider/provider.dart';
+import 'package:testflutter/providers/auth_provider.dart';
+import 'package:testflutter/models/user.dart';
  class signupsecreen extends StatefulWidget{
 
    const signupsecreen({super.key});
@@ -10,7 +13,61 @@ import 'package:testflutter/theme/theme.dart';
   }
   class _signupScreenState extends State<signupsecreen>{
     final _formSignupKey = GlobalKey<FormState>();
+    final _fullNameController = TextEditingController();
+    final _emailController = TextEditingController();
+    final _passwordController = TextEditingController();
+    UserRole _selectedRole = UserRole.operator;
     bool agreePersonalData = true;
+
+    @override
+    void dispose() {
+      _fullNameController.dispose();
+      _emailController.dispose();
+      _passwordController.dispose();
+      super.dispose();
+    }
+
+    Future<void> _handleSignup() async {
+      if (_formSignupKey.currentState!.validate() && agreePersonalData) {
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        
+        final success = await authProvider.signup(
+          email: _emailController.text.trim(),
+          password: _passwordController.text,
+          fullName: _fullNameController.text.trim(),
+          role: _selectedRole,
+        );
+
+        if (!mounted) return;
+
+        if (success) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Account created successfully! Please sign in.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (e) => const loginscreen()),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(authProvider.errorMessage ?? 'Signup failed'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      } else if (!agreePersonalData) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please agree to the processing of personal data'),
+          ),
+        );
+      }
+    }
+
   @override
   Widget build(BuildContext context) {
     return customscaffold(
@@ -54,6 +111,7 @@ import 'package:testflutter/theme/theme.dart';
     ),
     // full name
     TextFormField(
+    controller: _fullNameController,
     validator: (value) {
     if (value == null || value.isEmpty) {
     return 'Please enter Full name';
@@ -85,6 +143,7 @@ import 'package:testflutter/theme/theme.dart';
     ),
     // email
     TextFormField(
+    controller: _emailController,
     validator: (value) {
     if (value == null || value.isEmpty) {
     return 'Please enter Email';
@@ -116,6 +175,7 @@ import 'package:testflutter/theme/theme.dart';
     ),
     // password
     TextFormField(
+    controller: _passwordController,
     obscureText: true,
     obscuringCharacter: '*',
     validator: (value) {
@@ -143,6 +203,30 @@ import 'package:testflutter/theme/theme.dart';
     borderRadius: BorderRadius.circular(10),
     ),
     ),
+    ),
+    const SizedBox(
+    height: 25.0,
+    ),
+    // Role Selection
+    DropdownButtonFormField<UserRole>(
+      value: _selectedRole,
+      decoration: InputDecoration(
+        label: const Text('Role'),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+        ),
+      ),
+      items: UserRole.values.map((UserRole role) {
+        return DropdownMenuItem<UserRole>(
+          value: role,
+          child: Text(role.name),
+        );
+      }).toList(),
+      onChanged: (UserRole? newValue) {
+        setState(() {
+          _selectedRole = newValue!;
+        });
+      },
     ),
     const SizedBox(
     height: 25.0,
@@ -178,27 +262,25 @@ import 'package:testflutter/theme/theme.dart';
     height: 25.0,
     ),
     // signup button
-    SizedBox(
-    width: double.infinity,
-    child: ElevatedButton(
-    onPressed: () {
-    if (_formSignupKey.currentState!.validate() &&
-    agreePersonalData) {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-    content: Text('Processing Data'),
-    ),
-    );
-    } else if (!agreePersonalData) {
-    ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(
-    content: Text(
-    'Please agree to the processing of personal data')),
-    );
-    }
-    },
-    child: const Text('Sign up'),
-    ),
+    Consumer<AuthProvider>(
+      builder: (context, authProvider, child) {
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: authProvider.isLoading ? null : _handleSignup,
+            child: authProvider.isLoading
+                ? const SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                : const Text('Sign up'),
+          ),
+        );
+      },
     ),
     const SizedBox(
     height: 30.0,

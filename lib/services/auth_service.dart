@@ -1,93 +1,95 @@
 import 'dart:convert';
-import 'package:crypto/crypto.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 
-/// Authentication service handling login, logout, and session management
+/// Authentication service handling login, logout, and session management using Firebase
 class AuthService {
   static const String _keyIsLoggedIn = 'isLoggedIn';
   static const String _keyCurrentUser = 'currentUser';
   static const String _keyRememberMe = 'rememberMe';
 
-  /// Demo users for testing (In production, this would be an API call)
-  static final Map<String, Map<String, dynamic>> _demoUsers = {
-    'admin': {
-      'password': _hashPassword('admin123'),
-      'user': User(
-        id: '1',
-        username: 'admin',
-        fullName: 'Administrator',
-        email: 'admin@cableinspection.com',
-        role: UserRole.admin,
-      ),
-    },
-    'inspector': {
-      'password': _hashPassword('inspector123'),
-      'user': User(
-        id: '2',
-        username: 'inspector',
-        fullName: 'John Inspector',
-        email: 'inspector@cableinspection.com',
-        role: UserRole.inspector,
-      ),
-    },
-    'supervisor': {
-      'password': _hashPassword('supervisor123'),
-      'user': User(
-        id: '3',
-        username: 'supervisor',
-        fullName: 'Jane Supervisor',
-        email: 'supervisor@cableinspection.com',
-        role: UserRole.supervisor,
-      ),
-    },
-    'operator': {
-      'password': _hashPassword('operator123'),
-      'user': User(
-        id: '4',
-        username: 'operator',
-        fullName: 'Bob Operator',
-        email: 'operator@cableinspection.com',
-        role: UserRole.operator,
-      ),
-    },
-  };
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Hash password using SHA-256
-  static String _hashPassword(String password) {
-    final bytes = utf8.encode(password);
-    final digest = sha256.convert(bytes);
-    return digest.toString();
-  }
-
-  /// Authenticate user with username and password
-  Future<User?> login(String username, String password, bool rememberMe) async {
+  /// Authenticate user with username (email) and password
+  Future<User?> login(String email, String password, bool rememberMe) async {
     try {
-      // Simulate network delay
-      await Future.delayed(const Duration(seconds: 1));
+      final userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
-      // Check if user exists
-      if (!_demoUsers.containsKey(username.toLowerCase())) {
+      if (userCredential.user == null) return null;
+
+      // Fetch user role and details from Firestore
+      final userDoc = await _firestore
+          .collection('users')
+          .doc(userCredential.user!.uid)
+          .get();
+
+      if (!userDoc.exists) {
+        // If user exists in Auth but not in Firestore, create a default profile
+        // This is a fallback, normally signup handles this
         return null;
       }
 
-      final userData = _demoUsers[username.toLowerCase()]!;
-      final hashedPassword = _hashPassword(password);
-
-      // Verify password
-      if (userData['password'] != hashedPassword) {
-        return null;
-      }
-
-      final user = userData['user'] as User;
+      final userData = userDoc.data()!;
+      final user = User(
+        id: userCredential.user!.uid,
+        username: userData['username'] ?? email.split('@')[0],
+        fullName: userData['fullName'] ?? 'Unknown',
+        email: email,
+        role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
+      );
 
       // Save session
-      await _saveSession(user, rememberMe);
+      if (rememberMe) {
+        await _saveSession(user, rememberMe);
+      }
 
       return user;
     } catch (e) {
       print('Login error: $e');
-      return null;
+      rethrow;
+    }
+  }
+
+  /// Register new user
+  Future<User?> signup({
+    required String email,
+    required String password,
+    required String fullName,
+    required UserRole role,
+  }) async {
+    try {
+      // Create user in Firebase Auth
+      final userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      if (userCredential.user == null) return null;
+
+      final uid = userCredential.user!.uid;
+      final username = email.split('@')[0];
+
+      // Create user document in Firestore
+      final user = User(
+        id: uid,
+        username: username,
+        fullName: fullName,
+        email: email,
+        role: role,
+      );
+
+      await _firestore.collection('users').doc(uid).set(user.toJson());
+
+      return user;
+    } catch (e) {
+      print('Signup error: $e');
+      rethrow;
     }
   }
 
@@ -99,47 +101,61 @@ class AuthService {
     await prefs.setString(_keyCurrentUser, jsonEncode(user.toJson()));
   }
 
-  /// Get current logged-in user from session
+  /// Get current logged-in user from session or Firebase
   Future<User?> getCurrentUser() async {
     try {
+      // First check SharedPreferences for offline/quick access
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
       final rememberMe = prefs.getBool(_keyRememberMe) ?? false;
 
-      if (!isLoggedIn || !rememberMe) {
-        return null;
+      if (isLoggedIn && rememberMe) {
+        final userJson = prefs.getString(_keyCurrentUser);
+        if (userJson != null) {
+          return User.fromJson(jsonDecode(userJson));
+        }
       }
 
-      final userJson = prefs.getString(_keyCurrentUser);
-      if (userJson == null) {
-        return null;
+      // If not in prefs, check Firebase Auth state
+      final firebaseUser = _auth.currentUser;
+      if (firebaseUser != null) {
+        final userDoc = await _firestore
+            .collection('users')
+            .doc(firebaseUser.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          final user = User(
+             id: firebaseUser.uid,
+             username: userData['username'] ?? firebaseUser.email!.split('@')[0],
+             fullName: userData['fullName'] ?? 'Unknown',
+             email: firebaseUser.email!,
+             role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
+          );
+          // Refresh session
+          await _saveSession(user, true); 
+          return user;
+        }
       }
 
-      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-      return User.fromJson(userMap);
+      return null;
     } catch (e) {
       print('Get current user error: $e');
       return null;
     }
   }
 
-  /// Check if user is logged in
-  Future<bool> isLoggedIn() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_keyIsLoggedIn) ?? false;
-  }
-
   /// Logout user and clear session
   Future<void> logout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_keyIsLoggedIn, false);
-    await prefs.remove(_keyCurrentUser);
-    // Keep rememberMe preference for next login
-  }
-
-  /// Clear all session data including rememberMe
-  Future<void> clearAllData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.clear();
+    try {
+      await _auth.signOut();
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool(_keyIsLoggedIn, false);
+      await prefs.remove(_keyCurrentUser);
+    } catch (e) {
+      print('Logout error: $e');
+      rethrow;
+    }
   }
 }
