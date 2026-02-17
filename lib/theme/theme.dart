@@ -1,54 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 const lightColorScheme = ColorScheme(
   brightness: Brightness.light,
-  primary: Color(0xFF416FDF),
+  primary: Color(0xFF1E3A5F),
   onPrimary: Color(0xFFFFFFFF),
-  secondary: Color(0xFF6EAEE7),
+  secondary: Color(0xFF4A90D9),
   onSecondary: Color(0xFFFFFFFF),
-  error: Color(0xFFBA1A1A),
+  error: Color(0xFFFF1744),
   onError: Color(0xFFFFFFFF),
-  background: Color(0xFFFCFDF6),
-  onBackground: Color(0xFF1A1C18),
   shadow: Color(0xFF000000),
-  outlineVariant: Color(0xFFC2C8BC),
-  surface: Color(0xFFF9FAF3),
-  onSurface: Color(0xFF1A1C18),
+  outlineVariant: Color(0xFFE8ECF0),
+  surface: Color(0xFFF0F4F8),
+  onSurface: Color(0xFF1A2138),
 );
 
 const darkColorScheme = ColorScheme(
   brightness: Brightness.dark,
-  primary: Color(0xFF416FDF),
+  primary: Color(0xFF4A90D9),
   onPrimary: Color(0xFFFFFFFF),
-  secondary: Color(0xFF6EAEE7),
+  secondary: Color(0xFF7BB3F0),
   onSecondary: Color(0xFFFFFFFF),
-  error: Color(0xFFBA1A1A),
+  error: Color(0xFFFF1744),
   onError: Color(0xFFFFFFFF),
-  background: Color(0xFFFCFDF6),
-  onBackground: Color(0xFF1A1C18),
   shadow: Color(0xFF000000),
-  outlineVariant: Color(0xFFC2C8BC),
-  surface: Color(0xFFF9FAF3),
-  onSurface: Color(0xFF1A1C18),
+  outlineVariant: Color(0xFF374151),
+  surface: Color(0xFF111827),
+  onSurface: Color(0xFFF9FAFB),
 );
 
 ThemeData lightMode = ThemeData(
   useMaterial3: true,
   brightness: Brightness.light,
   colorScheme: lightColorScheme,
+  textTheme: GoogleFonts.interTextTheme(),
   elevatedButtonTheme: ElevatedButtonThemeData(
     style: ButtonStyle(
-      backgroundColor: MaterialStateProperty.all<Color>(
-        lightColorScheme.primary, // Slightly darker shade for the button
+      backgroundColor: WidgetStateProperty.all<Color>(
+        lightColorScheme.primary,
       ),
-      foregroundColor:
-      MaterialStateProperty.all<Color>(Colors.white), // text color
-      elevation: MaterialStateProperty.all<double>(5.0), // shadow
-      padding: MaterialStateProperty.all<EdgeInsets>(
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 18)),
-      shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+      foregroundColor: WidgetStateProperty.all<Color>(Colors.white),
+      elevation: WidgetStateProperty.all<double>(0),
+      padding: WidgetStateProperty.all<EdgeInsets>(
+          const EdgeInsets.symmetric(horizontal: 28, vertical: 18)),
+      shape: WidgetStateProperty.all<RoundedRectangleBorder>(
         RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16), // Adjust as needed
+          borderRadius: BorderRadius.circular(14),
         ),
       ),
     ),
@@ -59,4 +56,5 @@ ThemeData darkMode = ThemeData(
   useMaterial3: true,
   brightness: Brightness.dark,
   colorScheme: darkColorScheme,
+  textTheme: GoogleFonts.interTextTheme(ThemeData.dark().textTheme),
 );

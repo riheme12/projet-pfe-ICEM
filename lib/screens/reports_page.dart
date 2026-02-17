@@ -7,6 +7,9 @@ import 'package:projeticem/widgets/status_badge.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/services/pdf_export_service.dart';
 
+import '../models/report.dart';
+import '../services/reports_service.dart';
+
 /// Page rapports et statistiques
 /// 
 /// Affiche les statistiques globales, graphiques et liste des rapports

@@ -1,14 +1,58 @@
 /// Modèle représentant un utilisateur du système ICEM
-/// 
+///
 /// Ce modèle contient toutes les informations d'un utilisateur :
 /// - Informations personnelles (nom, email, téléphone)
 /// - Rôle dans le système
 /// - Statistiques personnelles
+/// Rôles utilisateur disponibles
+enum UserRole {
+  technician,
+  manager,
+  admin,
+  operator,
+}
+
+/// Extension pour la conversion String <-> UserRole
+extension UserRoleExtension on UserRole {
+  String get name {
+    switch (this) {
+      case UserRole.technician:
+        return 'Technicien';
+      case UserRole.manager:
+        return 'Responsable';
+      case UserRole.admin:
+        return 'Administrateur';
+      case UserRole.operator:
+        return 'Opérateur';
+    }
+  }
+
+  static UserRole fromString(String role) {
+    switch (role) {
+      case 'Technicien':
+      case 'technician':
+        return UserRole.technician;
+      case 'Responsable':
+      case 'manager':
+        return UserRole.manager;
+      case 'Administrateur':
+      case 'admin':
+        return UserRole.admin;
+      case 'Opérateur':
+      case 'operator':
+        return UserRole.operator;
+      default:
+        return UserRole.operator;
+    }
+  }
+}
+
 class User {
   final String id;
-  final String name;
+  final String username;
+  final String fullName;
   final String email;
-  final String role; // 'Technicien', 'Responsable', 'Administrateur'
+  final UserRole role;
   final String? photoUrl;
   final String? phone;
   final DateTime createdAt;
@@ -16,7 +60,8 @@ class User {
 
   User({
     required this.id,
-    required this.name,
+    required this.username,
+    required this.fullName,
     required this.email,
     required this.role,
     this.photoUrl,
@@ -28,14 +73,19 @@ class User {
   /// Créer un User depuis un JSON (pour Firebase)
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      email: json['email'] as String,
-      role: json['role'] as String,
+      id: json['id'] as String? ?? '',
+      username: json['username'] as String? ?? '',
+      fullName: json['fullName'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      role: UserRoleExtension.fromString(json['role'] as String? ?? 'operator'),
       photoUrl: json['photoUrl'] as String?,
       phone: json['phone'] as String?,
-      createdAt: DateTime.parse(json['createdAt'] as String),
-      stats: UserStats.fromJson(json['stats'] as Map<String, dynamic>),
+      createdAt: json['createdAt'] != null
+          ? DateTime.parse(json['createdAt'] as String)
+          : DateTime.now(),
+      stats: json['stats'] != null
+          ? UserStats.fromJson(json['stats'] as Map<String, dynamic>)
+          : UserStats.empty(),
     );
   }
 
@@ -43,9 +93,13 @@ class User {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'name': name,
+      'username': username,
+      'fullName': fullName,
       'email': email,
-      'role': role,
+      'role': role.name, // Storing logical name or display name? Let's treat .name as the string value for DB.
+      // Wait, the extension .name returns "Technicien" (display name).
+      // If we want consistency, maybe store the enum name (e.g. 'technician') via .toString().split('.').last or specific key.
+      // The extension uses French display names. Let's store that for now to match 'fromString'.
       'photoUrl': photoUrl,
       'phone': phone,
       'createdAt': createdAt.toIso8601String(),
@@ -67,6 +121,15 @@ class UserStats {
     required this.conformityRate,
     required this.cablesProcessed,
   });
+
+  factory UserStats.empty() {
+    return UserStats(
+      inspectionsCount: 0,
+      anomaliesDetected: 0,
+      conformityRate: 0.0,
+      cablesProcessed: 0,
+    );
+  }
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(

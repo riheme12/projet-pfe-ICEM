@@ -65,7 +65,9 @@ class AuthProvider with ChangeNotifier {
     required String email,
     required String password,
     required String fullName,
+    required String username,
     required UserRole role,
+    String? phone,
   }) async {
     _isLoading = true;
     _errorMessage = null;
@@ -76,7 +78,9 @@ class AuthProvider with ChangeNotifier {
         email: email,
         password: password,
         fullName: fullName,
+        username: username,
         role: role,
+        phone: phone,
       );
 
       if (user != null) {

@@ -22,7 +22,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController(text: widget.user.name);
+    _nameController = TextEditingController(text: widget.user.fullName);
     _phoneController = TextEditingController(text: widget.user.phone ?? '');
   }
 
@@ -113,7 +113,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
             child: CircleAvatar(
               backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.2),
               child: Text(
-                widget.user.name.substring(0, 1).toUpperCase(),
+                widget.user.fullName.substring(0, 1).toUpperCase(),
                 style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
               ),
             ),
@@ -167,7 +167,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       setState(() => _isSaving = true);
       
       await UserService().updateProfile(
-        name: _nameController.text,
+        fullName: _nameController.text,
         phone: _phoneController.text,
       );
 

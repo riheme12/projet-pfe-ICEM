@@ -1,8 +1,8 @@
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
-import 'package:projeticem/models/manufacturing_order.dart';
-import 'package:projeticem/models/report.dart';
+import '../models/manufacturing_order.dart';
+import '../models/report.dart';
 
 /// Service pour générer et exporter des rapports au format PDF
 class PdfExportService {

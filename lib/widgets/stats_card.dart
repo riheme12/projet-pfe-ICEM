@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Widget pour afficher une statistique
-/// 
-/// Affiche un nombre avec une icône et un label
-/// Exemple: "24" avec icône et label "Ordres en cours"
+/// Widget pour afficher une statistique avec style moderne
 class StatsCard extends StatelessWidget {
-  final String value;       // La valeur à afficher (ex: "24")
-  final String label;       // Le label explicatif
-  final IconData icon;      // L'icône
-  final Color color;        // La couleur
+  final String value;
+  final String label;
+  final IconData icon;
+  final Color color;
 
   const StatsCard({
     super.key,
@@ -20,48 +18,61 @@ class StatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        // Column : empile les éléments verticalement
-        child: Column(
-          mainAxisSize: MainAxisSize.min, // Prend le minimum de place
-          children: [
-            // Icône avec fond circulaire
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE8ECF0).withValues(alpha: 0.5)),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Icon with gradient background
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [color.withValues(alpha: 0.15), color.withValues(alpha: 0.05)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
               ),
-              child: Icon(
-                icon,
-                color: color,
-                size: 24,
-              ),
+              borderRadius: BorderRadius.circular(12),
             ),
-            const SizedBox(height: 12),
-            
-            // La valeur (grand nombre)
-            Text(
-              value,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const Spacer(),
+          // Value
+          Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              color: const Color(0xFF1A2138),
+              letterSpacing: -0.5,
             ),
-            const SizedBox(height: 4),
-            
-            // Le label (petit texte)
-            Text(
-              label,
-              style: Theme.of(context).textTheme.bodySmall,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          // Label
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: const Color(0xFF6B7280),
+              fontWeight: FontWeight.w500,
             ),
-          ],
-        ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }

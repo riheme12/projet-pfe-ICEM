@@ -30,19 +30,17 @@ class AuthService {
           .get();
 
       if (!userDoc.exists) {
-        // If user exists in Auth but not in Firestore, create a default profile
-        // This is a fallback, normally signup handles this
+        // If user exists in Auth but not in Firestore, we should probably handle this gracefully
+        // For now, return null or throw depending on requirements.
         return null;
       }
 
       final userData = userDoc.data()!;
-      final user = User(
-        id: userCredential.user!.uid,
-        username: userData['username'] ?? email.split('@')[0],
-        fullName: userData['fullName'] ?? 'Unknown',
-        email: email,
-        role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
-      );
+      // Handle potential missing fields gracefully
+      final user = User.fromJson({
+        'id': userCredential.user!.uid,
+        ...userData,
+      });
 
       // Save session
       if (rememberMe) {
@@ -61,7 +59,9 @@ class AuthService {
     required String email,
     required String password,
     required String fullName,
+    required String username,
     required UserRole role,
+    String? phone,
   }) async {
     try {
       // Create user in Firebase Auth
@@ -73,17 +73,20 @@ class AuthService {
       if (userCredential.user == null) return null;
 
       final uid = userCredential.user!.uid;
-      final username = email.split('@')[0];
 
-      // Create user document in Firestore
+      // Create new user object
       final user = User(
         id: uid,
         username: username,
         fullName: fullName,
         email: email,
         role: role,
+        phone: phone,
+        createdAt: DateTime.now(),
+        stats: UserStats.empty(),
       );
 
+      // Save to Firestore. Use user.toJson() which now handles everything correctly.
       await _firestore.collection('users').doc(uid).set(user.toJson());
 
       return user;
@@ -112,7 +115,12 @@ class AuthService {
       if (isLoggedIn && rememberMe) {
         final userJson = prefs.getString(_keyCurrentUser);
         if (userJson != null) {
-          return User.fromJson(jsonDecode(userJson));
+          try {
+            return User.fromJson(jsonDecode(userJson));
+          } catch (e) {
+             print('Error parsing session user: $e');
+             // Proceed to fetch from Firebase
+          }
         }
       }
 
@@ -126,13 +134,11 @@ class AuthService {
 
         if (userDoc.exists) {
           final userData = userDoc.data()!;
-          final user = User(
-             id: firebaseUser.uid,
-             username: userData['username'] ?? firebaseUser.email!.split('@')[0],
-             fullName: userData['fullName'] ?? 'Unknown',
-             email: firebaseUser.email!,
-             role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
-          );
+          final user = User.fromJson({
+            'id': firebaseUser.uid,
+            ...userData,
+          });
+          
           // Refresh session
           await _saveSession(user, true); 
           return user;
@@ -153,6 +159,7 @@ class AuthService {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, false);
       await prefs.remove(_keyCurrentUser);
+      await prefs.remove(_keyRememberMe); // Also clear remember me flag? Usually yes if logging out explicitely.
     } catch (e) {
       print('Logout error: $e');
       rethrow;

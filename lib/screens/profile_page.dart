@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:projeticem/models/user.dart';
-import 'package:projeticem/services/user_service.dart';
-import 'package:projeticem/widgets/stats_card.dart';
-import 'package:projeticem/theme/app_theme.dart';
-import 'package:projeticem/screens/edit_profile_page.dart';
+import '../models/user.dart';
+import '../services/user_service.dart';
+import '../widgets/stats_card.dart';
+import '../theme/app_theme.dart';
+import '../screens/edit_profile_page.dart';
 
 /// Page du profil utilisateur
 /// 
@@ -115,7 +115,7 @@ class _ProfilePageState extends State<ProfilePage> {
             child: CircleAvatar(
               backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.2),
               child: Text(
-                _user!.name.substring(0, 1).toUpperCase(),
+                _user!.fullName.substring(0, 1).toUpperCase(),
                 style: const TextStyle(
                   fontSize: 40,
                   fontWeight: FontWeight.bold,
@@ -127,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage> {
           const SizedBox(height: 16),
           // Nom
           Text(
-            _user!.name,
+            _user!.fullName,
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -143,7 +143,7 @@ class _ProfilePageState extends State<ProfilePage> {
               borderRadius: BorderRadius.circular(20),
             ),
             child: Text(
-              _user!.role,
+              _user!.role.name,
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.white,

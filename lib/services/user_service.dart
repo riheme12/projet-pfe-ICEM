@@ -21,9 +21,10 @@ class UserService {
     // Si pas d'utilisateur, créer un utilisateur de test
     _currentUser ??= User(
       id: 'user_001',
-      name: 'Ahmed Ben Ali',
+      username: 'ahmed_ba',
+      fullName: 'Ahmed Ben Ali',
       email: 'ahmed.benali@icem.tn',
-      role: 'Technicien Qualité',
+      role: UserRole.technician,
       photoUrl: null, // Pas de photo pour l'instant
       phone: '+216 20 123 456',
       createdAt: DateTime(2024, 1, 15),
@@ -40,7 +41,7 @@ class UserService {
 
   /// Mettre à jour le profil utilisateur
   Future<void> updateProfile({
-    String? name,
+    String? fullName,
     String? phone,
     String? photoUrl,
   }) async {
@@ -50,7 +51,8 @@ class UserService {
     if (_currentUser != null) {
       _currentUser = User(
         id: _currentUser!.id,
-        name: name ?? _currentUser!.name,
+        username: _currentUser!.username,
+        fullName: fullName ?? _currentUser!.fullName,
         email: _currentUser!.email,
         role: _currentUser!.role,
         photoUrl: photoUrl ?? _currentUser!.photoUrl,

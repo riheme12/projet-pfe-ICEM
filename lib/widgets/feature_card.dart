@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-/// Widget réutilisable pour afficher une fonctionnalité
-/// 
-/// Ce widget crée une belle carte avec:
-/// - Une icône colorée
-/// - Un titre
-/// - Une description
-/// - Une action au clic
+/// Widget réutilisable pour afficher une fonctionnalité avec design moderne
 class FeatureCard extends StatelessWidget {
-  // Propriétés du widget (passées lors de la création)
-  final IconData icon;           // L'icône à afficher
-  final String title;            // Le titre de la fonctionnalité
-  final String description;      // La description courte
-  final Color color;             // La couleur de l'icône
-  final VoidCallback onTap;      // La fonction à exécuter au clic
+  final IconData icon;
+  final String title;
+  final String description;
+  final Color color;
+  final VoidCallback onTap;
 
-  // Constructeur : définit comment créer ce widget
   const FeatureCard({
     super.key,
     required this.icon,
@@ -27,67 +20,86 @@ class FeatureCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Card : crée une carte avec ombres et coins arrondis
-    return Card(
-      // InkWell : rend la carte cliquable avec effet visuel
+    return Material(
+      color: Colors.transparent,
       child: InkWell(
-        onTap: onTap, // Action au clic
-        borderRadius: BorderRadius.circular(12), // Coins arrondis pour l'effet
-        child: Padding(
-          padding: const EdgeInsets.all(16.0), // Espacement interne
-          // Column : aligne les enfants verticalement
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start, // Alignement à gauche
-            children: [
-              // Ligne avec l'icône
-              Row(
-                children: [
-                  // Container avec fond circulaire pour l'icône
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1), // Fond avec transparence
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      icon,
-                      color: color,
-                      size: 32,
-                    ),
-                  ),
-                ],
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE8ECF0).withValues(alpha: 0.5)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-              const SizedBox(height: 16), // Espacement vertical
-              
-              // Titre de la fonctionnalité
-              Text(
-                title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+            ],
+          ),
+          child: Row(
+            children: [
+              // Icon container with gradient
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [color, color.withValues(alpha: 0.7)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: Icon(icon, color: Colors.white, size: 26),
+              ),
+              const SizedBox(width: 16),
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF1A2138),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      description,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFF6B7280),
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 8),
-              
-              // Description
-              Text(
-                description,
-                style: Theme.of(context).textTheme.bodyMedium,
-                maxLines: 2, // Maximum 2 lignes
-                overflow: TextOverflow.ellipsis, // "..." si trop long
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Flèche pour indiquer que c'est cliquable
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Icon(
-                    Icons.arrow_forward,
-                    color: color,
-                    size: 20,
-                  ),
-                ],
+              // Chevron arrow
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  color: color,
+                  size: 20,
+                ),
               ),
             ],
           ),
