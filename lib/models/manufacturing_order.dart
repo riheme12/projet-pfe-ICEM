@@ -1,32 +1,38 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Modèle représentant un ordre de fabrication
 /// 
 /// Un ordre de fabrication contient :
 /// - Les informations de production (référence, type, quantité)
 /// - Le statut de l'ordre
 /// - Les statistiques de conformité
-class ManufacturingOrder {
-  final String id;
-  final String reference;           // Ex: "OF-2024-001"
-  final String cableType;           // Ex: "Câble électrique 3x2.5mm²"
-  final int quantity;               // Quantité totale à produire
-  final DateTime productionDate;    // Date de production
+class manufacturingOrder {
+  final String numeroOF;
+  final String Gipros;
+  final String reference;
+  final String? ligne;
+  final String Client;
+  final String NumComd;
+  final int  QTA ;               // Quantité totale à produire
+  final DateTime DateLiv;    // Date de production
   final String status;              // 'En cours', 'Terminé', 'En attente'
-  final String? assignedTechnicianId;
   final int inspectedCount;         // Nombre de câbles déjà inspectés
   final int conformCount;           // Nombre de câbles conformes
   final int nonConformCount;        // Nombre de câbles non conformes
 
-  ManufacturingOrder({
-    required this.id,
+  manufacturingOrder({
     required this.reference,
-    required this.cableType,
-    required this.quantity,
-    required this.productionDate,
     required this.status,
-    this.assignedTechnicianId,
     required this.inspectedCount,
     required this.conformCount,
     required this.nonConformCount,
+    required this.numeroOF,
+    required this.Gipros,
+    required this.ligne,
+    required this.Client,
+    required this.NumComd,
+    required this.QTA,
+    required this.DateLiv,
   });
 
   /// Calculer le taux de conformité de cet ordre (0-100)
@@ -37,39 +43,92 @@ class ManufacturingOrder {
 
   /// Calculer le pourcentage de progression (0-100)
   double get progressPercentage {
-    if (quantity == 0) return 0.0;
-    return (inspectedCount / quantity) * 100;
+    if (QTA == 0) return 0.0;
+    return (inspectedCount /QTA) * 100;
   }
 
   /// Vérifier si l'ordre est terminé
-  bool get isCompleted => inspectedCount >= quantity;
+  bool get isCompleted => inspectedCount >= QTA;
 
-  /// Créer depuis JSON
-  factory ManufacturingOrder.fromJson(Map<String, dynamic> json) {
-    return ManufacturingOrder(
-      id: json['id'] as String,
+  /// Créer depuis Firestore
+  factory manufacturingOrder.fromFirestore(DocumentSnapshot doc) {
+    print('Parsing document: ${doc.id}');
+    final data = doc.data() as Map<String, dynamic>;
+    
+    int parseInt(dynamic value) {
+      if (value == null) return 0;
+      if (value is int) return value;
+      if (value is String) return int.tryParse(value) ?? 0;
+      if (value is double) return value.toInt();
+      return 0;
+    }
+
+    return manufacturingOrder(
+      reference: data['reference'] as String? ?? '',
+      status: data['status'] as String? ?? 'en attente',
+      inspectedCount: parseInt(data['inspectedCount']),
+      conformCount: parseInt(data['conformCount']),
+      nonConformCount: parseInt(data['nonConformCount']),
+      numeroOF: data['numeroOF'] as String? ?? '',
+      Gipros: data['Gi pros'] as String? ?? '',
+      Client: data['Client'] as String? ?? data['client'] as String? ?? '',
+      NumComd: data['NumComd'] as String? ?? '',
+      QTA: parseInt(data['QTA']),
+      DateLiv: data['DateLiv'] != null && data['DateLiv'] is Timestamp 
+          ? (data['DateLiv'] as Timestamp).toDate() 
+          : DateTime.now(),
+      ligne: data['ligne'] as String? ?? '',
+    );
+  }
+
+  /// Créer depuis JSON (gardé pour compatibilité si nécessaire)
+  factory manufacturingOrder.fromJson(Map<String, dynamic> json) {
+    return manufacturingOrder(
       reference: json['reference'] as String,
-      cableType: json['cableType'] as String,
-      quantity: json['quantity'] as int,
-      productionDate: DateTime.parse(json['productionDate'] as String),
       status: json['status'] as String,
-      assignedTechnicianId: json['assignedTechnicianId'] as String?,
       inspectedCount: json['inspectedCount'] as int,
       conformCount: json['conformCount'] as int,
       nonConformCount: json['nonConformCount'] as int,
+      numeroOF: json['numeroOF'] as String,
+      Gipros: json['Gi pros'] as String,
+      ligne: json['ligne'] as String,
+      Client: json['Client'] as String,
+      NumComd: json['NumComd'] as String,
+      QTA: json['QTA'] as int,
+      DateLiv: DateTime.parse(json['DateLiv'] as String)
     );
+  }
+
+  /// Convertir pour Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'numeroOF':numeroOF,
+      'Gi pros':Gipros,
+      'reference': reference,
+      'QTA':QTA,
+      'NumComd':NumComd,
+      'Client':Client,
+      'DateLiv': Timestamp.fromDate(DateLiv),
+      'status': status,
+      'ligne': ligne,
+      'inspectedCount': inspectedCount,
+      'conformCount': conformCount,
+      'nonConformCount': nonConformCount,
+    };
   }
 
   /// Convertir en JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'reference': reference,
-      'cableType': cableType,
-      'quantity': quantity,
-      'productionDate': productionDate.toIso8601String(),
+      'QTA': QTA,
+      'DateLiv': DateLiv.toIso8601String(),
       'status': status,
-      'assignedTechnicianId': assignedTechnicianId,
+      'ligne': ligne,
+      'Client':Client,
+      'Gi pros':Gipros,
+      'numeroOF':numeroOF,
+      'NumComd':NumComd,
       'inspectedCount': inspectedCount,
       'conformCount': conformCount,
       'nonConformCount': nonConformCount,

@@ -18,8 +18,8 @@ class OrdersListPage extends StatefulWidget {
 
 class _OrdersListPageState extends State<OrdersListPage> {
   final OrdersService _ordersService = OrdersService();
-  List<ManufacturingOrder> _allOrders = [];
-  List<ManufacturingOrder> _filteredOrders = [];
+  List<manufacturingOrder> _allOrders = [];
+  List<manufacturingOrder> _filteredOrders = [];
   bool _isLoading = true;
   String _selectedFilter = 'Tous';
   String _searchQuery = '';
@@ -44,12 +44,13 @@ class _OrdersListPageState extends State<OrdersListPage> {
     setState(() {
       _filteredOrders = _allOrders.where((order) {
         // Filtre par statut
-        final matchesStatus = _selectedFilter == 'Tous' || order.status == _selectedFilter;
+        final matchesStatus = _selectedFilter == 'Tous' || 
+            order.status.toLowerCase() == _selectedFilter.toLowerCase();
         
         // Filtre par recherche
         final matchesSearch = _searchQuery.isEmpty ||
             order.reference.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-            order.cableType.toLowerCase().contains(_searchQuery.toLowerCase());
+            order.Gipros.toLowerCase().contains(_searchQuery.toLowerCase());
         
         return matchesStatus && matchesSearch;
       }).toList();

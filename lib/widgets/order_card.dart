@@ -11,7 +11,7 @@ import 'package:projeticem/theme/app_theme.dart';
 /// - Statut
 /// - Taux de conformité
 class OrderCard extends StatelessWidget {
-  final ManufacturingOrder order;
+  final manufacturingOrder order;
   final VoidCallback onTap;
 
   const OrderCard({
@@ -50,9 +50,9 @@ class OrderCard extends StatelessWidget {
               ),
               const SizedBox(height: 8),
 
-              // Type de câble
+              // Gipros (anciennement type de câble)
               Text(
-                order.cableType,
+                'Gi pros: ${order.Gipros}',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
               const SizedBox(height: 12),
@@ -69,7 +69,7 @@ class OrderCard extends StatelessWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              '${order.inspectedCount} / ${order.quantity} inspectés',
+                              '${order.inspectedCount} / ${order.QTA} inspectés',
                               style: Theme.of(context).textTheme.bodySmall,
                             ),
                             Text(
