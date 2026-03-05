@@ -308,14 +308,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     : AppTheme.errorRed,
           ),
         ),
-        title: Text(cable.reference),
-        subtitle: Text(cable.code),
         trailing: StatusBadge(status: cable.status, isSmall: true),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Détails du câble ${cable.reference}')),
-          );
-        },
+
       ),
     );
   }

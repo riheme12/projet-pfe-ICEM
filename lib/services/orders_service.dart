@@ -227,7 +227,6 @@ class OrdersService {
       final isConform = i <= 6;   // 6 premiers sont conformes
       
       cables.add(Cable(
-        reference: 'CAB-${i.toString().padLeft(3, '0')}',
         code: 'CODE-${orderId.toUpperCase()}-$i',
         orderId: orderId,
         status: !isInspected

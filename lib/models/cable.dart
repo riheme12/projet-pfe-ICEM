@@ -5,7 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Chaque câble appartient à un ordre de fabrication
 /// et peut avoir plusieurs anomalies détectées
 class Cable {
-  final String reference;          // Référence du câble
+
   final String code;                // Code unique du câble
   final String orderId;             // ID de l'ordre parent
   final String status;              // 'Conforme', 'Non conforme', 'En attente'
@@ -15,7 +15,6 @@ class Cable {
   final int anomaliesCount;         // Nombre d'anomalies détectées
 
   Cable({
-    required this.reference,
     required this.code,
     required this.orderId,
     required this.status,
@@ -35,7 +34,6 @@ class Cable {
   factory Cable.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Cable(
-      reference: data['reference'] as String? ?? '',
       code: data['code'] as String? ?? '',
       orderId: data['orderId'] as String? ?? '',
       status: data['status'] as String? ?? 'En attente',
@@ -54,7 +52,7 @@ class Cable {
   /// Créer depuis JSON
   factory Cable.fromJson(Map<String, dynamic> json) {
     return Cable(
-      reference: json['reference'] as String,
+
       code: json['code'] as String,
       orderId: json['orderId'] as String,
       status: json['status'] as String,
@@ -73,7 +71,6 @@ class Cable {
   /// Convertir pour Firestore
   Map<String, dynamic> toFirestore() {
     return {
-      'reference': reference,
       'code': code,
       'orderId': orderId,
       'status': status,
@@ -87,7 +84,6 @@ class Cable {
   /// Convertir en JSON
   Map<String, dynamic> toJson() {
     return {
-      'reference': reference,
       'code': code,
       'orderId': orderId,
       'status': status,

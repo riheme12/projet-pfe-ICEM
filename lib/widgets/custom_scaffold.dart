@@ -22,18 +22,19 @@ class CustomScaffold extends StatelessWidget {
             width: double.infinity,
             height: double.infinity,
           ),
-          // Gradient overlay for better text readability
+          // Rich gradient overlay: dark top → medium mid → light bottom for card contrast
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  const Color(0xFF1E3A5F).withValues(alpha: 0.7),
-                  const Color(0xFF1E3A5F).withValues(alpha: 0.4),
+                  const Color(0xFF1E3A5F).withValues(alpha: 0.88),
+                  const Color(0xFF1E3A5F).withValues(alpha: 0.55),
+                  const Color(0xFF1E3A5F).withValues(alpha: 0.15),
                   Colors.transparent,
                 ],
-                stops: const [0.0, 0.3, 0.6],
+                stops: const [0.0, 0.25, 0.55, 0.75],
               ),
             ),
           ),

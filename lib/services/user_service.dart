@@ -1,84 +1,109 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/user.dart';
 
 /// Service pour gérer les données utilisateur
 /// 
-/// Pour l'instant, ce service utilise des données simulées
-/// Plus tard, il sera connecté à Firebase
+/// Connecté à Firebase Auth et Firestore (collection 'users')
 class UserService {
   // Singleton pattern : une seule instance du service
   static final UserService _instance = UserService._internal();
   factory UserService() => _instance;
   UserService._internal();
 
-  // Utilisateur actuellement connecté (simulé)
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+  final CollectionReference _usersCollection =
+      FirebaseFirestore.instance.collection('users');
+
+  // Cache de l'utilisateur actuel
   User? _currentUser;
 
-  /// Récupérer l'utilisateur actuellement connecté
+  /// Récupérer l'utilisateur actuellement connecté depuis Firebase
   Future<User> getCurrentUser() async {
-    // Simuler un délai réseau
-    await Future.delayed(const Duration(milliseconds: 500));
+    // Si l'utilisateur est en cache, le retourner
+    if (_currentUser != null) return _currentUser!;
 
-    // Si pas d'utilisateur, créer un utilisateur de test
-    _currentUser ??= User(
-      id: 'user_001',
-      username: 'ahmed_ba',
-      fullName: 'Ahmed Ben Ali',
-      email: 'ahmed.benali@icem.tn',
-      role: UserRole.technician,
-      photoUrl: null, // Pas de photo pour l'instant
-      phone: '+216 20 123 456',
-      createdAt: DateTime(2024, 1, 15),
-      stats: UserStats(
-        inspectionsCount: 156,
-        anomaliesDetected: 23,
-        conformityRate: 94.5,
-        cablesProcessed: 156,
-      ),
+    try {
+      final firebaseUser = _auth.currentUser;
+      if (firebaseUser != null) {
+        final userDoc = await _usersCollection.doc(firebaseUser.uid).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data() as Map<String, dynamic>;
+          _currentUser = User.fromJson({
+            'id': firebaseUser.uid,
+            ...userData,
+          });
+          return _currentUser!;
+        }
+      }
+    } catch (e) {
+      print('Error fetching current user: $e');
+    }
+
+    // Fallback: utilisateur par défaut si pas connecté
+    return User(
+      id: 'guest',
+      username: 'Invité',
+      fullName: 'Utilisateur non connecté',
+      email: '',
+      role: UserRole.operator,
+      createdAt: DateTime.now(),
+      stats: UserStats.empty(),
     );
-
-    return _currentUser!;
   }
 
-  /// Mettre à jour le profil utilisateur
+  /// Mettre à jour le profil utilisateur dans Firestore
   Future<void> updateProfile({
     String? fullName,
     String? phone,
     String? photoUrl,
   }) async {
-    // Simuler un délai réseau
-    await Future.delayed(const Duration(milliseconds: 800));
+    try {
+      final firebaseUser = _auth.currentUser;
+      if (firebaseUser == null) return;
 
-    if (_currentUser != null) {
-      _currentUser = User(
-        id: _currentUser!.id,
-        username: _currentUser!.username,
-        fullName: fullName ?? _currentUser!.fullName,
-        email: _currentUser!.email,
-        role: _currentUser!.role,
-        photoUrl: photoUrl ?? _currentUser!.photoUrl,
-        phone: phone ?? _currentUser!.phone,
-        createdAt: _currentUser!.createdAt,
-        stats: _currentUser!.stats,
-      );
+      final Map<String, dynamic> updates = {};
+      if (fullName != null) updates['fullName'] = fullName;
+      if (phone != null) updates['phone'] = phone;
+      if (photoUrl != null) updates['photoUrl'] = photoUrl;
+
+      if (updates.isNotEmpty) {
+        await _usersCollection.doc(firebaseUser.uid).update(updates);
+        
+        // Mettre à jour le cache
+        _currentUser = null; // Forcer le rechargement
+        await getCurrentUser();
+      }
+    } catch (e) {
+      print('Error updating profile: $e');
+      rethrow;
     }
   }
 
-  /// Récupérer les statistiques de l'utilisateur
+  /// Récupérer les statistiques de l'utilisateur depuis Firestore
   Future<UserStats> getUserStats() async {
-    await Future.delayed(const Duration(milliseconds: 300));
     final user = await getCurrentUser();
     return user.stats;
   }
 
   /// Déconnexion
   Future<void> logout() async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    _currentUser = null;
-    // TODO: Déconnexion Firebase
+    try {
+      await _auth.signOut();
+      _currentUser = null;
+    } catch (e) {
+      print('Logout error: $e');
+      rethrow;
+    }
   }
 
   /// Vérifier si un utilisateur est connecté
   bool isLoggedIn() {
-    return _currentUser != null;
+    return _auth.currentUser != null;
+  }
+
+  /// Invalider le cache (forcer le rechargement)
+  void clearCache() {
+    _currentUser = null;
   }
 }

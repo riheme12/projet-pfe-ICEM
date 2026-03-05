@@ -164,7 +164,7 @@ class _SignupScreenState extends State<SignupScreen>
         children: [
           const Expanded(flex: 1, child: SizedBox(height: 10)),
           Expanded(
-            flex: 7,
+            flex: 8,
             child: FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
@@ -174,8 +174,8 @@ class _SignupScreenState extends State<SignupScreen>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(32.0),
-                      topRight: Radius.circular(32.0),
+                      topLeft: Radius.circular(40.0),
+                      topRight: Radius.circular(40.0),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -193,14 +193,25 @@ class _SignupScreenState extends State<SignupScreen>
                         children: [
                           // Logo ICEM
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0F4F8),
-                              borderRadius: BorderRadius.circular(18),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1E3A5F), Color(0xFF4A90D9)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF1E3A5F).withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
                             child: Image.asset(
                               'assets/images/logo.png',
-                              height: 55,
+                              height: 52,
                               fit: BoxFit.contain,
                             ),
                           ),
@@ -215,11 +226,26 @@ class _SignupScreenState extends State<SignupScreen>
                             ),
                           ),
                           const SizedBox(height: 6),
-                          Text(
-                            'Rejoignez l\'équipe ICEM',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: const Color(0xFF6B7280),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F4F8),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.factory_outlined, size: 13, color: Color(0xFF4A90D9)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Rejoignez l\'équipe ICEM',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 28),
