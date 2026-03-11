@@ -44,31 +44,40 @@ class ManufacturingOrder {
   /// Vérifier si l'ordre est terminé
   bool get isCompleted => inspectedCount >= quantity;
 
-  /// Créer depuis JSON
+  /// Créer depuis JSON (Mapping Firestore)
   factory ManufacturingOrder.fromJson(Map<String, dynamic> json) {
     return ManufacturingOrder(
       id: json['id'] as String,
-      reference: json['reference'] as String,
-      cableType: json['cableType'] as String,
-      quantity: json['quantity'] as int,
-      productionDate: DateTime.parse(json['productionDate'] as String),
-      status: json['status'] as String,
-      assignedTechnicianId: json['assignedTechnicianId'] as String?,
-      inspectedCount: json['inspectedCount'] as int,
-      conformCount: json['conformCount'] as int,
-      nonConformCount: json['nonConformCount'] as int,
+      reference: json['reference']?.toString() ?? json['numeroOF']?.toString() ?? 'Inconnue',
+      cableType: json['cableType']?.toString() ?? json['NumComd']?.toString() ?? json['client']?.toString() ?? 'Inconnu',
+      quantity: (json['quantity'] ?? json['QTA'] ?? 0) as int,
+      productionDate: json['productionDate'] != null 
+          ? DateTime.parse(json['productionDate'] as String)
+          : (json['DateLiv'] != null ? DateTime.parse(json['DateLiv'] as String) : DateTime.now()),
+      status: _mapStatus(json['status']?.toString() ?? 'En attente'),
+      assignedTechnicianId: json['assignedTechnicianId'] as String? ?? json['ligne'] as String?,
+      inspectedCount: (json['inspectedCount'] ?? 0) as int,
+      conformCount: (json['conformCount'] ?? 0) as int,
+      nonConformCount: (json['nonConformCount'] ?? 0) as int,
     );
   }
 
-  /// Convertir en JSON
+  static String _mapStatus(String status) {
+    final s = status.toLowerCase();
+    if (s == 'en cours') return 'En cours';
+    if (s == 'terminé' || s == 'termine') return 'Terminé';
+    return 'En attente';
+  }
+
+  /// Convertir en JSON (Mapping Firestore)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'reference': reference,
-      'cableType': cableType,
-      'quantity': quantity,
-      'productionDate': productionDate.toIso8601String(),
-      'status': status,
+      'NumComd': cableType, // Sync with Firestore NumComd
+      'QTA': quantity,      // Sync with Firestore QTA
+      'DateLiv': productionDate.toIso8601String(),
+      'status': status.toLowerCase(),
       'assignedTechnicianId': assignedTechnicianId,
       'inspectedCount': inspectedCount,
       'conformCount': conformCount,

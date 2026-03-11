@@ -29,22 +29,24 @@ class Cable {
   bool get isInspected => inspectionDate != null;
 
   /// Vérifier si le câble est conforme
-  bool get isConform => status == 'Conforme';
+  bool get isConform => status.toLowerCase() == 'conforme';
 
   /// Créer depuis JSON
   factory Cable.fromJson(Map<String, dynamic> json) {
     return Cable(
-      id: json['id'] as String,
-      reference: json['reference'] as String,
-      code: json['code'] as String,
-      orderId: json['orderId'] as String,
-      status: json['status'] as String,
+      id: json['id']?.toString() ?? '',
+      reference: json['reference']?.toString() ?? json['code']?.toString() ?? 'Inconnue',
+      code: json['code']?.toString() ?? '',
+      orderId: json['orderId']?.toString() ?? '',
+      status: json['status']?.toString() ?? 'En attente',
       inspectionDate: json['inspectionDate'] != null
-          ? DateTime.parse(json['inspectionDate'] as String)
+          ? (json['inspectionDate'] is String 
+              ? DateTime.parse(json['inspectionDate'] as String)
+              : (json['inspectionDate'] as dynamic).toDate())
           : null,
-      technicianId: json['technicianId'] as String?,
+      technicianId: json['technicianId']?.toString(),
       imageUrls: (json['imageUrls'] as List<dynamic>?)
-              ?.map((e) => e as String)
+              ?.map((e) => e?.toString() ?? '')
               .toList() ??
           [],
       anomaliesCount: json['anomaliesCount'] as int? ?? 0,

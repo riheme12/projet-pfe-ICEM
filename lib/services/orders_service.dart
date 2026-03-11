@@ -1,194 +1,151 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/manufacturing_order.dart';
 import '../models/cable.dart';
 
-/// Service pour gérer les ordres de fabrication
-/// 
-/// Fournit des données simulées pour le développement
-/// Sera connecté à Firebase plus tard
+/// Service pour gérer les ordres de fabrication via Firestore
 class OrdersService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
   // Singleton
   static final OrdersService _instance = OrdersService._internal();
   factory OrdersService() => _instance;
   OrdersService._internal();
 
-  // Liste des ordres simulés
-  final List<ManufacturingOrder> _orders = _generateMockOrders();
-
   /// Récupérer tous les ordres de fabrication
   Future<List<ManufacturingOrder>> getAllOrders() async {
-    await Future.delayed(const Duration(milliseconds: 600));
-    return List.from(_orders);
+    try {
+      final snapshot = await _db
+          .collection('manufacturingOrder')
+          .orderBy('productionDate', descending: true)
+          .get();
+          
+      return snapshot.docs.map((doc) {
+        return ManufacturingOrder.fromJson({'id': doc.id, ...doc.data()});
+      }).toList();
+    } catch (e) {
+      print('Error fetching orders: $e');
+      return [];
+    }
   }
 
   /// Récupérer un ordre par son ID
   Future<ManufacturingOrder?> getOrderById(String id) async {
-    await Future.delayed(const Duration(milliseconds: 300));
     try {
-      return _orders.firstWhere((order) => order.id == id);
+      final doc = await _db.collection('manufacturingOrder').doc(id).get();
+      if (!doc.exists) return null;
+      return ManufacturingOrder.fromJson({'id': doc.id, ...doc.data() as Map<String, dynamic>});
     } catch (e) {
+      print('Error fetching order $id: $e');
       return null;
     }
   }
 
   /// Rechercher des ordres par référence ou type de câble
   Future<List<ManufacturingOrder>> searchOrders(String query) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    if (query.isEmpty) return getAllOrders();
     
-    if (query.isEmpty) return _orders;
-    
-    final lowerQuery = query.toLowerCase();
-    return _orders.where((order) {
-      return order.reference.toLowerCase().contains(lowerQuery) ||
-          order.cableType.toLowerCase().contains(lowerQuery);
-    }).toList();
+    // Firestore doesn't support partial string match with 'contains' efficiently
+    // So we fetch all and filter client side, or use a simple prefix match if reference starts with query
+    try {
+      final allOrders = await getAllOrders();
+      final lowerQuery = query.toLowerCase();
+      return allOrders.where((order) {
+        return order.reference.toLowerCase().contains(lowerQuery) ||
+            order.cableType.toLowerCase().contains(lowerQuery);
+      }).toList();
+    } catch (e) {
+      print('Error searching orders: $e');
+      return [];
+    }
   }
 
   /// Filtrer les ordres par statut
   Future<List<ManufacturingOrder>> filterOrders(String status) async {
-    await Future.delayed(const Duration(milliseconds: 300));
+    if (status == 'Tous') return getAllOrders();
     
-    if (status == 'Tous') return _orders;
-    
-    return _orders.where((order) => order.status == status).toList();
+    try {
+      final snapshot = await _db
+          .collection('manufacturingOrder')
+          .where('status', isEqualTo: status.toLowerCase())
+          .get();
+          
+      return snapshot.docs.map((doc) {
+        return ManufacturingOrder.fromJson({'id': doc.id, ...doc.data()});
+      }).toList();
+    } catch (e) {
+      print('Error filtering orders: $e');
+      return [];
+    }
   }
 
   /// Récupérer les câbles d'un ordre
   Future<List<Cable>> getOrderCables(String orderId) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-    return _generateMockCables(orderId);
-  }
-
-  /// Générer des ordres de fabrication simulés
-  static List<ManufacturingOrder> _generateMockOrders() {
-    final now = DateTime.now();
-    
-    return [
-      ManufacturingOrder(
-        id: 'order_001',
-        reference: 'OF-2024-001',
-        cableType: 'Câble électrique 3x2.5mm²',
-        quantity: 100,
-        productionDate: now.subtract(const Duration(days: 2)),
-        status: 'En cours',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 65,
-        conformCount: 62,
-        nonConformCount: 3,
-      ),
-      ManufacturingOrder(
-        id: 'order_002',
-        reference: 'OF-2024-002',
-        cableType: 'Câble réseau Cat6 UTP',
-        quantity: 200,
-        productionDate: now.subtract(const Duration(days: 5)),
-        status: 'Terminé',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 200,
-        conformCount: 195,
-        nonConformCount: 5,
-      ),
-      ManufacturingOrder(
-        id: 'order_003',
-        reference: 'OF-2024-003',
-        cableType: 'Câble coaxial RG6',
-        quantity: 150,
-        productionDate: now.subtract(const Duration(days: 1)),
-        status: 'En cours',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 45,
-        conformCount: 44,
-        nonConformCount: 1,
-      ),
-      ManufacturingOrder(
-        id: 'order_004',
-        reference: 'OF-2024-004',
-        cableType: 'Câble fibre optique monomode',
-        quantity: 80,
-        productionDate: now,
-        status: 'En attente',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 0,
-        conformCount: 0,
-        nonConformCount: 0,
-      ),
-      ManufacturingOrder(
-        id: 'order_005',
-        reference: 'OF-2024-005',
-        cableType: 'Câble électrique 5x1.5mm²',
-        quantity: 120,
-        productionDate: now.subtract(const Duration(days: 7)),
-        status: 'Terminé',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 120,
-        conformCount: 118,
-        nonConformCount: 2,
-      ),
-      ManufacturingOrder(
-        id: 'order_006',
-        reference: 'OF-2024-006',
-        cableType: 'Câble téléphonique 4 paires',
-        quantity: 90,
-        productionDate: now.subtract(const Duration(days: 3)),
-        status: 'En cours',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 30,
-        conformCount: 29,
-        nonConformCount: 1,
-      ),
-      ManufacturingOrder(
-        id: 'order_007',
-        reference: 'OF-2024-007',
-        cableType: 'Câble blindé 3x4mm²',
-        quantity: 60,
-        productionDate: now.add(const Duration(days: 1)),
-        status: 'En attente',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 0,
-        conformCount: 0,
-        nonConformCount: 0,
-      ),
-      ManufacturingOrder(
-        id: 'order_008',
-        reference: 'OF-2024-008',
-        cableType: 'Câble audio multipaire',
-        quantity: 75,
-        productionDate: now.subtract(const Duration(days: 4)),
-        status: 'En cours',
-        assignedTechnicianId: 'user_001',
-        inspectedCount: 50,
-        conformCount: 48,
-        nonConformCount: 2,
-      ),
-    ];
-  }
-
-  /// Générer des câbles simulés pour un ordre
-  static List<Cable> _generateMockCables(String orderId) {
-    final now = DateTime.now();
-    final cables = <Cable>[];
-    
-    // Générer 10 câbles d'exemple
-    for (int i = 1; i <= 10; i++) {
-      final isInspected = i <= 7; // 7 premiers sont inspectés
-      final isConform = i <= 6;   // 6 premiers sont conformes
-      
-      cables.add(Cable(
-        id: 'cable_${orderId}_$i',
-        reference: 'CAB-${i.toString().padLeft(3, '0')}',
-        code: 'CODE-${orderId.toUpperCase()}-$i',
-        orderId: orderId,
-        status: !isInspected
-            ? 'En attente'
-            : (isConform ? 'Conforme' : 'Non conforme'),
-        inspectionDate: isInspected
-            ? now.subtract(Duration(hours: 24 - i))
-            : null,
-        technicianId: isInspected ? 'user_001' : null,
-        imageUrls: isInspected ? ['image_$i.jpg'] : [],
-        anomaliesCount: isConform ? 0 : (i % 3 + 1),
-      ));
+    try {
+      final snapshot = await _db
+          .collection('cable')
+          .where('orderId', isEqualTo: orderId)
+          .get();
+          
+      return snapshot.docs.map((doc) {
+        return Cable.fromJson({'id': doc.id, ...doc.data()});
+      }).toList();
+    } catch (e) {
+      print('Error fetching cables for order $orderId: $e');
+      return [];
     }
-    
-    return cables;
+  }
+
+  /// Sauvegarder un câble après inspection (lié à son ordre)
+  Future<String?> saveCable({
+    required String reference,
+    required String code,
+    required String orderId,
+    required String status,
+    required String technicianId,
+    int anomaliesCount = 0,
+  }) async {
+    try {
+      final cableData = {
+        'reference': reference,
+        'code': code,
+        'orderId': orderId,
+        'status': status,
+        'inspectionDate': DateTime.now().toIso8601String(),
+        'technicianId': technicianId,
+        'imageUrls': [],
+        'anomaliesCount': anomaliesCount,
+      };
+      final docRef = await _db.collection('cable').add(cableData);
+      
+      // Mettre à jour les stats de l'ordre
+      await _updateOrderStats(orderId, status == 'Conforme');
+      
+      return docRef.id;
+    } catch (e) {
+      print('Error saving cable: $e');
+      return null;
+    }
+  }
+
+  /// Mettre à jour les statistiques de l'ordre après inspection d'un câble
+  Future<void> _updateOrderStats(String orderId, bool isConform) async {
+    try {
+      final doc = await _db.collection('manufacturingOrder').doc(orderId).get();
+      if (!doc.exists) return;
+
+      final data = doc.data() as Map<String, dynamic>;
+      final inspected = (data['inspectedCount'] ?? 0) as int;
+      final conform = (data['conformCount'] ?? 0) as int;
+      final nonConform = (data['nonConformCount'] ?? 0) as int;
+
+      await _db.collection('manufacturingOrder').doc(orderId).update({
+        'inspectedCount': inspected + 1,
+        'conformCount': isConform ? conform + 1 : conform,
+        'nonConformCount': isConform ? nonConform : nonConform + 1,
+      });
+    } catch (e) {
+      print('Error updating order stats: $e');
+    }
   }
 }
+

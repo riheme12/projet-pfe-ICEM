@@ -1,10 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:projeticem/models/checklist_item.dart';
 import 'package:projeticem/theme/app_theme.dart';
+import 'package:projeticem/services/orders_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Page des checklists post-inspection
+/// Reçoit les infos du câble pour l'enregistrer après validation
 class ChecklistPage extends StatefulWidget {
-  const ChecklistPage({super.key});
+  final String? orderId;
+  final String? orderReference;
+  final String? cableReference;
+
+  const ChecklistPage({
+    super.key,
+    this.orderId,
+    this.orderReference,
+    this.cableReference,
+  });
 
   @override
   State<ChecklistPage> createState() => _ChecklistPageState();
@@ -12,6 +24,7 @@ class ChecklistPage extends StatefulWidget {
 
 class _ChecklistPageState extends State<ChecklistPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  bool _isSaving = false;
   
   final List<ChecklistItem> _visualItems = [
     ChecklistItem(label: 'État de la gaine extérieure'),
@@ -51,12 +64,53 @@ class _ChecklistPageState extends State<ChecklistPage> with SingleTickerProvider
     return Scaffold(
       appBar: AppBar(
         title: const Text('Checklists de Contrôle'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Visuelle', icon: Icon(Icons.visibility)),
-            Tab(text: 'Électrique', icon: Icon(Icons.flash_on)),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(90),
+          child: Column(
+            children: [
+              // Info du câble en cours
+              if (widget.cableReference != null)
+                Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.qr_code_rounded, color: Colors.white70, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Câble: ${widget.cableReference}',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (widget.orderReference != null) ...[
+                        const SizedBox(width: 12),
+                        Text(
+                          '• ${widget.orderReference}',
+                          style: GoogleFonts.inter(
+                            color: Colors.white70,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              TabBar(
+                controller: _tabController,
+                tabs: const [
+                  Tab(text: 'Visuelle', icon: Icon(Icons.visibility)),
+                  Tab(text: 'Électrique', icon: Icon(Icons.flash_on)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
       body: TabBarView(
@@ -163,28 +217,62 @@ class _ChecklistPageState extends State<ChecklistPage> with SingleTickerProvider
       ),
       child: SafeArea(
         child: ElevatedButton(
-          onPressed: _isComplete ? _submitChecklist : null,
+          onPressed: _isComplete && !_isSaving ? _submitChecklist : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppTheme.primaryBlue,
             foregroundColor: Colors.white,
             padding: const EdgeInsets.symmetric(vertical: 16),
             disabledBackgroundColor: Colors.grey.shade300,
           ),
-          child: const Text('Valider le contrôle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          child: _isSaving
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text('Valider le contrôle', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
         ),
       ),
     );
   }
 
-  void _submitChecklist() {
+  void _submitChecklist() async {
     // Calculer le statut global
     bool everythingOk = _visualItems.every((i) => i.result == ChecklistResult.ok || i.result == ChecklistResult.na) &&
                         _electricalItems.every((i) => i.result == ChecklistResult.ok || i.result == ChecklistResult.na);
+    
+    final cableStatus = everythingOk ? 'Conforme' : 'Non conforme';
+
+    // Compter les NOK comme anomalies
+    final anomaliesCount = [
+      ..._visualItems.where((i) => i.result == ChecklistResult.nok),
+      ..._electricalItems.where((i) => i.result == ChecklistResult.nok),
+    ].length;
+
+    // Sauvegarder le câble dans Firestore si on a les infos
+    if (widget.orderId != null && widget.cableReference != null) {
+      setState(() => _isSaving = true);
+      
+      final ordersService = OrdersService();
+      await ordersService.saveCable(
+        reference: widget.cableReference!,
+        code: widget.cableReference!,
+        orderId: widget.orderId!,
+        status: cableStatus,
+        technicianId: 'current_user', // TODO: get from AuthProvider
+        anomaliesCount: anomaliesCount,
+      );
+      
+      setState(() => _isSaving = false);
+    }
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Contrôle Terminé'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -197,31 +285,47 @@ class _ChecklistPageState extends State<ChecklistPage> with SingleTickerProvider
             const SizedBox(height: 16),
             Text(
               everythingOk 
-                ? 'Le câble est conforme aux tests physiques et électriques.' 
-                : 'Des non-conformités ont été relevées lors des tests manuels.',
+                ? 'Le câble ${widget.cableReference ?? ''} est conforme.' 
+                : 'Des non-conformités ont été relevées ($anomaliesCount défauts).',
               textAlign: TextAlign.center,
             ),
+            if (widget.orderId != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Le câble a été enregistré et lié à l\'ordre.',
+                style: TextStyle(fontSize: 12, color: AppTheme.textGrey),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ],
         ),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Return to inspection/detail
+              Navigator.pop(ctx); // Close dialog
+              // Return result to InspectionPage → OrderDetailPage
+              Navigator.pop(context, {
+                'status': cableStatus,
+                'cableReference': widget.cableReference,
+                'anomaliesCount': anomaliesCount,
+              });
             },
             child: const Text('Fermer'),
           ),
           if (everythingOk)
             ElevatedButton(
               onPressed: () {
-                Navigator.pop(context); // Close dialog
-                Navigator.pop(context); // Return to inspection/detail
-                // Simuler la génération de rapport
+                Navigator.pop(ctx); // Close dialog
+                Navigator.pop(context, {
+                  'status': cableStatus,
+                  'cableReference': widget.cableReference,
+                  'anomaliesCount': anomaliesCount,
+                });
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Rapport final généré avec succès !')),
                 );
               },
-              child: const Text('Générer le rapport final'),
+              child: const Text('Générer le rapport'),
             ),
         ],
       ),

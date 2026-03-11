@@ -42,13 +42,21 @@ class Anomaly {
   /// Créer depuis JSON
   factory Anomaly.fromJson(Map<String, dynamic> json) {
     return Anomaly(
-      id: json['id'] as String,
-      type: json['type'] as String,
-      severity: json['severity'] as String,
-      confidence: (json['confidence'] as num).toDouble(),
-      location: json['location'] as String?,
-      cableId: json['cableId'] as String,
-      detectedAt: DateTime.parse(json['detectedAt'] as String),
+      id: json['id']?.toString() ?? '',
+      type: json['type']?.toString() ?? json['description']?.toString() ?? 'Inconnu',
+      severity: json['severity']?.toString() ?? 'Mineur',
+      confidence: (json['confidence'] as num?)?.toDouble() ?? 0.0,
+      location: json['location']?.toString(),
+      cableId: json['cableId']?.toString() ?? '',
+      detectedAt: json['detectedAt'] != null 
+          ? (json['detectedAt'] is String 
+              ? DateTime.parse(json['detectedAt'] as String)
+              : (json['detectedAt'] as dynamic).toDate())
+          : (json['timestamp'] != null 
+              ? (json['timestamp'] is String 
+                  ? DateTime.parse(json['timestamp'] as String)
+                  : (json['timestamp'] as dynamic).toDate())
+              : DateTime.now()),
     );
   }
 

@@ -5,11 +5,13 @@ import 'package:projeticem/services/orders_service.dart';
 import 'package:projeticem/widgets/status_badge.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/services/pdf_export_service.dart';
+import 'package:projeticem/screens/qr_scanner_page.dart';
 import 'package:projeticem/screens/inspection_page.dart';
 
 /// Page détails d'un ordre de fabrication
 /// 
 /// Affiche toutes les informations d'un ordre et la liste de ses câbles
+/// Le bouton "Démarrer inspection" lance d'abord le scan QR du câble
 class OrderDetailPage extends StatefulWidget {
   final ManufacturingOrder order;
 
@@ -48,6 +50,49 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     return _cables.where((cable) => cable.status == _cableFilter).toList();
   }
 
+  /// Lancer le flux d'inspection : QR Scan → Inspection IA → Checklist
+  Future<void> _startInspectionFlow() async {
+    // 1. Scanner le QR code du câble
+    final scannedCode = await Navigator.push<String>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => QrScannerPage(
+          orderId: widget.order.id,
+          orderReference: widget.order.reference,
+        ),
+      ),
+    );
+
+    if (scannedCode == null || !mounted) return;
+
+    // 2. Lancer l'inspection avec les données du câble
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InspectionPage(
+          orderId: widget.order.id,
+          orderReference: widget.order.reference,
+          cableReference: scannedCode,
+        ),
+      ),
+    );
+
+    // 3. Si l'inspection est terminée, recharger les câbles
+    if (result != null && mounted) {
+      await _loadCables();
+      
+      final status = result['status'] as String? ?? 'En attente';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Câble $scannedCode enregistré — Statut: $status'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: status == 'Conforme' ? AppTheme.successGreen : AppTheme.warningAmber,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,12 +100,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         title: Text(widget.order.reference),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Partage - À venir')),
-              );
-            },
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadCables,
           ),
         ],
       ),
@@ -68,16 +109,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Informations générales
             _buildGeneralInfo(),
             const SizedBox(height: 16),
-
-            // Statistiques de l'ordre
             _buildOrderStats(),
             const SizedBox(height: 24),
-
-            // Liste des câbles
             _buildCablesSection(),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -85,7 +122,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  /// Informations générales
   Widget _buildGeneralInfo() {
     return Container(
       width: double.infinity,
@@ -135,7 +171,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  /// Statistiques de l'ordre
   Widget _buildOrderStats() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -227,7 +262,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  /// Section câbles
   Widget _buildCablesSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -238,7 +272,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Câbles (${_filteredCables.length})',
+                'Câbles inspectés (${_filteredCables.length})',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               PopupMenuButton<String>(
@@ -264,16 +298,41 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           const SizedBox(height: 16),
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _filteredCables.length,
-                  itemBuilder: (context, index) {
-                    final cable = _filteredCables[index];
-                    return _buildCableItem(cable);
-                  },
-                ),
+              : _cables.isEmpty
+                  ? _buildEmptyCablesState()
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _filteredCables.length,
+                      itemBuilder: (context, index) {
+                        final cable = _filteredCables[index];
+                        return _buildCableItem(cable);
+                      },
+                    ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCablesState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(Icons.qr_code_scanner_rounded, size: 56, color: AppTheme.textLight),
+            const SizedBox(height: 12),
+            Text(
+              'Aucun câble inspecté',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textGrey),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Scannez un câble pour commencer l\'inspection',
+              style: TextStyle(fontSize: 13, color: AppTheme.textLight),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -301,19 +360,17 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     : AppTheme.errorRed,
           ),
         ),
-        title: Text(cable.reference),
-        subtitle: Text(cable.code),
+        title: Text(cable.reference, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          cable.inspectionDate != null
+              ? 'Inspecté le ${cable.inspectionDate!.day}/${cable.inspectionDate!.month}/${cable.inspectionDate!.year}'
+              : cable.code,
+        ),
         trailing: StatusBadge(status: cable.status, isSmall: true),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Détails du câble ${cable.reference}')),
-          );
-        },
       ),
     );
   }
 
-  /// Actions en bas
   Widget _buildBottomActions() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -341,14 +398,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             Expanded(
               flex: 2,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const InspectionPage()),
-                  );
-                },
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Démarrer inspection'),
+                onPressed: _startInspectionFlow,
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                label: const Text('Scanner & Inspecter'),
               ),
             ),
           ],

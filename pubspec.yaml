@@ -46,6 +46,7 @@ dependencies:
   provider: ^6.1.2
   shared_preferences: ^2.5.2
   google_fonts: ^8.0.1
+  mobile_scanner: ^6.0.2
 
 dev_dependencies:
   flutter_test:

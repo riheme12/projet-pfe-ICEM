@@ -2,11 +2,22 @@ import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/screens/checklist_page.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
 
 /// Page d'inspection simulant le flux camera avec des overlays IA
+/// Reçoit les données du câble scanné (orderId, cableReference) pour le pipeline
 class InspectionPage extends StatefulWidget {
-  const InspectionPage({super.key});
+  final String? orderId;
+  final String? orderReference;
+  final String? cableReference;
+
+  const InspectionPage({
+    super.key,
+    this.orderId,
+    this.orderReference,
+    this.cableReference,
+  });
 
   @override
   State<InspectionPage> createState() => _InspectionPageState();
@@ -56,12 +67,10 @@ class _InspectionPageState extends State<InspectionPage> {
   void _handleCameraError(String message) {
     debugPrint('Handling camera error: $message');
     if (mounted) {
-      // On force l'état prêt en premier pour débloquer l'interface
       setState(() {
         _isCameraReady = true;
       });
       
-      // On affiche le message après un court délai pour laisser le build finir
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -115,6 +124,29 @@ class _InspectionPageState extends State<InspectionPage> {
     _detectionTimer?.cancel();
     _controller?.dispose();
     super.dispose();
+  }
+
+  /// Capturer et passer aux checklists avec les données du câble
+  void _captureAndProceed() async {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Image capturée ! Passage aux checklists...')),
+    );
+    
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ChecklistPage(
+          orderId: widget.orderId,
+          orderReference: widget.orderReference,
+          cableReference: widget.cableReference,
+        ),
+      ),
+    );
+
+    // Retourner le résultat à OrderDetailPage
+    if (mounted && result != null) {
+      Navigator.pop(context, result);
+    }
   }
 
   @override
@@ -177,7 +209,55 @@ class _InspectionPageState extends State<InspectionPage> {
           _buildDetectionOverlays(),
           _buildBottomControls(),
           _buildTopBar(),
+          // Cable info bar
+          if (widget.cableReference != null)
+            _buildCableInfoBar(),
         ],
+      ),
+    );
+  }
+
+  /// Barre d'info du câble en cours d'inspection
+  Widget _buildCableInfoBar() {
+    return Positioned(
+      top: 90,
+      left: 16,
+      right: 16,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppTheme.primaryBlue.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.qr_code_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Câble: ${widget.cableReference}',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (widget.orderReference != null)
+                    Text(
+                      'Ordre: ${widget.orderReference}',
+                      style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 11,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -292,15 +372,7 @@ class _InspectionPageState extends State<InspectionPage> {
                 border: Border.all(color: Colors.white, width: 4),
               ),
               child: InkWell(
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Image capturée ! Passage aux checklists...')),
-                  );
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => const ChecklistPage()),
-                  );
-                },
+                onTap: _captureAndProceed,
                 child: Container(
                   margin: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(
