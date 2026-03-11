@@ -7,7 +7,7 @@ import '../models/report.dart';
 /// Service pour générer et exporter des rapports au format PDF
 class PdfExportService {
   /// Générer un PDF pour un ordre de fabrication
-  static Future<void> exportOrderReport(ManufacturingOrder order) async {
+  static Future<void> exportOrderReport(manufacturingOrder order) async {
     final pdf = pw.Document();
 
     pdf.addPage(
@@ -28,12 +28,18 @@ class PdfExportService {
                 ),
               ),
               pw.SizedBox(height: 20),
-              pw.Text('Référence de l\'ordre: ${order.reference}', style: pw.TextStyle(fontSize: 14)),
-              pw.Text('Type de câble: ${order.cableType}', style: pw.TextStyle(fontSize: 14)),
+              pw.SizedBox(height: 20),
+              pw.Text('Référence: ${order.reference}', style: pw.TextStyle(fontSize: 14)),
+              pw.Text('N° OF: ${order.numeroOF}', style: pw.TextStyle(fontSize: 14)),
+              pw.Text('Gi pros: ${order.Gipros}', style: pw.TextStyle(fontSize: 14)),
+              pw.Text('Client: ${order.Client}', style: pw.TextStyle(fontSize: 14)),
+              pw.Text('N° Commande: ${order.NumComd}', style: pw.TextStyle(fontSize: 14)),
+              pw.Text('Ligne: ${order.ligne ?? 'N/A'}', style: pw.TextStyle(fontSize: 14)),
+              pw.Text('Date de livraison: ${order.DateLiv.day}/${order.DateLiv.month}/${order.DateLiv.year}', style: pw.TextStyle(fontSize: 14)),
               pw.Text('Statut: ${order.status}', style: pw.TextStyle(fontSize: 14)),
               pw.SizedBox(height: 30),
               pw.Header(level: 1, text: 'Statistiques de production'),
-              pw.Bullet(text: 'Quantité totale: ${order.quantity}'),
+              pw.Bullet(text: 'Quantité totale: ${order.QTA}'),
               pw.Bullet(text: 'Inspectés: ${order.inspectedCount}'),
               pw.Bullet(text: 'Conformes: ${order.conformCount} (${order.conformityRate.toStringAsFixed(1)}%)'),
               pw.Bullet(text: 'Non conformes: ${order.nonConformCount}'),

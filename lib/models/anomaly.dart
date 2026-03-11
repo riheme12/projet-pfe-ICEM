@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Modèle représentant une anomalie détectée par l'IA
 /// 
 /// Une anomalie est un défaut détecté sur un câble
@@ -38,6 +40,43 @@ class Anomaly {
 
   /// Vérifier si l'anomalie est critique
   bool get isCritical => severity == 'Critique';
+
+  /// Créer depuis Firestore
+  factory Anomaly.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    
+    double parseDouble(dynamic value) {
+      if (value == null) return 0.0;
+      if (value is double) return value;
+      if (value is int) return value.toDouble();
+      if (value is String) return double.tryParse(value) ?? 0.0;
+      return 0.0;
+    }
+
+    return Anomaly(
+      id: doc.id,
+      type: data['type'] as String? ?? '',
+      severity: data['severity'] as String? ?? 'Mineur',
+      confidence: parseDouble(data['confidence']),
+      location: data['location'] as String?,
+      cableId: data['cableId'] as String? ?? '',
+      detectedAt: data['detectedAt'] != null && data['detectedAt'] is Timestamp
+          ? (data['detectedAt'] as Timestamp).toDate()
+          : DateTime.now(),
+    );
+  }
+
+  /// Convertir pour Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'type': type,
+      'severity': severity,
+      'confidence': confidence,
+      'location': location,
+      'cableId': cableId,
+      'detectedAt': Timestamp.fromDate(detectedAt),
+    };
+  }
 
   /// Créer depuis JSON
   factory Anomaly.fromJson(Map<String, dynamic> json) {

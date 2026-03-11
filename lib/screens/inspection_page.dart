@@ -184,22 +184,55 @@ class _InspectionPageState extends State<InspectionPage> {
           _controller != null && _controller!.value.isInitialized
               ? CameraPreview(_controller!)
               : Container(
-                  color: Colors.blueGrey.shade900,
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Color(0xFF0D1B2A),
+                        Color(0xFF1B2F4A),
+                        Color(0xFF0D1B2A),
+                      ],
+                    ),
+                  ),
                   child: Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.videocam_off, size: 64, color: Colors.white.withValues(alpha: 0.3)),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Flux caméra indisponible\nPASSAGE EN MODE SIMULATION',
+                        Container(
+                          padding: const EdgeInsets.all(28),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.05),
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.1),
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.videocam_outlined,
+                            size: 56,
+                            color: Colors.white.withOpacity(0.5),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        Text(
+                          'MODE SIMULATION',
                           textAlign: TextAlign.center,
-                          style: TextStyle(color: Colors.white70, fontSize: 16, fontWeight: FontWeight.bold),
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.9),
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 2,
+                          ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          '(Idéal pour les tests sur navigateur)',
-                          style: TextStyle(color: Colors.white38, fontSize: 12),
+                        Text(
+                          'Caméra non disponible',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.45),
+                            fontSize: 13,
+                          ),
                         ),
                       ],
                     ),

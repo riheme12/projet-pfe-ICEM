@@ -1,10 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Modèle représentant un câble à inspecter
 /// 
 /// Chaque câble appartient à un ordre de fabrication
 /// et peut avoir plusieurs anomalies détectées
 class Cable {
-  final String id;
-  final String reference;          // Référence du câble
+
   final String code;                // Code unique du câble
   final String orderId;             // ID de l'ordre parent
   final String status;              // 'Conforme', 'Non conforme', 'En attente'
@@ -14,8 +15,6 @@ class Cable {
   final int anomaliesCount;         // Nombre d'anomalies détectées
 
   Cable({
-    required this.id,
-    required this.reference,
     required this.code,
     required this.orderId,
     required this.status,
@@ -31,14 +30,40 @@ class Cable {
   /// Vérifier si le câble est conforme
   bool get isConform => status.toLowerCase() == 'conforme';
 
+  /// Créer depuis Firestore
+  factory Cable.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Cable(
+      code: data['code'] as String? ?? '',
+      orderId: data['orderId'] as String? ?? '',
+      status: data['status'] as String? ?? 'En attente',
+      inspectionDate: data['inspectionDate'] != null
+          ? (data['inspectionDate'] as Timestamp).toDate()
+          : null,
+      technicianId: data['technicianId'] as String?,
+      imageUrls: (data['imageUrls'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
+      anomaliesCount: data['anomaliesCount'] as int? ?? 0,
+    );
+  }
+
   /// Créer depuis JSON
   factory Cable.fromJson(Map<String, dynamic> json) {
     return Cable(
+<<<<<<< HEAD
       id: json['id']?.toString() ?? '',
       reference: json['reference']?.toString() ?? json['code']?.toString() ?? 'Inconnue',
       code: json['code']?.toString() ?? '',
       orderId: json['orderId']?.toString() ?? '',
       status: json['status']?.toString() ?? 'En attente',
+=======
+
+      code: json['code'] as String,
+      orderId: json['orderId'] as String,
+      status: json['status'] as String,
+>>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
       inspectionDate: json['inspectionDate'] != null
           ? (json['inspectionDate'] is String 
               ? DateTime.parse(json['inspectionDate'] as String)
@@ -53,11 +78,22 @@ class Cable {
     );
   }
 
+  /// Convertir pour Firestore
+  Map<String, dynamic> toFirestore() {
+    return {
+      'code': code,
+      'orderId': orderId,
+      'status': status,
+      'inspectionDate': inspectionDate != null ? Timestamp.fromDate(inspectionDate!) : null,
+      'technicianId': technicianId,
+      'imageUrls': imageUrls,
+      'anomaliesCount': anomaliesCount,
+    };
+  }
+
   /// Convertir en JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'reference': reference,
       'code': code,
       'orderId': orderId,
       'status': status,

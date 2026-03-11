@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/services/reports_service.dart';
 import 'package:projeticem/models/report.dart';
 import 'package:projeticem/widgets/stats_card.dart';
@@ -6,9 +7,6 @@ import 'package:projeticem/widgets/chart_card.dart';
 import 'package:projeticem/widgets/status_badge.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/services/pdf_export_service.dart';
-
-import '../models/report.dart';
-import '../services/reports_service.dart';
 
 /// Page rapports et statistiques
 /// 
@@ -52,14 +50,30 @@ class _ReportsPageState extends State<ReportsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
       appBar: AppBar(
-        title: const Text('Rapports & Statistiques'),
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          'Rapports & Statistiques',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.file_download),
+            icon: const Icon(Icons.file_download_outlined, color: Colors.white),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Export - À venir')),
+                SnackBar(
+                  content: const Text('Export PDF - À venir'),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10)),
+                ),
               );
             },
           ),

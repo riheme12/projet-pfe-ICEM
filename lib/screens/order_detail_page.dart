@@ -13,7 +13,7 @@ import 'package:projeticem/screens/inspection_page.dart';
 /// Affiche toutes les informations d'un ordre et la liste de ses câbles
 /// Le bouton "Démarrer inspection" lance d'abord le scan QR du câble
 class OrderDetailPage extends StatefulWidget {
-  final ManufacturingOrder order;
+  final manufacturingOrder order;
 
   const OrderDetailPage({
     super.key,
@@ -38,7 +38,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Future<void> _loadCables() async {
     setState(() => _isLoading = true);
-    final cables = await _ordersService.getOrderCables(widget.order.id);
+    final cables = await _ordersService.getOrderCables(widget.order.numeroOF);
     setState(() {
       _cables = cables;
       _isLoading = false;
@@ -137,18 +137,24 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           StatusBadge(status: widget.order.status),
           const SizedBox(height: 16),
           Text(
-            widget.order.cableType,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
+            'Réf: ${widget.order.reference}',
+            style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
           ),
-          const SizedBox(height: 8),
-          _buildInfoRow(Icons.calendar_today, 'Production',
-              '${widget.order.productionDate.day}/${widget.order.productionDate.month}/${widget.order.productionDate.year}'),
-          const SizedBox(height: 4),
-          _buildInfoRow(Icons.inventory, 'Quantité', '${widget.order.quantity} unités'),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 20,
+            runSpacing: 10,
+            children: [
+              _buildInfoRow(Icons.numbers, 'N° OF', widget.order.numeroOF),
+              _buildInfoRow(Icons.business_center, 'Client', widget.order.Client),
+              _buildInfoRow(Icons.assignment, 'Gi pros', widget.order.Gipros),
+              _buildInfoRow(Icons.receipt_long, 'N° Commande', widget.order.NumComd),
+              _buildInfoRow(Icons.precision_manufacturing, 'Ligne', widget.order.ligne ?? 'N/A'),
+              _buildInfoRow(Icons.calendar_today, 'Livraison',
+                  '${widget.order.DateLiv.day}/${widget.order.DateLiv.month}/${widget.order.DateLiv.year}'),
+              _buildInfoRow(Icons.inventory, 'Quantité', '${widget.order.QTA} unités'),
+            ],
+          ),
         ],
       ),
     );
@@ -156,6 +162,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Icon(icon, size: 16, color: Colors.white70),
         const SizedBox(width: 8),
@@ -187,7 +194,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               Expanded(
                 child: _buildStatCard(
                   'Progression',
-                  '${widget.order.inspectedCount}/${widget.order.quantity}',
+                  '${widget.order.inspectedCount}/${widget.order.QTA}',
                   '${widget.order.progressPercentage.toStringAsFixed(0)}%',
                   AppTheme.primaryBlue,
                 ),
@@ -360,6 +367,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     : AppTheme.errorRed,
           ),
         ),
+<<<<<<< HEAD
         title: Text(cable.reference, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           cable.inspectionDate != null
@@ -367,6 +375,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               : cable.code,
         ),
         trailing: StatusBadge(status: cable.status, isSmall: true),
+=======
+        trailing: StatusBadge(status: cable.status, isSmall: true),
+
+>>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
       ),
     );
   }

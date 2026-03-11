@@ -21,14 +21,15 @@ class HomePage extends StatelessWidget {
       backgroundColor: AppTheme.backgroundLight,
       body: CustomScrollView(
         slivers: [
-          // Gradient AppBar
+          // Gradient SliverAppBar
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 220,
             floating: false,
             pinned: true,
             automaticallyImplyLeading: false,
             backgroundColor: AppTheme.primaryBlue,
             flexibleSpace: FlexibleSpaceBar(
+              collapseMode: CollapseMode.pin,
               background: Container(
                 decoration: const BoxDecoration(
                   gradient: AppTheme.primaryGradient,
@@ -39,7 +40,7 @@ class HomePage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Top row: title + actions
+                        // Top row: logo + title + actions
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -69,10 +70,12 @@ class HomePage extends StatelessWidget {
                                   () {
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: const Text('Notifications - À venir'),
+                                        content:
+                                            const Text('Notifications — À venir'),
                                         behavior: SnackBarBehavior.floating,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius:
+                                              BorderRadius.circular(10),
                                         ),
                                       ),
                                     );
@@ -85,7 +88,8 @@ class HomePage extends StatelessWidget {
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (context) => const ProfilePage(),
+                                        builder: (context) =>
+                                            const ProfilePage(),
                                       ),
                                     );
                                   },
@@ -115,7 +119,7 @@ class HomePage extends StatelessWidget {
                   _buildStatsSection(context),
                   const SizedBox(height: 28),
                   _buildFeaturesSection(context),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -127,7 +131,7 @@ class HomePage extends StatelessWidget {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
+              color: Colors.black.withValues(alpha: 0.07),
               blurRadius: 20,
               offset: const Offset(0, -4),
             ),
@@ -147,7 +151,7 @@ class HomePage extends StatelessWidget {
           unselectedLabelStyle: GoogleFonts.inter(fontSize: 12),
           items: const [
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
+              icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home_rounded),
               label: 'Accueil',
             ),
@@ -157,9 +161,9 @@ class HomePage extends StatelessWidget {
               label: 'Inspection',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.history_rounded),
-              activeIcon: Icon(Icons.history_rounded),
-              label: 'Historique',
+              icon: Icon(Icons.assignment_outlined),
+              activeIcon: Icon(Icons.assignment_rounded),
+              label: 'Ordres',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline_rounded),
@@ -172,16 +176,28 @@ class HomePage extends StatelessWidget {
               case 0:
                 break;
               case 1:
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const InspectionPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const InspectionPage(),
+                  ),
+                );
                 break;
               case 2:
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const OrdersListPage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const OrdersListPage(),
+                  ),
+                );
                 break;
               case 3:
-                Navigator.push(context,
-                    MaterialPageRoute(builder: (context) => const ProfilePage()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const ProfilePage(),
+                  ),
+                );
                 break;
             }
           },
@@ -196,8 +212,11 @@ class HomePage extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: Colors.white.withValues(alpha: 0.18),
           borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.2),
+          ),
         ),
         child: Icon(icon, color: Colors.white, size: 22),
       ),
@@ -209,12 +228,22 @@ class HomePage extends StatelessWidget {
     final user = auth.currentUser;
     final now = DateTime.now();
     final months = [
-      '', 'Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun',
-      'Jul', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'
+      '',
+      'Jan',
+      'Fév',
+      'Mar',
+      'Avr',
+      'Mai',
+      'Jun',
+      'Jul',
+      'Août',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Déc'
     ];
     final dateStr = '${now.day} ${months[now.month]} ${now.year}';
 
-    // Greeting based on time of day
     String greeting;
     if (now.hour < 12) {
       greeting = 'Bonjour';
@@ -238,10 +267,14 @@ class HomePage extends StatelessWidget {
             ),
             const Spacer(),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.18),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
               ),
               child: Text(
                 dateStr,
@@ -259,27 +292,29 @@ class HomePage extends StatelessWidget {
           user?.fullName ?? 'Utilisateur',
           style: GoogleFonts.inter(
             color: Colors.white,
-            fontSize: 24,
+            fontSize: 22,
             fontWeight: FontWeight.w800,
             letterSpacing: -0.3,
           ),
         ),
         const SizedBox(height: 4),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Text(
-            user?.role.name ?? '',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
+        if (user?.role != null)
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.22),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              user!.role.name,
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -288,22 +323,43 @@ class HomePage extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Vue d\'ensemble',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textDark,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Vue d\'ensemble',
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textDark,
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (c) => const ReportsPage()),
+                );
+              },
+              child: Text(
+                'Voir tout',
+                style: GoogleFonts.inter(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.accentBlue,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         GridView.count(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.1,
+          childAspectRatio: 1.25,
           children: [
             StatsCard(
               value: '24',
@@ -347,15 +403,18 @@ class HomePage extends StatelessWidget {
             color: AppTheme.textDark,
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         FeatureCard(
           icon: Icons.assignment_outlined,
           title: 'Ordres de fabrication',
           description: 'Consulter et gérer les ordres de fabrication',
           color: AppTheme.accentBlue,
           onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const OrdersListPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const OrdersListPage()),
+            );
           },
         ),
         const SizedBox(height: 12),
@@ -365,8 +424,11 @@ class HomePage extends StatelessWidget {
           description: 'Lancer l\'inspection automatique avec IA',
           color: AppTheme.secondaryOrange,
           onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const InspectionPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const InspectionPage()),
+            );
           },
         ),
         const SizedBox(height: 12),
@@ -376,8 +438,11 @@ class HomePage extends StatelessWidget {
           description: 'Consulter et traiter les anomalies détectées',
           color: AppTheme.warningAmber,
           onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const AnomaliesListPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                  builder: (context) => const AnomaliesListPage()),
+            );
           },
         ),
         const SizedBox(height: 12),
@@ -387,8 +452,10 @@ class HomePage extends StatelessWidget {
           description: 'Générer et consulter les rapports qualité',
           color: AppTheme.successGreen,
           onTap: () {
-            Navigator.push(context,
-                MaterialPageRoute(builder: (context) => const ReportsPage()));
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const ReportsPage()),
+            );
           },
         ),
       ],

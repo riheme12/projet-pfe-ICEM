@@ -10,7 +10,7 @@ class AppTheme {
   static const Color secondaryOrange = Color(0xFFFF6B35);
   static const Color successGreen = Color(0xFF00C853);
   static const Color warningAmber = Color(0xFFFFAB00);
-  static const Color errorRed = Color(0xFFFF1744);
+  static const Color errorRed = Color(0xFFE53935);
 
   // Couleurs de fond
   static const Color backgroundLight = Color(0xFFF0F4F8);
@@ -24,7 +24,7 @@ class AppTheme {
 
   // Gradients
   static const LinearGradient primaryGradient = LinearGradient(
-    colors: [Color(0xFF1E3A5F), Color(0xFF4A90D9)],
+    colors: [Color(0xFF1E3A5F), Color(0xFF2E6BB0)],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
   );
@@ -41,12 +41,25 @@ class AppTheme {
     end: Alignment.bottomRight,
   );
 
+  static const LinearGradient successGradient = LinearGradient(
+    colors: [Color(0xFF00C853), Color(0xFF69F0AE)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
+  static const LinearGradient dangerGradient = LinearGradient(
+    colors: [Color(0xFFE53935), Color(0xFFEF9A9A)],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
+
   /// Thème clair de l'application
   static ThemeData get lightTheme {
     final textTheme = GoogleFonts.interTextTheme();
-    
+
     return ThemeData(
       useMaterial3: true,
+      scaffoldBackgroundColor: backgroundLight,
       colorScheme: ColorScheme.light(
         primary: primaryBlue,
         secondary: accentBlue,
@@ -72,7 +85,7 @@ class AppTheme {
         ),
         titleLarge: textTheme.titleLarge?.copyWith(
           fontSize: 20,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: textDark,
         ),
         titleMedium: textTheme.titleMedium?.copyWith(
@@ -94,10 +107,11 @@ class AppTheme {
         ),
       ),
       appBarTheme: AppBarTheme(
-        backgroundColor: Colors.transparent,
+        backgroundColor: primaryBlue,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
+        iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: GoogleFonts.inter(
           fontSize: 20,
           fontWeight: FontWeight.w700,
@@ -111,6 +125,7 @@ class AppTheme {
           side: BorderSide(color: dividerGrey.withValues(alpha: 0.5)),
         ),
         color: cardWhite,
+        margin: EdgeInsets.zero,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
@@ -130,14 +145,15 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: const Color(0xFFF8FAFC),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: dividerGrey),
+          borderSide: const BorderSide(color: dividerGrey),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: dividerGrey),
+          borderSide: const BorderSide(color: dividerGrey),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
@@ -147,12 +163,36 @@ class AppTheme {
           borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: errorRed),
         ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(14),
+          borderSide: const BorderSide(color: errorRed, width: 2),
+        ),
         labelStyle: GoogleFonts.inter(color: textGrey, fontSize: 14),
         hintStyle: GoogleFonts.inter(color: textLight, fontSize: 14),
+        errorStyle: GoogleFonts.inter(color: errorRed, fontSize: 12),
       ),
       iconTheme: const IconThemeData(
         color: accentBlue,
         size: 24,
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: backgroundLight,
+        selectedColor: primaryBlue,
+        disabledColor: dividerGrey,
+        labelStyle: GoogleFonts.inter(fontSize: 13),
+        side: const BorderSide(color: dividerGrey),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      ),
+      listTileTheme: const ListTileThemeData(
+        iconColor: accentBlue,
+      ),
+      dividerTheme: const DividerThemeData(
+        color: dividerGrey,
+        thickness: 1,
+        space: 0,
       ),
       bottomNavigationBarTheme: BottomNavigationBarThemeData(
         backgroundColor: cardWhite,
@@ -160,7 +200,8 @@ class AppTheme {
         unselectedItemColor: textLight,
         type: BottomNavigationBarType.fixed,
         elevation: 8,
-        selectedLabelStyle: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
+        selectedLabelStyle:
+            GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600),
         unselectedLabelStyle: GoogleFonts.inter(fontSize: 12),
       ),
     );

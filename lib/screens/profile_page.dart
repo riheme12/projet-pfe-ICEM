@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/user.dart';
 import '../services/user_service.dart';
 import '../widgets/stats_card.dart';
 import '../theme/app_theme.dart';
 import '../screens/edit_profile_page.dart';
+import '../providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 
 /// Page du profil utilisateur
-/// 
-/// Affiche les informations personnelles, statistiques et paramètres
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
 
@@ -37,11 +38,23 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
+      // ✅ Bug fixed: explicit AppBar color so title is visible
       appBar: AppBar(
-        title: const Text('Mon Profil'),
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          'Mon Profil',
+          style: GoogleFonts.inter(
+            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.edit),
+            icon: const Icon(Icons.edit_outlined, color: Colors.white),
             onPressed: () async {
               if (_user != null) {
                 final result = await Navigator.push(
@@ -50,7 +63,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     builder: (context) => EditProfilePage(user: _user!),
                   ),
                 );
-                
                 if (result == true) {
                   _loadUserData();
                 }
@@ -60,66 +72,64 @@ class _ProfilePageState extends State<ProfilePage> {
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(
+                color: AppTheme.primaryBlue,
+              ),
+            )
           : SingleChildScrollView(
               child: Column(
                 children: [
-                  // En-tête avec photo de profil
                   _buildProfileHeader(),
                   const SizedBox(height: 24),
-
-                  // Statistiques personnelles
                   _buildStatsSection(),
                   const SizedBox(height: 24),
-
-                  // Informations personnelles
                   _buildInfoSection(),
                   const SizedBox(height: 24),
-
-                  // Paramètres
                   _buildSettingsSection(),
                   const SizedBox(height: 24),
-
-                  // Bouton déconnexion
                   _buildLogoutButton(),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),
     );
   }
 
-  /// En-tête avec photo et nom
   Widget _buildProfileHeader() {
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.primaryBlue, AppTheme.primaryBlue.withValues(alpha: 0.8)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+      decoration: const BoxDecoration(
+        gradient: AppTheme.primaryGradient,
       ),
-      padding: const EdgeInsets.all(32),
+      padding: const EdgeInsets.fromLTRB(24, 32, 24, 36),
       child: Column(
         children: [
-          // Photo de profil
+          // Avatar with ring
           Container(
-            width: 100,
-            height: 100,
+            padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(color: Colors.white, width: 4),
+              color: Colors.white.withValues(alpha: 0.3),
             ),
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.2),
-              child: Text(
-                _user!.fullName.substring(0, 1).toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryBlue,
+            child: Container(
+              width: 96,
+              height: 96,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+              ),
+              child: CircleAvatar(
+                backgroundColor: AppTheme.accentBlue.withValues(alpha: 0.15),
+                child: Text(
+                  _user!.fullName.isNotEmpty
+                      ? _user!.fullName.substring(0, 1).toUpperCase()
+                      : 'U',
+                  style: GoogleFonts.inter(
+                    fontSize: 40,
+                    fontWeight: FontWeight.w800,
+                    color: AppTheme.primaryBlue,
+                  ),
                 ),
               ),
             ),
@@ -128,27 +138,40 @@ class _ProfilePageState extends State<ProfilePage> {
           // Nom
           Text(
             _user!.fullName,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
+            style: GoogleFonts.inter(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
               color: Colors.white,
+              letterSpacing: -0.3,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           // Rôle
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.3),
+              ),
             ),
             child: Text(
               _user!.role.name,
-              style: const TextStyle(
-                fontSize: 14,
+              style: GoogleFonts.inter(
+                fontSize: 13,
                 color: Colors.white,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Email sous le rôle
+          Text(
+            _user!.email,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: Colors.white.withValues(alpha: 0.75),
             ),
           ),
         ],
@@ -156,48 +179,58 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Section statistiques
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Text(
+        title,
+        style: GoogleFonts.inter(
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppTheme.textDark,
+        ),
+      ),
+    );
+  }
+
   Widget _buildStatsSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Mes statistiques',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
+          _buildSectionTitle('Mes statistiques'),
           GridView.count(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             crossAxisCount: 2,
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.2,
+            childAspectRatio: 1.3,
             children: [
               StatsCard(
                 value: _user!.stats.inspectionsCount.toString(),
                 label: 'Inspections',
-                icon: Icons.assignment_turned_in,
-                color: AppTheme.primaryBlue,
+                icon: Icons.assignment_turned_in_rounded,
+                color: AppTheme.accentBlue,
               ),
               StatsCard(
                 value: _user!.stats.anomaliesDetected.toString(),
                 label: 'Anomalies détectées',
-                icon: Icons.warning_amber,
+                icon: Icons.warning_amber_rounded,
                 color: AppTheme.warningAmber,
               ),
               StatsCard(
-                value: '${_user!.stats.conformityRate.toStringAsFixed(1)}%',
+                value:
+                    '${_user!.stats.conformityRate.toStringAsFixed(1)}%',
                 label: 'Taux conformité',
-                icon: Icons.check_circle,
+                icon: Icons.check_circle_rounded,
                 color: AppTheme.successGreen,
               ),
               StatsCard(
                 value: _user!.stats.cablesProcessed.toString(),
                 label: 'Câbles traités',
-                icon: Icons.cable,
+                icon: Icons.cable_rounded,
                 color: AppTheme.secondaryOrange,
               ),
             ],
@@ -207,27 +240,36 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Section informations
   Widget _buildInfoSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Informations personnelles',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-          Card(
+          _buildSectionTitle('Informations personnelles'),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: AppTheme.dividerGrey.withValues(alpha: 0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: Column(
               children: [
-                _buildInfoTile(Icons.email, 'Email', _user!.email),
-                const Divider(height: 1),
-                _buildInfoTile(Icons.phone, 'Téléphone', _user!.phone ?? 'Non renseigné'),
-                const Divider(height: 1),
+                _buildInfoTile(Icons.email_outlined, 'Email', _user!.email),
+                const Divider(height: 1, indent: 56),
+                _buildInfoTile(Icons.phone_outlined, 'Téléphone',
+                    _user!.phone ?? 'Non renseigné'),
+                const Divider(height: 1, indent: 56),
                 _buildInfoTile(
-                  Icons.calendar_today,
+                  Icons.calendar_today_outlined,
                   'Membre depuis',
                   '${_user!.createdAt.day}/${_user!.createdAt.month}/${_user!.createdAt.year}',
                 ),
@@ -239,58 +281,122 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Ligne d'information
   Widget _buildInfoTile(IconData icon, String label, String value) {
     return ListTile(
-      leading: Icon(icon, color: AppTheme.primaryBlue),
-      title: Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.textGrey)),
-      subtitle: Text(value, style: const TextStyle(fontSize: 16)),
+      contentPadding:
+          const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: AppTheme.accentBlue.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: AppTheme.accentBlue, size: 20),
+      ),
+      title: Text(
+        label,
+        style: GoogleFonts.inter(
+            fontSize: 12, color: AppTheme.textGrey, fontWeight: FontWeight.w500),
+      ),
+      subtitle: Text(
+        value,
+        style: GoogleFonts.inter(
+            fontSize: 15, color: AppTheme.textDark, fontWeight: FontWeight.w600),
+      ),
     );
   }
 
-  /// Section paramètres
   Widget _buildSettingsSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Paramètres',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
-          const SizedBox(height: 16),
-          Card(
+          _buildSectionTitle('Paramètres'),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                  color: AppTheme.dividerGrey.withValues(alpha: 0.5)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
             child: Column(
               children: [
                 ListTile(
-                  leading: const Icon(Icons.notifications, color: AppTheme.primaryBlue),
-                  title: const Text('Notifications'),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.notifications_outlined,
+                        color: AppTheme.accentBlue, size: 20),
+                  ),
+                  title: Text('Notifications',
+                      style: GoogleFonts.inter(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
                   trailing: Switch(
                     value: true,
                     onChanged: (value) {},
                     activeColor: AppTheme.primaryBlue,
                   ),
                 ),
-                const Divider(height: 1),
+                const Divider(height: 1, indent: 56),
                 ListTile(
-                  leading: const Icon(Icons.language, color: AppTheme.primaryBlue),
-                  title: const Text('Langue'),
-                  subtitle: const Text('Français'),
-                  trailing: const Icon(Icons.chevron_right),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.language_outlined,
+                        color: AppTheme.accentBlue, size: 20),
+                  ),
+                  title: Text('Langue',
+                      style: GoogleFonts.inter(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  subtitle: Text('Français',
+                      style: GoogleFonts.inter(
+                          fontSize: 13, color: AppTheme.textGrey)),
+                  trailing: const Icon(Icons.chevron_right,
+                      color: AppTheme.textLight),
                   onTap: () {},
                 ),
-                const Divider(height: 1),
+                const Divider(height: 1, indent: 56),
                 ListTile(
-                  leading: const Icon(Icons.info, color: AppTheme.primaryBlue),
-                  title: const Text('À propos'),
-                  trailing: const Icon(Icons.chevron_right),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.accentBlue.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.info_outline,
+                        color: AppTheme.accentBlue, size: 20),
+                  ),
+                  title: Text('À propos',
+                      style: GoogleFonts.inter(
+                          fontSize: 15, fontWeight: FontWeight.w600)),
+                  trailing: const Icon(Icons.chevron_right,
+                      color: AppTheme.textLight),
                   onTap: () {
                     showAboutDialog(
                       context: context,
                       applicationName: 'ICEM Quality Control',
                       applicationVersion: '1.0.0',
-                      applicationLegalese: '© 2024 ICEM - Tous droits réservés',
+                      applicationLegalese: '© 2025 ICEM - Tous droits réservés',
                     );
                   },
                 ),
@@ -302,48 +408,68 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  /// Bouton déconnexion
   Widget _buildLogoutButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: SizedBox(
         width: double.infinity,
-        child: ElevatedButton.icon(
+        height: 54,
+        child: OutlinedButton.icon(
           onPressed: () async {
-            // Afficher dialogue de confirmation
             final confirm = await showDialog<bool>(
               context: context,
               builder: (context) => AlertDialog(
-                title: const Text('Déconnexion'),
-                content: const Text('Voulez-vous vraiment vous déconnecter ?'),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20)),
+                title: Text('Déconnexion',
+                    style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+                content: Text(
+                  'Voulez-vous vraiment vous déconnecter ?',
+                  style: GoogleFonts.inter(color: AppTheme.textGrey),
+                ),
                 actions: [
                   TextButton(
                     onPressed: () => Navigator.pop(context, false),
-                    child: const Text('Annuler'),
+                    child: Text('Annuler',
+                        style: GoogleFonts.inter(color: AppTheme.textGrey)),
                   ),
-                  TextButton(
+                  ElevatedButton(
                     onPressed: () => Navigator.pop(context, true),
-                    child: const Text('Déconnexion'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.errorRed,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10)),
+                    ),
+                    child: Text('Déconnexion',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
                   ),
                 ],
               ),
             );
 
             if (confirm == true && mounted) {
-              await _userService.logout();
-              if (mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Déconnexion réussie')),
-                );
-              }
+              // Use auth provider for proper logout
+              final authProvider =
+                  Provider.of<AuthProvider>(context, listen: false);
+              await authProvider.logout();
             }
           },
-          icon: const Icon(Icons.logout),
-          label: const Text('Se déconnecter'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppTheme.errorRed,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(vertical: 16),
+          icon: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
+          label: Text(
+            'Se déconnecter',
+            style: GoogleFonts.inter(
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+              color: AppTheme.errorRed,
+            ),
+          ),
+          style: OutlinedButton.styleFrom(
+            side: const BorderSide(color: AppTheme.errorRed, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14),
+            ),
+            backgroundColor: AppTheme.errorRed.withValues(alpha: 0.05),
           ),
         ),
       ),

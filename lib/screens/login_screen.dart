@@ -101,7 +101,7 @@ class _LoginScreenState extends State<LoginScreen>
         children: [
           const Expanded(flex: 1, child: SizedBox(height: 10)),
           Expanded(
-            flex: 7,
+            flex: 8,
             child: FadeTransition(
               opacity: _fadeAnim,
               child: SlideTransition(
@@ -111,8 +111,8 @@ class _LoginScreenState extends State<LoginScreen>
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(32.0),
-                      topRight: Radius.circular(32.0),
+                      topLeft: Radius.circular(40.0),
+                      topRight: Radius.circular(40.0),
                     ),
                     boxShadow: [
                       BoxShadow(
@@ -130,14 +130,25 @@ class _LoginScreenState extends State<LoginScreen>
                         children: [
                           // Logo ICEM
                           Container(
-                            padding: const EdgeInsets.all(12),
+                            padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF0F4F8),
-                              borderRadius: BorderRadius.circular(20),
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF1E3A5F), Color(0xFF4A90D9)],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(22),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF1E3A5F).withValues(alpha: 0.3),
+                                  blurRadius: 16,
+                                  offset: const Offset(0, 6),
+                                ),
+                              ],
                             ),
                             child: Image.asset(
                               'assets/images/logo.png',
-                              height: 60,
+                              height: 56,
                               fit: BoxFit.contain,
                             ),
                           ),
@@ -152,11 +163,27 @@ class _LoginScreenState extends State<LoginScreen>
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            'Accédez à votre espace ICEM',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: const Color(0xFF6B7280),
+                          // Security badge
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0F4F8),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.lock_outline, size: 13, color: Color(0xFF4A90D9)),
+                                const SizedBox(width: 5),
+                                Text(
+                                  'Connexion sécurisée — ICEM',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: const Color(0xFF6B7280),
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(height: 32),
