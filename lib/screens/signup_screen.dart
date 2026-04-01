@@ -19,7 +19,6 @@ class _SignupScreenState extends State<SignupScreen>
   final _formSignupKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _phoneController = TextEditingController();
   UserRole _selectedRole = UserRole.operator;
@@ -53,7 +52,6 @@ class _SignupScreenState extends State<SignupScreen>
     _animController.dispose();
     _usernameController.dispose();
     _fullNameController.dispose();
-    _emailController.dispose();
     _passwordController.dispose();
     _phoneController.dispose();
     super.dispose();
@@ -64,7 +62,6 @@ class _SignupScreenState extends State<SignupScreen>
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
       final success = await authProvider.signup(
-        email: _emailController.text.trim(),
         password: _passwordController.text,
         fullName: _fullNameController.text.trim(),
         username: _usernameController.text.trim(),
@@ -274,18 +271,7 @@ class _SignupScreenState extends State<SignupScreen>
                           ),
                           const SizedBox(height: 16),
 
-                          // Email
-                          _buildField(
-                            controller: _emailController,
-                            label: 'Email',
-                            hint: 'votre@email.com',
-                            icon: Icons.email_outlined,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (v) => v == null || v.isEmpty
-                                ? 'Veuillez entrer votre email'
-                                : null,
-                          ),
-                          const SizedBox(height: 16),
+
 
                           // Phone (optional)
                           _buildField(
@@ -327,7 +313,7 @@ class _SignupScreenState extends State<SignupScreen>
 
                           // Role dropdown
                           DropdownButtonFormField<UserRole>(
-                            value: _selectedRole,
+                            initialValue: _selectedRole,
                             style: GoogleFonts.inter(
                               fontSize: 15,
                               color: const Color(0xFF1A2138),

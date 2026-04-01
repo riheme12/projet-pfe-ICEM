@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -13,9 +14,10 @@ class AuthService {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Authenticate user with username (email) and password
-  Future<User?> login(String email, String password, bool rememberMe) async {
+  /// Authenticate user with username and password
+  Future<User?> login(String username, String password, bool rememberMe) async {
     try {
+      final email = '$username@icem.app';
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -49,14 +51,13 @@ class AuthService {
 
       return user;
     } catch (e) {
-      print('Login error: $e');
+      debugPrint('Login error: $e');
       rethrow;
     }
   }
 
   /// Register new user
   Future<User?> signup({
-    required String email,
     required String password,
     required String fullName,
     required String username,
@@ -64,6 +65,7 @@ class AuthService {
     String? phone,
   }) async {
     try {
+      final email = '$username@icem.app';
       // Create user in Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -91,7 +93,7 @@ class AuthService {
 
       return user;
     } catch (e) {
-      print('Signup error: $e');
+      debugPrint('Signup error: $e');
       rethrow;
     }
   }
@@ -118,7 +120,7 @@ class AuthService {
           try {
             return User.fromJson(jsonDecode(userJson));
           } catch (e) {
-             print('Error parsing session user: $e');
+             debugPrint('Error parsing session user: $e');
              // Proceed to fetch from Firebase
           }
         }
@@ -147,7 +149,7 @@ class AuthService {
 
       return null;
     } catch (e) {
-      print('Get current user error: $e');
+      debugPrint('Get current user error: $e');
       return null;
     }
   }
@@ -161,7 +163,7 @@ class AuthService {
       await prefs.remove(_keyCurrentUser);
       await prefs.remove(_keyRememberMe); // Also clear remember me flag? Usually yes if logging out explicitely.
     } catch (e) {
-      print('Logout error: $e');
+      debugPrint('Logout error: $e');
       rethrow;
     }
   }

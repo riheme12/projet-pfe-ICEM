@@ -10,8 +10,9 @@ import 'package:projeticem/screens/inspection_page.dart';
 /// Page détails d'un ordre de fabrication
 /// 
 /// Affiche toutes les informations d'un ordre et la liste de ses câbles
+/// Le bouton "Démarrer inspection" lance le flux d'inspection
 class OrderDetailPage extends StatefulWidget {
-  final manufacturingOrder order;
+  final ManufacturingOrder order;
 
   const OrderDetailPage({
     super.key,
@@ -35,8 +36,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Future<void> _loadCables() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     final cables = await _ordersService.getOrderCables(widget.order.numeroOF);
+    if (!mounted) return;
     setState(() {
       _cables = cables;
       _isLoading = false;
@@ -48,6 +51,34 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     return _cables.where((cable) => cable.status == _cableFilter).toList();
   }
 
+  /// Lancer le flux d'inspection
+  Future<void> _startInspectionFlow() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => InspectionPage(
+          orderId: widget.order.numeroOF,
+          orderReference: widget.order.reference,
+        ),
+      ),
+    );
+
+    if (result != null) {
+      await _loadCables();
+      if (!mounted) return;
+      
+      final status = result['status'] as String? ?? 'En attente';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Câble inspecté — Statut: $status'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          backgroundColor: status == 'Conforme' ? AppTheme.successGreen : AppTheme.warningAmber,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,12 +86,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         title: Text(widget.order.reference),
         actions: [
           IconButton(
-            icon: const Icon(Icons.share),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Partage - À venir')),
-              );
-            },
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadCables,
           ),
         ],
       ),
@@ -68,16 +95,12 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Informations générales
             _buildGeneralInfo(),
             const SizedBox(height: 16),
-
-            // Statistiques de l'ordre
             _buildOrderStats(),
             const SizedBox(height: 24),
-
-            // Liste des câbles
             _buildCablesSection(),
+            const SizedBox(height: 20),
           ],
         ),
       ),
@@ -85,7 +108,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  /// Informations générales
   Widget _buildGeneralInfo() {
     return Container(
       width: double.infinity,
@@ -110,13 +132,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             runSpacing: 10,
             children: [
               _buildInfoRow(Icons.numbers, 'N° OF', widget.order.numeroOF),
-              _buildInfoRow(Icons.business_center, 'Client', widget.order.Client),
-              _buildInfoRow(Icons.assignment, 'Gi pros', widget.order.Gipros),
-              _buildInfoRow(Icons.receipt_long, 'N° Commande', widget.order.NumComd),
+              _buildInfoRow(Icons.business_center, 'Client', widget.order.client),
+              _buildInfoRow(Icons.assignment, 'Gi pros', widget.order.gipros),
+              _buildInfoRow(Icons.receipt_long, 'N° Commande', widget.order.numComd),
               _buildInfoRow(Icons.precision_manufacturing, 'Ligne', widget.order.ligne ?? 'N/A'),
               _buildInfoRow(Icons.calendar_today, 'Livraison',
-                  '${widget.order.DateLiv.day}/${widget.order.DateLiv.month}/${widget.order.DateLiv.year}'),
-              _buildInfoRow(Icons.inventory, 'Quantité', '${widget.order.QTA} unités'),
+                  '${widget.order.dateLiv.day}/${widget.order.dateLiv.month}/${widget.order.dateLiv.year}'),
+              _buildInfoRow(Icons.inventory, 'Quantité', '${widget.order.qta} unités'),
             ],
           ),
         ],
@@ -142,7 +164,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  /// Statistiques de l'ordre
   Widget _buildOrderStats() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -159,7 +180,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
               Expanded(
                 child: _buildStatCard(
                   'Progression',
-                  '${widget.order.inspectedCount}/${widget.order.QTA}',
+                  '${widget.order.inspectedCount}/${widget.order.qta}',
                   '${widget.order.progressPercentage.toStringAsFixed(0)}%',
                   AppTheme.primaryBlue,
                 ),
@@ -234,7 +255,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
     );
   }
 
-  /// Section câbles
   Widget _buildCablesSection() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -245,7 +265,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Câbles (${_filteredCables.length})',
+                'Câbles inspectés (${_filteredCables.length})',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               PopupMenuButton<String>(
@@ -271,16 +291,41 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           const SizedBox(height: 16),
           _isLoading
               ? const Center(child: CircularProgressIndicator())
-              : ListView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: _filteredCables.length,
-                  itemBuilder: (context, index) {
-                    final cable = _filteredCables[index];
-                    return _buildCableItem(cable);
-                  },
-                ),
+              : _cables.isEmpty
+                  ? _buildEmptyCablesState()
+                  : ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _filteredCables.length,
+                      itemBuilder: (context, index) {
+                        final cable = _filteredCables[index];
+                        return _buildCableItem(cable);
+                      },
+                    ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyCablesState() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 40),
+      child: Center(
+        child: Column(
+          children: [
+            Icon(Icons.qr_code_scanner_rounded, size: 56, color: AppTheme.textLight),
+            const SizedBox(height: 12),
+            Text(
+              'Aucun câble inspecté',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.textGrey),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Scannez un câble pour commencer l\'inspection',
+              style: TextStyle(fontSize: 13, color: AppTheme.textLight),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -308,13 +353,17 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     : AppTheme.errorRed,
           ),
         ),
+        title: Text(cable.code, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          cable.inspectionDate != null
+              ? 'Inspecté le ${cable.inspectionDate!.day}/${cable.inspectionDate!.month}/${cable.inspectionDate!.year}'
+              : 'En attente d\'inspection',
+        ),
         trailing: StatusBadge(status: cable.status, isSmall: true),
-
       ),
     );
   }
 
-  /// Actions en bas
   Widget _buildBottomActions() {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -342,14 +391,9 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             Expanded(
               flex: 2,
               child: ElevatedButton.icon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => const InspectionPage()),
-                  );
-                },
-                icon: const Icon(Icons.camera_alt),
-                label: const Text('Démarrer inspection'),
+                onPressed: _startInspectionFlow,
+                icon: const Icon(Icons.qr_code_scanner_rounded),
+                label: const Text('Scanner & Inspecter'),
               ),
             ),
           ],

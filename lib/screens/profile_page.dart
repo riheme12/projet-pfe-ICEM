@@ -347,7 +347,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   trailing: Switch(
                     value: true,
                     onChanged: (value) {},
-                    activeColor: AppTheme.primaryBlue,
+                    activeThumbColor: AppTheme.primaryBlue,
                   ),
                 ),
                 const Divider(height: 1, indent: 56),

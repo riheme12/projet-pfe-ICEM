@@ -1,27 +1,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/user.dart';
+import './auth_service.dart';
 
-/// Service pour gérer les données utilisateur
-/// 
-/// Connecté à Firebase Auth et Firestore (collection 'users')
+/// Service pour gérer les données utilisateur via Firestore
 class UserService {
-  // Singleton pattern : une seule instance du service
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+  final AuthService _authService = AuthService();
+
+  // Singleton pattern
   static final UserService _instance = UserService._internal();
   factory UserService() => _instance;
-  UserService._internal();
 
-  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
-  final CollectionReference _usersCollection =
-      FirebaseFirestore.instance.collection('users');
+  late final CollectionReference _usersCollection;
 
   // Cache de l'utilisateur actuel
   User? _currentUser;
 
-  /// Récupérer l'utilisateur actuellement connecté depuis Firebase
-  Future<User> getCurrentUser() async {
+  UserService._internal() {
+    _usersCollection = _db.collection('users');
+  }
+
+  /// Récupérer l'utilisateur actuellement connecté
+  Future<User?> getCurrentUser() async {
     // Si l'utilisateur est en cache, le retourner
-    if (_currentUser != null) return _currentUser!;
+    if (_currentUser != null) return _currentUser;
 
     try {
       final firebaseUser = _auth.currentUser;
@@ -33,23 +38,14 @@ class UserService {
             'id': firebaseUser.uid,
             ...userData,
           });
-          return _currentUser!;
+          return _currentUser;
         }
       }
     } catch (e) {
-      print('Error fetching current user: $e');
+      debugPrint('Error fetching current user: $e');
     }
 
-    // Fallback: utilisateur par défaut si pas connecté
-    return User(
-      id: 'guest',
-      username: 'Invité',
-      fullName: 'Utilisateur non connecté',
-      email: '',
-      role: UserRole.operator,
-      createdAt: DateTime.now(),
-      stats: UserStats.empty(),
-    );
+    return null;
   }
 
   /// Mettre à jour le profil utilisateur dans Firestore
@@ -69,30 +65,27 @@ class UserService {
 
       if (updates.isNotEmpty) {
         await _usersCollection.doc(firebaseUser.uid).update(updates);
-        
-        // Mettre à jour le cache
-        _currentUser = null; // Forcer le rechargement
-        await getCurrentUser();
+        _currentUser = null; // Invalidate cache
       }
     } catch (e) {
-      print('Error updating profile: $e');
+      debugPrint('Error updating profile: $e');
       rethrow;
     }
   }
 
-  /// Récupérer les statistiques de l'utilisateur depuis Firestore
+  /// Récupérer les statistiques de l'utilisateur
   Future<UserStats> getUserStats() async {
     final user = await getCurrentUser();
-    return user.stats;
+    return user?.stats ?? UserStats.empty();
   }
 
   /// Déconnexion
   Future<void> logout() async {
     try {
-      await _auth.signOut();
+      await _authService.logout();
       _currentUser = null;
     } catch (e) {
-      print('Logout error: $e');
+      debugPrint('Logout error: $e');
       rethrow;
     }
   }
@@ -102,7 +95,7 @@ class UserService {
     return _auth.currentUser != null;
   }
 
-  /// Invalider le cache (forcer le rechargement)
+  /// Invalider le cache
   void clearCache() {
     _currentUser = null;
   }

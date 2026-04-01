@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/report.dart';
 import '../models/anomaly.dart';
+import '../models/manufacturing_order.dart';
 
-/// Service pour gérer les rapports et statistiques
-/// 
-/// Connecté à Firebase Firestore pour les anomalies
-/// Les rapports restent en mock pour l'instant
+/// Service pour gérer les rapports et statistiques via Firestore
 class ReportsService {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+
   // Singleton
   static final ReportsService _instance = ReportsService._internal();
   factory ReportsService() => _instance;
@@ -18,24 +19,18 @@ class ReportsService {
   /// Récupérer les statistiques globales (agrégées depuis Firestore)
   Future<GlobalStats> getGlobalStats() async {
     try {
-      // Compter les anomalies
       final anomalySnapshot = await _anomalyCollection.get();
       final totalAnomalies = anomalySnapshot.docs.length;
 
-      // Lire les ordres pour calculer les stats
-      final ordersSnapshot = await FirebaseFirestore.instance
-          .collection('manufacturingOrder')
-          .get();
+      final ordersSnapshot = await _db.collection('manufacturingOrder').get();
       
       int totalInspections = 0;
       int totalConform = 0;
 
       for (var doc in ordersSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final inspected = _parseInt(data['inspectedCount']);
-        final conform = _parseInt(data['conformCount']);
-        totalInspections += inspected;
-        totalConform += conform;
+        final order = ManufacturingOrder.fromFirestore(doc);
+        totalInspections += order.inspectedCount;
+        totalConform += order.conformCount;
       }
 
       final conformityRate = totalInspections > 0
@@ -46,10 +41,10 @@ class ReportsService {
         totalInspections: totalInspections,
         conformityRate: conformityRate,
         totalAnomalies: totalAnomalies,
-        reportsGenerated: totalInspections, // 1 rapport par inspection
+        reportsGenerated: totalInspections, 
       );
     } catch (e) {
-      print('Error fetching global stats: $e');
+      debugPrint('Error fetching global stats: $e');
       return GlobalStats(
         totalInspections: 0,
         conformityRate: 0.0,
@@ -60,56 +55,49 @@ class ReportsService {
   }
 
   /// Récupérer la tendance de conformité (7 derniers jours)
-  /// Note: Calculée depuis les ordres de fabrication
   Future<List<ConformityTrend>> getConformityTrend() async {
     try {
       final now = DateTime.now();
       final sevenDaysAgo = now.subtract(const Duration(days: 7));
 
-      final ordersSnapshot = await FirebaseFirestore.instance
-          .collection('manufacturingOrder')
-          .where('DateLiv', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
-          .orderBy('DateLiv')
+      final cablesSnapshot = await _db.collection('cable')
+          .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
           .get();
 
       // Grouper par jour
       final Map<String, List<Map<String, dynamic>>> byDay = {};
-      for (var doc in ordersSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final date = data['DateLiv'] is Timestamp
-            ? (data['DateLiv'] as Timestamp).toDate()
-            : now;
+      for (var doc in cablesSnapshot.docs) {
+        final data = doc.data();
+        final timestamp = data['inspectionDate'] as Timestamp?;
+        if (timestamp == null) continue;
+        
+        final date = timestamp.toDate();
         final dayKey = '${date.year}-${date.month}-${date.day}';
         byDay.putIfAbsent(dayKey, () => []);
         byDay[dayKey]!.add(data);
       }
 
-      // Générer les tendances pour les 7 derniers jours
       return List.generate(7, (index) {
         final date = now.subtract(Duration(days: 6 - index));
         final dayKey = '${date.year}-${date.month}-${date.day}';
-        final dayOrders = byDay[dayKey] ?? [];
+        final dayCables = byDay[dayKey] ?? [];
 
-        int inspections = 0;
-        int conform = 0;
-        for (var data in dayOrders) {
-          inspections += _parseInt(data['inspectedCount']);
-          conform += _parseInt(data['conformCount']);
-        }
+        int total = dayCables.length;
+        int conform = dayCables.where((c) => (c['status'] as String).toLowerCase() == 'conforme').length;
 
         return ConformityTrend(
           date: date,
-          conformityRate: inspections > 0 ? (conform / inspections) * 100 : 0.0,
-          inspectionsCount: inspections,
+          conformityRate: total > 0 ? (conform / total) * 100 : 100.0,
+          inspectionsCount: total,
         );
       });
     } catch (e) {
-      print('Error fetching conformity trend: $e');
+      debugPrint('Error fetching conformity trend: $e');
       return [];
     }
   }
 
-  /// Récupérer la répartition des anomalies par type (depuis Firestore)
+  /// Récupérer la répartition des anomalies par type
   Future<Map<String, int>> getAnomaliesByType() async {
     try {
       final snapshot = await _anomalyCollection.get();
@@ -123,18 +111,29 @@ class ReportsService {
 
       return result;
     } catch (e) {
-      print('Error fetching anomalies by type: $e');
+      debugPrint('Error fetching anomalies by type: $e');
       return {};
     }
   }
 
-  /// Récupérer les rapports récents (mock pour l'instant - pas de collection reports)
-  Future<List<Report>> getRecentReports({int limit = 10}) async {
-    // Reports collection n'existe pas encore - retourner une liste vide
-    return [];
+  /// Récupérer les rapports récents
+  Future<List<Report>> getRecentReports({int limit = 20}) async {
+    try {
+      final snapshot = await _db.collection('report')
+          .orderBy('generatedAt', descending: true)
+          .limit(limit)
+          .get();
+
+      return snapshot.docs
+          .map((doc) => Report.fromFirestore(doc))
+          .toList();
+    } catch (e) {
+      debugPrint('Error fetching recent reports: $e');
+      return [];
+    }
   }
 
-  /// Récupérer les anomalies récentes (depuis Firestore)
+  /// Récupérer les anomalies récentes
   Future<List<Anomaly>> getRecentAnomalies({int limit = 20}) async {
     try {
       final snapshot = await _anomalyCollection
@@ -146,25 +145,9 @@ class ReportsService {
           .map((doc) => Anomaly.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error fetching recent anomalies: $e');
+      debugPrint('Error fetching recent anomalies: $e');
       return [];
     }
-  }
-
-  /// Ajouter une anomalie à Firestore
-  Future<void> addAnomaly(Anomaly anomaly) async {
-    try {
-      await _anomalyCollection.add(anomaly.toFirestore());
-    } catch (e) {
-      print('Error adding anomaly: $e');
-      rethrow;
-    }
-  }
-
-  /// Générer un rapport PDF (simulé pour l'instant)
-  Future<String> generateReport(String cableId) async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-    return 'https://example.com/reports/cable_$cableId.pdf';
   }
 
   /// Récupérer les statistiques par période
@@ -179,44 +162,34 @@ class ReportsService {
           break;
         case 'Cette semaine':
           startDate = now.subtract(Duration(days: now.weekday - 1));
+          startDate = DateTime(startDate.year, startDate.month, startDate.day);
           break;
         case 'Ce mois':
           startDate = DateTime(now.year, now.month, 1);
           break;
         default:
-          startDate = DateTime(now.year, now.month, 1);
+          startDate = DateTime(now.year, now.month, now.day);
       }
 
-      // Compter les anomalies de la période
-      final anomalySnapshot = await _anomalyCollection
-          .where('detectedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+      final snapshot = await _db.collection('cable')
+          .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
           .get();
 
-      // Compter les inspections de la période
-      final ordersSnapshot = await FirebaseFirestore.instance
-          .collection('manufacturingOrder')
-          .get();
-
-      int inspections = 0;
-      int conform = 0;
-      for (var doc in ordersSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        inspections += _parseInt(data['inspectedCount']);
-        conform += _parseInt(data['conformCount']);
-      }
+      int total = snapshot.docs.length;
+      int conform = snapshot.docs.where((d) => (d.data()['status'] as String).toLowerCase() == 'conforme').length;
+      int anomalies = snapshot.docs.fold(0, (acc, d) => acc + _parseInt(d.data()['anomaliesCount']));
 
       return PeriodStats(
-        inspections: inspections,
-        conformityRate: inspections > 0 ? (conform / inspections) * 100 : 0.0,
-        anomalies: anomalySnapshot.docs.length,
+        inspections: total,
+        conformityRate: total > 0 ? (conform / total) * 100 : 0.0,
+        anomalies: anomalies,
       );
     } catch (e) {
-      print('Error fetching period stats: $e');
+      debugPrint('Error fetching period stats: $e');
       return PeriodStats(inspections: 0, conformityRate: 0.0, anomalies: 0);
     }
   }
 
-  /// Helper pour parser les entiers de manière sûre
   int _parseInt(dynamic value) {
     if (value == null) return 0;
     if (value is int) return value;
@@ -226,7 +199,7 @@ class ReportsService {
   }
 }
 
-/// Modèle pour les statistiques globales
+/// Modèles locaux
 class GlobalStats {
   final int totalInspections;
   final double conformityRate;
@@ -241,7 +214,6 @@ class GlobalStats {
   });
 }
 
-/// Modèle pour la tendance de conformité
 class ConformityTrend {
   final DateTime date;
   final double conformityRate;
@@ -254,7 +226,6 @@ class ConformityTrend {
   });
 }
 
-/// Modèle pour les statistiques par période
 class PeriodStats {
   final int inspections;
   final double conformityRate;

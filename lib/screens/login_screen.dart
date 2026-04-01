@@ -188,19 +188,19 @@ class _LoginScreenState extends State<LoginScreen>
                           ),
                           const SizedBox(height: 32),
 
-                          // Email field
+                          // Username field
                           TextFormField(
                             controller: _usernameController,
                             validator: (value) {
                               if (value == null || value.isEmpty) {
-                                return 'Veuillez entrer votre email';
+                                return 'Veuillez entrer votre nom d\'utilisateur';
                               }
                               return null;
                             },
                             decoration: InputDecoration(
-                              labelText: 'Email',
-                              hintText: 'votre@email.com',
-                              prefixIcon: const Icon(Icons.email_outlined,
+                              labelText: 'Nom d\'utilisateur',
+                              hintText: 'ex: ahmed_ba',
+                              prefixIcon: const Icon(Icons.person_outline,
                                   color: Color(0xFF4A90D9)),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),

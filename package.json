@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "docx": "^9.5.3",
     "marked": "^15.0.12",
     "puppeteer": "^24.37.2"
   }

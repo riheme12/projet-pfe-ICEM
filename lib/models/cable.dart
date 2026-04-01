@@ -5,7 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Chaque câble appartient à un ordre de fabrication
 /// et peut avoir plusieurs anomalies détectées
 class Cable {
-
   final String code;                // Code unique du câble
   final String orderId;             // ID de l'ordre parent
   final String status;              // 'Conforme', 'Non conforme', 'En attente'
@@ -28,23 +27,24 @@ class Cable {
   bool get isInspected => inspectionDate != null;
 
   /// Vérifier si le câble est conforme
-  bool get isConform => status == 'Conforme';
+  bool get isConform => status.toLowerCase() == 'conforme';
 
   /// Créer depuis Firestore
   factory Cable.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return Cable(
-      code: data['code'] as String? ?? '',
+      code: data['code'] as String? ?? doc.id,
       orderId: data['orderId'] as String? ?? '',
       status: data['status'] as String? ?? 'En attente',
       inspectionDate: data['inspectionDate'] != null
-          ? (data['inspectionDate'] as Timestamp).toDate()
+          ? (data['inspectionDate'] is Timestamp 
+              ? (data['inspectionDate'] as Timestamp).toDate() 
+              : DateTime.parse(data['inspectionDate'] as String))
           : null,
       technicianId: data['technicianId'] as String?,
       imageUrls: (data['imageUrls'] as List<dynamic>?)
               ?.map((e) => e as String)
-              .toList() ??
-          [],
+              .toList() ?? [],
       anomaliesCount: data['anomaliesCount'] as int? ?? 0,
     );
   }
@@ -52,18 +52,18 @@ class Cable {
   /// Créer depuis JSON
   factory Cable.fromJson(Map<String, dynamic> json) {
     return Cable(
-
-      code: json['code'] as String,
-      orderId: json['orderId'] as String,
-      status: json['status'] as String,
+      code: json['code'] as String? ?? json['id'] as String? ?? '',
+      orderId: json['orderId'] as String? ?? '',
+      status: json['status'] as String? ?? 'En attente',
       inspectionDate: json['inspectionDate'] != null
-          ? DateTime.parse(json['inspectionDate'] as String)
+          ? (json['inspectionDate'] is String 
+              ? DateTime.parse(json['inspectionDate'] as String)
+              : (json['inspectionDate'] as Timestamp).toDate())
           : null,
       technicianId: json['technicianId'] as String?,
       imageUrls: (json['imageUrls'] as List<dynamic>?)
               ?.map((e) => e as String)
-              .toList() ??
-          [],
+              .toList() ?? [],
       anomaliesCount: json['anomaliesCount'] as int? ?? 0,
     );
   }

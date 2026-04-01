@@ -24,7 +24,7 @@ class AuthProvider with ChangeNotifier {
       _currentUser = await _authService.getCurrentUser();
     } catch (e) {
       _errorMessage = 'Failed to restore session';
-      print('Initialize error: $e');
+      debugPrint('Initialize error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -55,14 +55,13 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = _handleAuthError(e);
       _isLoading = false;
       notifyListeners();
-      print('Login error: $e');
+      debugPrint('Login error: $e');
       return false;
     }
   }
 
-  /// Signup with email, password, and role
+  /// Signup with password, and role
   Future<bool> signup({
-    required String email,
     required String password,
     required String fullName,
     required String username,
@@ -75,7 +74,6 @@ class AuthProvider with ChangeNotifier {
 
     try {
       final user = await _authService.signup(
-        email: email,
         password: password,
         fullName: fullName,
         username: username,
@@ -98,7 +96,7 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = _handleAuthError(e);
       _isLoading = false;
       notifyListeners();
-      print('Signup error: $e');
+      debugPrint('Signup error: $e');
       return false;
     }
   }
@@ -129,7 +127,7 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = null;
     } catch (e) {
       _errorMessage = 'Logout failed';
-      print('Logout error: $e');
+      debugPrint('Logout error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();

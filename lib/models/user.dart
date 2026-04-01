@@ -96,10 +96,7 @@ class User {
       'username': username,
       'fullName': fullName,
       'email': email,
-      'role': role.name, // Storing logical name or display name? Let's treat .name as the string value for DB.
-      // Wait, the extension .name returns "Technicien" (display name).
-      // If we want consistency, maybe store the enum name (e.g. 'technician') via .toString().split('.').last or specific key.
-      // The extension uses French display names. Let's store that for now to match 'fromString'.
+      'role': role.toString().split('.').last, // Store logical name (e.g., 'operator')
       'photoUrl': photoUrl,
       'phone': phone,
       'createdAt': createdAt.toIso8601String(),
