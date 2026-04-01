@@ -7,7 +7,7 @@ import '../models/report.dart';
 /// Service pour générer et exporter des rapports au format PDF
 class PdfExportService {
   /// Générer un PDF pour un ordre de fabrication
-  static Future<void> exportOrderReport(manufacturingOrder order) async {
+  static Future<void> exportOrderReport(ManufacturingOrder order) async {
     final pdf = pw.Document();
 
     pdf.addPage(

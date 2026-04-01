@@ -8,12 +8,68 @@ import 'package:projeticem/screens/orders_list_page.dart';
 import 'package:projeticem/screens/reports_page.dart';
 import 'package:projeticem/screens/inspection_page.dart';
 import 'package:projeticem/screens/anomalies_list_page.dart';
+import 'package:projeticem/services/orders_service.dart';
+import 'package:projeticem/services/reports_service.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 
 /// Page d'accueil de l'application ICEM Quality Control
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final OrdersService _ordersService = OrdersService();
+  final ReportsService _reportsService = ReportsService();
+
+  int _ordresEnCours = 0;
+  int _controlesEffectues = 0;
+  int _anomaliesDetectees = 0;
+  double _tauxConformite = 0.0;
+  bool _statsLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStats();
+  }
+
+  Future<void> _loadStats() async {
+    try {
+      final orders = await _ordersService.getAllOrders();
+      final globalStats = await _reportsService.getGlobalStats();
+      
+      int enCours = 0;
+      int totalInspected = 0;
+      int totalConform = 0;
+
+      for (var order in orders) {
+        if (order.status.toLowerCase() == 'en cours') enCours++;
+        totalInspected += order.inspectedCount;
+        totalConform += order.conformCount;
+      }
+
+      if (mounted) {
+        setState(() {
+          _ordresEnCours = enCours;
+          _controlesEffectues = totalInspected;
+          _anomaliesDetectees = globalStats.totalAnomalies;
+          _tauxConformite = totalInspected > 0 
+              ? (totalConform / totalInspected) * 100 
+              : 0.0;
+          _statsLoading = false;
+        });
+      }
+    } catch (e) {
+      print('Error loading home stats: $e');
+      if (mounted) {
+        setState(() => _statsLoading = false);
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -353,40 +409,47 @@ class HomePage extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 12,
-          crossAxisSpacing: 12,
-          childAspectRatio: 1.25,
-          children: [
-            StatsCard(
-              value: '24',
-              label: 'Ordres en cours',
-              icon: Icons.assignment_rounded,
-              color: AppTheme.accentBlue,
-            ),
-            StatsCard(
-              value: '8',
-              label: 'Contrôles effectués',
-              icon: Icons.check_circle_rounded,
-              color: AppTheme.successGreen,
-            ),
-            StatsCard(
-              value: '3',
-              label: 'Anomalies détectées',
-              icon: Icons.warning_rounded,
-              color: AppTheme.warningAmber,
-            ),
-            StatsCard(
-              value: '96%',
-              label: 'Taux de conformité',
-              icon: Icons.trending_up_rounded,
-              color: AppTheme.successGreen,
-            ),
-          ],
-        ),
+        _statsLoading
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(),
+                ),
+              )
+            : GridView.count(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                mainAxisSpacing: 12,
+                crossAxisSpacing: 12,
+                childAspectRatio: 1.25,
+                children: [
+                  StatsCard(
+                    value: '$_ordresEnCours',
+                    label: 'Ordres en cours',
+                    icon: Icons.assignment_rounded,
+                    color: AppTheme.accentBlue,
+                  ),
+                  StatsCard(
+                    value: '$_controlesEffectues',
+                    label: 'Contrôles effectués',
+                    icon: Icons.check_circle_rounded,
+                    color: AppTheme.successGreen,
+                  ),
+                  StatsCard(
+                    value: '$_anomaliesDetectees',
+                    label: 'Anomalies détectées',
+                    icon: Icons.warning_rounded,
+                    color: AppTheme.warningAmber,
+                  ),
+                  StatsCard(
+                    value: '${_tauxConformite.toStringAsFixed(0)}%',
+                    label: 'Taux de conformité',
+                    icon: Icons.trending_up_rounded,
+                    color: AppTheme.successGreen,
+                  ),
+                ],
+              ),
       ],
     );
   }

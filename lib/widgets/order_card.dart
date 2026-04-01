@@ -5,7 +5,7 @@ import 'package:projeticem/theme/app_theme.dart';
 
 /// Widget carte pour afficher un ordre de fabrication
 class OrderCard extends StatelessWidget {
-  final manufacturingOrder order;
+  final ManufacturingOrder order;
   final VoidCallback onTap;
 
   const OrderCard({

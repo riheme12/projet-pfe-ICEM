@@ -17,8 +17,8 @@ class OrdersListPage extends StatefulWidget {
 
 class _OrdersListPageState extends State<OrdersListPage> {
   final OrdersService _ordersService = OrdersService();
-  List<manufacturingOrder> _allOrders = [];
-  List<manufacturingOrder> _filteredOrders = [];
+  List<ManufacturingOrder> _allOrders = [];
+  List<ManufacturingOrder> _filteredOrders = [];
   bool _isLoading = true;
   String _selectedFilter = 'Tous';
   String _searchQuery = '';

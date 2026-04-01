@@ -1,22 +1,14 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-<<<<<<< HEAD
-import 'package:firebase_auth/firebase_auth.dart' as auth;
-=======
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
->>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
 import '../models/user.dart';
 import './auth_service.dart';
 
-<<<<<<< HEAD
-/// Service pour gérer les données utilisateur via Firestore
-=======
 /// Service pour gérer les données utilisateur
 /// 
 /// Connecté à Firebase Auth et Firestore (collection 'users')
->>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final auth.FirebaseAuth _auth = auth.FirebaseAuth.instance;
+  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final AuthService _authService = AuthService();
 
   // Singleton pattern
@@ -24,12 +16,6 @@ class UserService {
   factory UserService() => _instance;
   UserService._internal();
 
-<<<<<<< HEAD
-  /// Récupérer l'utilisateur actuellement connecté
-  Future<User?> getCurrentUser() async {
-    return await _authService.getCurrentUser();
-=======
-  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final CollectionReference _usersCollection =
       FirebaseFirestore.instance.collection('users');
 
@@ -37,8 +23,7 @@ class UserService {
   User? _currentUser;
 
   /// Récupérer l'utilisateur actuellement connecté depuis Firebase
-  Future<User> getCurrentUser() async {
-    // Si l'utilisateur est en cache, le retourner
+  Future<User?> getCurrentUser() async {
     if (_currentUser != null) return _currentUser!;
 
     try {
@@ -68,7 +53,6 @@ class UserService {
       createdAt: DateTime.now(),
       stats: UserStats.empty(),
     );
->>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
   }
 
   /// Mettre à jour le profil utilisateur dans Firestore
@@ -77,18 +61,6 @@ class UserService {
     String? phone,
     String? photoUrl,
   }) async {
-<<<<<<< HEAD
-    final user = _auth.currentUser;
-    if (user == null) return;
-
-    Map<String, dynamic> updates = {};
-    if (fullName != null) updates['fullName'] = fullName;
-    if (phone != null) updates['phone'] = phone;
-    if (photoUrl != null) updates['photoUrl'] = photoUrl;
-
-    if (updates.isNotEmpty) {
-      await _db.collection('users').doc(user.uid).update(updates);
-=======
     try {
       final firebaseUser = _auth.currentUser;
       if (firebaseUser == null) return;
@@ -102,13 +74,12 @@ class UserService {
         await _usersCollection.doc(firebaseUser.uid).update(updates);
         
         // Mettre à jour le cache
-        _currentUser = null; // Forcer le rechargement
+        _currentUser = null;
         await getCurrentUser();
       }
     } catch (e) {
       print('Error updating profile: $e');
       rethrow;
->>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
     }
   }
 
@@ -120,29 +91,22 @@ class UserService {
 
   /// Déconnexion
   Future<void> logout() async {
-<<<<<<< HEAD
-    await _authService.logout();
-=======
     try {
-      await _auth.signOut();
+      await _authService.logout();
       _currentUser = null;
     } catch (e) {
       print('Logout error: $e');
       rethrow;
     }
->>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
   }
 
   /// Vérifier si un utilisateur est connecté
   bool isLoggedIn() {
     return _auth.currentUser != null;
-<<<<<<< HEAD
-=======
   }
 
   /// Invalider le cache (forcer le rechargement)
   void clearCache() {
     _currentUser = null;
->>>>>>> 835fa6e404f62fbfd43f415bfecb2d8d4fa75317
   }
 }
