@@ -53,7 +53,7 @@ class ManufacturingOrder {
   /// Créer depuis Firestore (DocumentSnapshot)
   factory ManufacturingOrder.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
-    
+
     int parseInt(dynamic value) {
       if (value == null) return 0;
       if (value is int) return value;
@@ -70,9 +70,11 @@ class ManufacturingOrder {
       client: data['Client'] as String? ?? data['client'] as String? ?? '',
       numComd: data['NumComd'] as String? ?? '',
       qta: parseInt(data['QTA'] ?? data['quantity']),
-      dateLiv: data['DateLiv'] != null && data['DateLiv'] is Timestamp 
-          ? (data['DateLiv'] as Timestamp).toDate() 
-          : (data['productionDate'] != null ? DateTime.parse(data['productionDate']) : DateTime.now()),
+      dateLiv: data['DateLiv'] != null && data['DateLiv'] is Timestamp
+          ? (data['DateLiv'] as Timestamp).toDate()
+          : (data['productionDate'] != null
+              ? DateTime.parse(data['productionDate'])
+              : DateTime.now()),
       status: data['status'] as String? ?? 'En attente',
       inspectedCount: parseInt(data['inspectedCount']),
       conformCount: parseInt(data['conformCount']),
@@ -98,9 +100,13 @@ class ManufacturingOrder {
       client: json['Client'] as String? ?? json['client'] as String? ?? '',
       numComd: json['NumComd'] as String? ?? '',
       qta: parseInt(json['QTA'] ?? json['quantity']),
-      dateLiv: json['DateLiv'] != null 
-          ? (json['DateLiv'] is String ? DateTime.parse(json['DateLiv']) : (json['DateLiv'] as Timestamp).toDate())
-          : (json['productionDate'] != null ? DateTime.parse(json['productionDate']) : DateTime.now()),
+      dateLiv: json['DateLiv'] != null
+          ? (json['DateLiv'] is String
+              ? DateTime.parse(json['DateLiv'])
+              : (json['DateLiv'] as Timestamp).toDate())
+          : (json['productionDate'] != null
+              ? DateTime.parse(json['productionDate'])
+              : DateTime.now()),
       status: json['status'] as String? ?? 'En attente',
       inspectedCount: parseInt(json['inspectedCount']),
       conformCount: parseInt(json['conformCount']),

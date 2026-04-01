@@ -37,14 +37,15 @@ class Cable {
       orderId: data['orderId'] as String? ?? '',
       status: data['status'] as String? ?? 'En attente',
       inspectionDate: data['inspectionDate'] != null
-          ? (data['inspectionDate'] is Timestamp 
-              ? (data['inspectionDate'] as Timestamp).toDate() 
+          ? (data['inspectionDate'] is Timestamp
+              ? (data['inspectionDate'] as Timestamp).toDate()
               : DateTime.parse(data['inspectionDate'] as String))
           : null,
       technicianId: data['technicianId'] as String?,
       imageUrls: (data['imageUrls'] as List<dynamic>?)
               ?.map((e) => e as String)
-              .toList() ?? [],
+              .toList() ??
+          [],
       anomaliesCount: data['anomaliesCount'] as int? ?? 0,
     );
   }
@@ -56,14 +57,15 @@ class Cable {
       orderId: json['orderId'] as String? ?? '',
       status: json['status'] as String? ?? 'En attente',
       inspectionDate: json['inspectionDate'] != null
-          ? (json['inspectionDate'] is String 
+          ? (json['inspectionDate'] is String
               ? DateTime.parse(json['inspectionDate'] as String)
               : (json['inspectionDate'] as Timestamp).toDate())
           : null,
       technicianId: json['technicianId'] as String?,
       imageUrls: (json['imageUrls'] as List<dynamic>?)
               ?.map((e) => e as String)
-              .toList() ?? [],
+              .toList() ??
+          [],
       anomaliesCount: json['anomaliesCount'] as int? ?? 0,
     );
   }
@@ -74,7 +76,8 @@ class Cable {
       'code': code,
       'orderId': orderId,
       'status': status,
-      'inspectionDate': inspectionDate != null ? Timestamp.fromDate(inspectionDate!) : null,
+      'inspectionDate':
+          inspectionDate != null ? Timestamp.fromDate(inspectionDate!) : null,
       'technicianId': technicianId,
       'imageUrls': imageUrls,
       'anomaliesCount': anomaliesCount,

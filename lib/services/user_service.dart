@@ -5,6 +5,8 @@ import '../models/user.dart';
 import './auth_service.dart';
 
 /// Service pour gérer les données utilisateur via Firestore
+///
+/// Connecté à Firebase Auth et Firestore (collection 'users')
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;

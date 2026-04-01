@@ -21,7 +21,8 @@ class OrdersService {
   /// Récupérer tous les ordres de fabrication
   Future<List<ManufacturingOrder>> getAllOrders() async {
     try {
-      final querySnapshot = await _ordersCollection.orderBy('DateLiv', descending: true).get();
+      final querySnapshot =
+          await _ordersCollection.orderBy('DateLiv', descending: true).get();
       return querySnapshot.docs
           .map((doc) => ManufacturingOrder.fromFirestore(doc))
           .toList();
@@ -58,7 +59,8 @@ class OrdersService {
       final lowercaseQuery = query.toLowerCase();
       return allOrders.where((order) {
         return order.reference.toLowerCase().contains(lowercaseQuery) ||
-               order.numeroOF.toLowerCase().contains(lowercaseQuery);
+            order.numeroOF.toLowerCase().contains(lowercaseQuery) ||
+            order.gipros.toLowerCase().contains(lowercaseQuery);
       }).toList();
     } catch (e) {
       debugPrint('Error searching orders: $e');
@@ -68,6 +70,8 @@ class OrdersService {
 
   /// Filtrer les ordres par statut
   Future<List<ManufacturingOrder>> filterOrders(String status) async {
+    if (status == 'Tous') return getAllOrders();
+
     try {
       final snapshot = await _ordersCollection
           .where('status', isEqualTo: status)
@@ -86,9 +90,9 @@ class OrdersService {
   Future<void> addOrder(ManufacturingOrder order) async {
     try {
       if (order.numeroOF.isEmpty) {
-         await _ordersCollection.add(order.toFirestore());
+        await _ordersCollection.add(order.toFirestore());
       } else {
-         await _ordersCollection.doc(order.numeroOF).set(order.toFirestore());
+        await _ordersCollection.doc(order.numeroOF).set(order.toFirestore());
       }
     } catch (e) {
       debugPrint('Error adding order: $e');
@@ -98,26 +102,26 @@ class OrdersService {
 
   /// Mettre à jour les compteurs d'un ordre
   Future<void> updateOrderStats(String orderId) async {
-      try {
-        final cables = await getOrderCables(orderId);
-        int inspected = cables.where((c) => c.isInspected).length;
-        int conform = cables.where((c) => c.isConform).length;
-        int nonConform = inspected - conform;
+    try {
+      final cables = await getOrderCables(orderId);
+      int inspected = cables.where((c) => c.isInspected).length;
+      int conform = cables.where((c) => c.isConform).length;
+      int nonConform = inspected - conform;
 
-        final order = await getOrderById(orderId);
-        if (order == null) return;
+      final order = await getOrderById(orderId);
+      if (order == null) return;
 
-        await _ordersCollection.doc(orderId).update({
-          'inspectedCount': inspected,
-          'conformCount': conform,
-          'nonConformCount': nonConform,
-          'status': (inspected > 0 && inspected >= order.qta) 
-              ? 'Terminé' 
-              : 'En cours' 
-        });
-      } catch (e) {
-        debugPrint('Error updating stats: $e');
-      }
+      await _ordersCollection.doc(orderId).update({
+        'inspectedCount': inspected,
+        'conformCount': conform,
+        'nonConformCount': nonConform,
+        'status': (inspected > 0 && inspected >= order.qta)
+            ? 'Terminé'
+            : 'En cours'
+      });
+    } catch (e) {
+      debugPrint('Error updating stats: $e');
+    }
   }
 
   /// Récupérer les câbles d'un ordre
@@ -126,7 +130,7 @@ class OrdersService {
       final querySnapshot = await _cablesCollection
           .where('orderId', isEqualTo: orderId)
           .get();
-      
+
       return querySnapshot.docs
           .map((doc) => Cable.fromFirestore(doc))
           .toList();
@@ -140,10 +144,10 @@ class OrdersService {
   Future<String?> saveCable(Cable cable) async {
     try {
       await _cablesCollection.doc(cable.code).set(cable.toFirestore());
-      
+
       // Mettre à jour les stats de l'ordre
       await updateOrderStats(cable.orderId);
-      
+
       return cable.code;
     } catch (e) {
       debugPrint('Error saving cable: $e');

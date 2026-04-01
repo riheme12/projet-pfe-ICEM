@@ -19,11 +19,13 @@ class ReportsService {
   /// Récupérer les statistiques globales (agrégées depuis Firestore)
   Future<GlobalStats> getGlobalStats() async {
     try {
+      // Compter les anomalies
       final anomalySnapshot = await _anomalyCollection.get();
       final totalAnomalies = anomalySnapshot.docs.length;
 
-      final ordersSnapshot = await _db.collection('manufacturingOrder').get();
-      
+      final ordersSnapshot =
+          await _db.collection('manufacturingOrder').get();
+
       int totalInspections = 0;
       int totalConform = 0;
 
@@ -41,7 +43,7 @@ class ReportsService {
         totalInspections: totalInspections,
         conformityRate: conformityRate,
         totalAnomalies: totalAnomalies,
-        reportsGenerated: totalInspections, 
+        reportsGenerated: totalInspections,
       );
     } catch (e) {
       debugPrint('Error fetching global stats: $e');
@@ -60,8 +62,10 @@ class ReportsService {
       final now = DateTime.now();
       final sevenDaysAgo = now.subtract(const Duration(days: 7));
 
-      final cablesSnapshot = await _db.collection('cable')
-          .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
+      final cablesSnapshot = await _db
+          .collection('cable')
+          .where('inspectionDate',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
           .get();
 
       // Grouper par jour
@@ -70,7 +74,7 @@ class ReportsService {
         final data = doc.data();
         final timestamp = data['inspectionDate'] as Timestamp?;
         if (timestamp == null) continue;
-        
+
         final date = timestamp.toDate();
         final dayKey = '${date.year}-${date.month}-${date.day}';
         byDay.putIfAbsent(dayKey, () => []);
@@ -83,7 +87,10 @@ class ReportsService {
         final dayCables = byDay[dayKey] ?? [];
 
         int total = dayCables.length;
-        int conform = dayCables.where((c) => (c['status'] as String).toLowerCase() == 'conforme').length;
+        int conform = dayCables
+            .where((c) =>
+                (c['status'] as String? ?? '').toLowerCase() == 'conforme')
+            .length;
 
         return ConformityTrend(
           date: date,
@@ -119,14 +126,13 @@ class ReportsService {
   /// Récupérer les rapports récents
   Future<List<Report>> getRecentReports({int limit = 20}) async {
     try {
-      final snapshot = await _db.collection('report')
+      final snapshot = await _db
+          .collection('report')
           .orderBy('generatedAt', descending: true)
           .limit(limit)
           .get();
 
-      return snapshot.docs
-          .map((doc) => Report.fromFirestore(doc))
-          .toList();
+      return snapshot.docs.map((doc) => Report.fromFirestore(doc)).toList();
     } catch (e) {
       debugPrint('Error fetching recent reports: $e');
       return [];
@@ -141,13 +147,27 @@ class ReportsService {
           .limit(limit)
           .get();
 
-      return snapshot.docs
-          .map((doc) => Anomaly.fromFirestore(doc))
-          .toList();
+      return snapshot.docs.map((doc) => Anomaly.fromFirestore(doc)).toList();
     } catch (e) {
       debugPrint('Error fetching recent anomalies: $e');
       return [];
     }
+  }
+
+  /// Ajouter une anomalie à Firestore
+  Future<void> addAnomaly(Anomaly anomaly) async {
+    try {
+      await _anomalyCollection.add(anomaly.toFirestore());
+    } catch (e) {
+      debugPrint('Error adding anomaly: $e');
+      rethrow;
+    }
+  }
+
+  /// Générer un rapport PDF (simulé pour l'instant)
+  Future<String> generateReport(String cableId) async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    return 'https://firebasestorage.googleapis.com/v0/b/testflutter-de1f5.appspot.com/o/reports%2Fplaceholder.pdf?alt=media';
   }
 
   /// Récupérer les statistiques par période
@@ -162,7 +182,8 @@ class ReportsService {
           break;
         case 'Cette semaine':
           startDate = now.subtract(Duration(days: now.weekday - 1));
-          startDate = DateTime(startDate.year, startDate.month, startDate.day);
+          startDate =
+              DateTime(startDate.year, startDate.month, startDate.day);
           break;
         case 'Ce mois':
           startDate = DateTime(now.year, now.month, 1);
@@ -171,13 +192,20 @@ class ReportsService {
           startDate = DateTime(now.year, now.month, now.day);
       }
 
-      final snapshot = await _db.collection('cable')
-          .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+      final snapshot = await _db
+          .collection('cable')
+          .where('inspectionDate',
+              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
           .get();
 
       int total = snapshot.docs.length;
-      int conform = snapshot.docs.where((d) => (d.data()['status'] as String).toLowerCase() == 'conforme').length;
-      int anomalies = snapshot.docs.fold(0, (acc, d) => acc + _parseInt(d.data()['anomaliesCount']));
+      int conform = snapshot.docs
+          .where((d) =>
+              ((d.data()['status'] as String?) ?? '').toLowerCase() ==
+              'conforme')
+          .length;
+      int anomalies = snapshot.docs
+          .fold(0, (acc, d) => acc + _parseInt(d.data()['anomaliesCount']));
 
       return PeriodStats(
         inspections: total,
