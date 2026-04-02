@@ -1,12 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Modèle représentant un ordre de fabrication
-/// 
+///
 /// Un ordre de fabrication contient :
 /// - Les informations de production (référence, type, quantité)
 /// - Le statut de l'ordre
 /// - Les statistiques de conformité
 class ManufacturingOrder {
+  final String id;
   final String numeroOF;
   final String gipros;
   final String reference;
@@ -14,13 +15,14 @@ class ManufacturingOrder {
   final String client;
   final String numComd;
   final int qta;               // Quantité totale à produire
-  final DateTime dateLiv;    // Date de production
-  final String status;              // 'En cours', 'Terminé', 'En attente'
-  final int inspectedCount;         // Nombre de câbles déjà inspectés
-  final int conformCount;           // Nombre de câbles conformes
-  final int nonConformCount;        // Nombre de câbles non conformes
+  final DateTime dateLiv;      // Date de livraison
+  final String status;         // 'En cours', 'Terminé', 'En attente'
+  final int inspectedCount;    // Nombre de câbles déjà inspectés
+  final int conformCount;      // Nombre de câbles conformes
+  final int nonConformCount;   // Nombre de câbles non conformes
 
   ManufacturingOrder({
+    this.id = '',
     required this.reference,
     required this.status,
     required this.inspectedCount,
@@ -34,6 +36,17 @@ class ManufacturingOrder {
     required this.qta,
     required this.dateLiv,
   });
+
+  // ── Getters de compatibilité (noms PascalCase utilisés dans certains écrans) ──
+  String get Gipros => gipros;
+  String get Client => client;
+  String get NumComd => numComd;
+  int get QTA => qta;
+  DateTime get DateLiv => dateLiv;
+  String get cableType => numComd.isNotEmpty ? numComd : client;
+  int get quantity => qta;
+  DateTime get productionDate => dateLiv;
+  String? get assignedTechnicianId => ligne;
 
   /// Calculer le taux de conformité de cet ordre (0-100)
   double get conformityRate {
@@ -63,6 +76,7 @@ class ManufacturingOrder {
     }
 
     return ManufacturingOrder(
+      id: doc.id,
       numeroOF: data['numeroOF'] as String? ?? doc.id,
       gipros: data['Gi pros'] as String? ?? data['Gipros'] as String? ?? '',
       reference: data['reference'] as String? ?? '',
@@ -73,7 +87,7 @@ class ManufacturingOrder {
       dateLiv: data['DateLiv'] != null && data['DateLiv'] is Timestamp
           ? (data['DateLiv'] as Timestamp).toDate()
           : (data['productionDate'] != null
-              ? DateTime.parse(data['productionDate'])
+              ? DateTime.tryParse(data['productionDate'].toString()) ?? DateTime.now()
               : DateTime.now()),
       status: data['status'] as String? ?? 'En attente',
       inspectedCount: parseInt(data['inspectedCount']),
@@ -82,7 +96,7 @@ class ManufacturingOrder {
     );
   }
 
-  /// Créer depuis JSON (Map)
+  /// Créer depuis JSON (compatibilité API backend)
   factory ManufacturingOrder.fromJson(Map<String, dynamic> json) {
     int parseInt(dynamic value) {
       if (value == null) return 0;
@@ -92,22 +106,24 @@ class ManufacturingOrder {
       return 0;
     }
 
+    DateTime parseDate(dynamic value) {
+      if (value == null) return DateTime.now();
+      if (value is Timestamp) return value.toDate();
+      if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+      return DateTime.now();
+    }
+
     return ManufacturingOrder(
-      numeroOF: json['numeroOF'] as String? ?? json['id'] as String? ?? '',
-      gipros: json['Gi pros'] as String? ?? json['gipros'] as String? ?? '',
-      reference: json['reference'] as String? ?? '',
-      ligne: json['ligne'] as String? ?? '',
-      client: json['Client'] as String? ?? json['client'] as String? ?? '',
-      numComd: json['NumComd'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      numeroOF: json['numeroOF']?.toString() ?? json['id']?.toString() ?? '',
+      gipros: json['Gi pros']?.toString() ?? json['Gipros']?.toString() ?? json['gipros']?.toString() ?? '',
+      reference: json['reference']?.toString() ?? '',
+      ligne: json['ligne']?.toString() ?? json['assignedTechnicianId']?.toString(),
+      client: json['Client']?.toString() ?? json['client']?.toString() ?? '',
+      numComd: json['NumComd']?.toString() ?? '',
       qta: parseInt(json['QTA'] ?? json['quantity']),
-      dateLiv: json['DateLiv'] != null
-          ? (json['DateLiv'] is String
-              ? DateTime.parse(json['DateLiv'])
-              : (json['DateLiv'] as Timestamp).toDate())
-          : (json['productionDate'] != null
-              ? DateTime.parse(json['productionDate'])
-              : DateTime.now()),
-      status: json['status'] as String? ?? 'En attente',
+      dateLiv: parseDate(json['DateLiv'] ?? json['productionDate']),
+      status: json['status']?.toString() ?? 'En attente',
       inspectedCount: parseInt(json['inspectedCount']),
       conformCount: parseInt(json['conformCount']),
       nonConformCount: parseInt(json['nonConformCount']),
@@ -135,6 +151,7 @@ class ManufacturingOrder {
   /// Convertir en JSON
   Map<String, dynamic> toJson() {
     return {
+      'id': id,
       'numeroOF': numeroOF,
       'Gi pros': gipros,
       'reference': reference,

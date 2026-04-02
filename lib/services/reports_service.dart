@@ -2,9 +2,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import '../models/report.dart';
 import '../models/anomaly.dart';
-import '../models/manufacturing_order.dart';
 
 /// Service pour gérer les rapports et statistiques via Firestore
+///
+/// Connecté à Firebase Firestore pour les anomalies et ordres
 class ReportsService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -30,9 +31,9 @@ class ReportsService {
       int totalConform = 0;
 
       for (var doc in ordersSnapshot.docs) {
-        final order = ManufacturingOrder.fromFirestore(doc);
-        totalInspections += order.inspectedCount;
-        totalConform += order.conformCount;
+        final data = doc.data() as Map<String, dynamic>;
+        totalInspections += _parseInt(data['inspectedCount']);
+        totalConform += _parseInt(data['conformCount']);
       }
 
       final conformityRate = totalInspections > 0
@@ -182,8 +183,7 @@ class ReportsService {
           break;
         case 'Cette semaine':
           startDate = now.subtract(Duration(days: now.weekday - 1));
-          startDate =
-              DateTime(startDate.year, startDate.month, startDate.day);
+          startDate = DateTime(startDate.year, startDate.month, startDate.day);
           break;
         case 'Ce mois':
           startDate = DateTime(now.year, now.month, 1);

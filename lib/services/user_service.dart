@@ -1,8 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import '../models/user.dart';
 import './auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
 /// Service pour gérer les données utilisateur via Firestore
 ///
@@ -25,9 +25,8 @@ class UserService {
     _usersCollection = _db.collection('users');
   }
 
-  /// Récupérer l'utilisateur actuellement connecté
+  /// Récupérer l'utilisateur actuellement connecté depuis Firebase
   Future<User?> getCurrentUser() async {
-    // Si l'utilisateur est en cache, le retourner
     if (_currentUser != null) return _currentUser;
 
     try {
@@ -67,7 +66,8 @@ class UserService {
 
       if (updates.isNotEmpty) {
         await _usersCollection.doc(firebaseUser.uid).update(updates);
-        _currentUser = null; // Invalidate cache
+        _currentUser = null; // Invalider le cache
+        await getCurrentUser(); // Recharger depuis Firestore
       }
     } catch (e) {
       debugPrint('Error updating profile: $e');
