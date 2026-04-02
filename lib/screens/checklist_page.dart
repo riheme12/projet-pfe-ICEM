@@ -525,8 +525,8 @@ class _ChecklistPageState extends State<ChecklistPage> {
           label: Text('Ajouter une ligne câble',
               style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
           style: OutlinedButton.styleFrom(
-            foregroundColor: const Color(0xFF2E7D32),
-            side: const BorderSide(color: Color(0xFF2E7D32)),
+            foregroundColor: const Color(0xFF0D47A1),
+            side: const BorderSide(color: Color(0xFF0D47A1)),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
           ),
@@ -550,7 +550,7 @@ class _ChecklistPageState extends State<ChecklistPage> {
                 children: [
                   TableRow(children: [
                     _sLabel('Total Contrôlé'),
-                    _sValue('$_totalControlled', const Color(0xFF2E7D32)),
+                    _sValue('$_totalControlled', const Color(0xFF0D47A1)),
                     _sLabel('Nombre NC'),
                     _sValue('$_nombreNC', _nombreNC > 0 ? Colors.red : Colors.green),
                     _sLabel('Statut'),
@@ -627,7 +627,7 @@ class _ChecklistPageState extends State<ChecklistPage> {
                     style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF2E7D32),
+                    backgroundColor: const Color(0xFF0D47A1),
                     foregroundColor: Colors.white,
                     disabledBackgroundColor: Colors.grey.shade300,
                     padding: const EdgeInsets.symmetric(vertical: 16),
