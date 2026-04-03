@@ -70,6 +70,7 @@ class AppTheme {
         onSurface: textDark,
         onError: Colors.white,
       ),
+<<<<<<< Updated upstream
       textTheme: textTheme.copyWith(
         headlineLarge: textTheme.headlineLarge?.copyWith(
           fontSize: 32,
@@ -107,6 +108,12 @@ class AppTheme {
         ),
       ),
       appBarTheme: AppBarTheme(
+=======
+
+      
+      // Barre d'application (AppBar)
+      appBarTheme: const AppBarTheme(
+>>>>>>> Stashed changes
         backgroundColor: primaryBlue,
         foregroundColor: Colors.white,
         elevation: 0,

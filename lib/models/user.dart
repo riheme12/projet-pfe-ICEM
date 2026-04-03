@@ -1,4 +1,33 @@
+/// Rôles possibles pour un utilisateur
+enum UserRole {
+  operator,
+  inspector,
+  supervisor,
+  admin;
+
+  String get name {
+    switch (this) {
+      case UserRole.operator: return 'Opérateur';
+      case UserRole.inspector: return 'Inspecteur';
+      case UserRole.supervisor: return 'Superviseur';
+      case UserRole.admin: return 'Administrateur';
+    }
+  }
+}
+
+extension UserRoleExtension on UserRole {
+  static UserRole fromString(String role) {
+    switch (role.toLowerCase()) {
+      case 'inspector': return UserRole.inspector;
+      case 'supervisor': return UserRole.supervisor;
+      case 'admin': return UserRole.admin;
+      default: return UserRole.operator;
+    }
+  }
+}
+
 /// Modèle représentant un utilisateur du système ICEM
+<<<<<<< Updated upstream
 ///
 /// Ce modèle contient toutes les informations d'un utilisateur :
 /// - Informations personnelles (nom, email, téléphone)
@@ -47,6 +76,8 @@ extension UserRoleExtension on UserRole {
   }
 }
 
+=======
+>>>>>>> Stashed changes
 class User {
   final String id;
   final String username;
@@ -75,15 +106,26 @@ class User {
     return User(
       id: json['id'] as String? ?? '',
       username: json['username'] as String? ?? '',
+<<<<<<< Updated upstream
       fullName: json['fullName'] as String? ?? '',
+=======
+      fullName: json['fullName'] as String? ?? json['name'] as String? ?? '',
+>>>>>>> Stashed changes
       email: json['email'] as String? ?? '',
       role: UserRoleExtension.fromString(json['role'] as String? ?? 'operator'),
       photoUrl: json['photoUrl'] as String?,
       phone: json['phone'] as String?,
+<<<<<<< Updated upstream
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
       stats: json['stats'] != null
+=======
+      createdAt: json['createdAt'] != null 
+          ? DateTime.parse(json['createdAt'] as String) 
+          : DateTime.now(),
+      stats: json['stats'] != null 
+>>>>>>> Stashed changes
           ? UserStats.fromJson(json['stats'] as Map<String, dynamic>)
           : UserStats.empty(),
     );
@@ -96,7 +138,11 @@ class User {
       'username': username,
       'fullName': fullName,
       'email': email,
+<<<<<<< Updated upstream
       'role': role.toString().split('.').last, // Store logical name (e.g., 'operator')
+=======
+      'role': role.toString().split('.').last,
+>>>>>>> Stashed changes
       'photoUrl': photoUrl,
       'phone': phone,
       'createdAt': createdAt.toIso8601String(),
@@ -107,10 +153,10 @@ class User {
 
 /// Statistiques personnelles d'un utilisateur
 class UserStats {
-  final int inspectionsCount;      // Nombre total d'inspections
-  final int anomaliesDetected;     // Anomalies détectées
-  final double conformityRate;     // Taux de conformité personnel (0-100)
-  final int cablesProcessed;       // Câbles traités
+  final int inspectionsCount;
+  final int anomaliesDetected;
+  final double conformityRate;
+  final int cablesProcessed;
 
   UserStats({
     required this.inspectionsCount,
@@ -130,10 +176,10 @@ class UserStats {
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
-      inspectionsCount: json['inspectionsCount'] as int,
-      anomaliesDetected: json['anomaliesDetected'] as int,
-      conformityRate: (json['conformityRate'] as num).toDouble(),
-      cablesProcessed: json['cablesProcessed'] as int,
+      inspectionsCount: json['inspectionsCount'] as int? ?? 0,
+      anomaliesDetected: json['anomaliesDetected'] as int? ?? 0,
+      conformityRate: (json['conformityRate'] as num? ?? 0.0).toDouble(),
+      cablesProcessed: json['cablesProcessed'] as int? ?? 0,
     );
   }
 
@@ -146,3 +192,4 @@ class UserStats {
     };
   }
 }
+

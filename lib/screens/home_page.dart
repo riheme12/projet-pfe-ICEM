@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/widgets/feature_card.dart';
 import 'package:projeticem/widgets/stats_card.dart';
 import 'package:projeticem/theme/app_theme.dart';
+import 'package:projeticem/providers/auth_provider.dart';
+import 'package:provider/provider.dart';
 import 'package:projeticem/screens/profile_page.dart';
 import 'package:projeticem/screens/orders_list_page.dart';
 import 'package:projeticem/screens/reports_page.dart';
@@ -162,7 +164,27 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
+<<<<<<< Updated upstream
             ),
+=======
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Message de bienvenue
+          Consumer<AuthProvider>(
+            builder: (context, authProvider, child) {
+              final name = authProvider.currentUser?.fullName ?? 'Technicien';
+              return Text(
+                'Bonjour, $name!',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            },
+>>>>>>> Stashed changes
           ),
 
           // Body content
@@ -180,6 +202,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
           ),
+
         ],
       ),
       bottomNavigationBar: Container(

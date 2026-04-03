@@ -26,6 +26,7 @@ class UserService {
   Future<User?> getCurrentUser() async {
     if (_currentUser != null) return _currentUser!;
 
+<<<<<<< Updated upstream
     try {
       final firebaseUser = _auth.currentUser;
       if (firebaseUser != null) {
@@ -52,6 +53,24 @@ class UserService {
       role: UserRole.operator,
       createdAt: DateTime.now(),
       stats: UserStats.empty(),
+=======
+    // Si pas d'utilisateur, créer un utilisateur de test
+    _currentUser ??= User(
+      id: 'user_001',
+      username: 'ahmed_benali',
+      fullName: 'Ahmed Ben Ali',
+      email: 'ahmed.benali@icem.tn',
+      role: UserRole.operator,
+      photoUrl: null, // Pas de photo pour l'instant
+      phone: '+216 20 123 456',
+      createdAt: DateTime(2024, 1, 15),
+      stats: UserStats(
+        inspectionsCount: 156,
+        anomaliesDetected: 23,
+        conformityRate: 94.5,
+        cablesProcessed: 156,
+      ),
+>>>>>>> Stashed changes
     );
   }
 
@@ -65,6 +84,7 @@ class UserService {
       final firebaseUser = _auth.currentUser;
       if (firebaseUser == null) return;
 
+<<<<<<< Updated upstream
       final Map<String, dynamic> updates = {};
       if (fullName != null) updates['fullName'] = fullName;
       if (phone != null) updates['phone'] = phone;
@@ -84,6 +104,25 @@ class UserService {
   }
 
   /// Récupérer les statistiques de l'utilisateur depuis Firestore
+=======
+    if (_currentUser != null) {
+      _currentUser = User(
+        id: _currentUser!.id,
+        username: _currentUser!.username,
+        fullName: fullName ?? _currentUser!.fullName,
+        email: _currentUser!.email,
+        role: _currentUser!.role,
+        photoUrl: photoUrl ?? _currentUser!.photoUrl,
+        phone: phone ?? _currentUser!.phone,
+        createdAt: _currentUser!.createdAt,
+        stats: _currentUser!.stats,
+      );
+    }
+  }
+
+
+  /// Récupérer les statistiques de l'utilisateur
+>>>>>>> Stashed changes
   Future<UserStats> getUserStats() async {
     final user = await getCurrentUser();
     return user?.stats ?? UserStats.empty();

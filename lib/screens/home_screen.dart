@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/screens/signup_screen.dart';
@@ -245,3 +246,5 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
+=======
+>>>>>>> Stashed changes

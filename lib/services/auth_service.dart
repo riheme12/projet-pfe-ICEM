@@ -36,11 +36,24 @@ class AuthService {
       }
 
       final userData = userDoc.data()!;
+<<<<<<< Updated upstream
       // Handle potential missing fields gracefully
       final user = User.fromJson({
         'id': userCredential.user!.uid,
         ...userData,
       });
+=======
+      final user = User(
+        id: userCredential.user!.uid,
+        username: userData['username'] ?? email.split('@')[0],
+        fullName: userData['fullName'] ?? 'Unknown',
+        email: email,
+        role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
+        createdAt: DateTime.now(), // Fallback
+        stats: UserStats.empty(),
+      );
+>>>>>>> Stashed changes
+
 
       // Save session
       if (rememberMe) {
@@ -49,7 +62,6 @@ class AuthService {
 
       return user;
     } catch (e) {
-      print('Login error: $e');
       rethrow;
     }
   }
@@ -81,17 +93,23 @@ class AuthService {
         fullName: fullName,
         email: email,
         role: role,
+<<<<<<< Updated upstream
         phone: phone,
+=======
+>>>>>>> Stashed changes
         createdAt: DateTime.now(),
         stats: UserStats.empty(),
       );
 
+<<<<<<< Updated upstream
       // Save to Firestore. Use user.toJson() which now handles everything correctly.
+=======
+
+>>>>>>> Stashed changes
       await _firestore.collection('users').doc(uid).set(user.toJson());
 
       return user;
     } catch (e) {
-      print('Signup error: $e');
       rethrow;
     }
   }
@@ -134,11 +152,24 @@ class AuthService {
 
         if (userDoc.exists) {
           final userData = userDoc.data()!;
+<<<<<<< Updated upstream
           final user = User.fromJson({
             'id': firebaseUser.uid,
             ...userData,
           });
           
+=======
+          final user = User(
+             id: firebaseUser.uid,
+             username: userData['username'] ?? firebaseUser.email!.split('@')[0],
+             fullName: userData['fullName'] ?? 'Unknown',
+             email: firebaseUser.email!,
+             role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
+             createdAt: DateTime.now(),
+             stats: UserStats.empty(),
+          );
+
+>>>>>>> Stashed changes
           // Refresh session
           await _saveSession(user, true); 
           return user;
@@ -147,7 +178,6 @@ class AuthService {
 
       return null;
     } catch (e) {
-      print('Get current user error: $e');
       return null;
     }
   }
@@ -161,7 +191,6 @@ class AuthService {
       await prefs.remove(_keyCurrentUser);
       await prefs.remove(_keyRememberMe); // Also clear remember me flag? Usually yes if logging out explicitely.
     } catch (e) {
-      print('Logout error: $e');
       rethrow;
     }
   }
