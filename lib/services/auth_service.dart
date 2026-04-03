@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
+import 'package:projeticem/models/user.dart';
 
 /// Authentication service handling login, logout, and session management using Firebase
 class AuthService {
@@ -43,6 +43,7 @@ class AuthService {
         'id': userCredential.user!.uid,
         ...userData,
       });
+
 
       // Save session
       if (rememberMe) {

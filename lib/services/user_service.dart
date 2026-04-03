@@ -29,23 +29,6 @@ class UserService {
   Future<User?> getCurrentUser() async {
     if (_currentUser != null) return _currentUser;
 
-    try {
-      final firebaseUser = _auth.currentUser;
-      if (firebaseUser != null) {
-        final userDoc = await _usersCollection.doc(firebaseUser.uid).get();
-        if (userDoc.exists) {
-          final userData = userDoc.data() as Map<String, dynamic>;
-          _currentUser = User.fromJson({
-            'id': firebaseUser.uid,
-            ...userData,
-          });
-          return _currentUser;
-        }
-      }
-    } catch (e) {
-      debugPrint('Error fetching current user: $e');
-    }
-
     return null;
   }
 
@@ -59,15 +42,14 @@ class UserService {
       final firebaseUser = _auth.currentUser;
       if (firebaseUser == null) return;
 
-      final Map<String, dynamic> updates = {};
+      Map<String, dynamic> updates = {};
       if (fullName != null) updates['fullName'] = fullName;
       if (phone != null) updates['phone'] = phone;
       if (photoUrl != null) updates['photoUrl'] = photoUrl;
 
       if (updates.isNotEmpty) {
         await _usersCollection.doc(firebaseUser.uid).update(updates);
-        _currentUser = null; // Invalider le cache
-        await getCurrentUser(); // Recharger depuis Firestore
+        _currentUser = null; // Invalidate cache to force refresh
       }
     } catch (e) {
       debugPrint('Error updating profile: $e');

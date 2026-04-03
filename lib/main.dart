@@ -1,7 +1,5 @@
-// Point d'entrée de l'application Flutter
-// Ce fichier est le premier à s'exécuter quand l'app démarre
-
 import 'package:flutter/material.dart';
+<<<<<<< Updated upstream
 import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:projeticem/firebase_options.dart';
@@ -19,6 +17,22 @@ void main() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
   
+=======
+import 'package:firebase_core/firebase_core.dart';
+import 'package:projeticem/firebase_options.dart';
+import 'package:projeticem/screens/welcome_screen.dart';
+import 'package:projeticem/theme/app_theme.dart';
+import 'package:provider/provider.dart';
+import 'providers/auth_provider.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+>>>>>>> Stashed changes
   runApp(
     MultiProvider(
       providers: [
@@ -29,7 +43,10 @@ void main() async {
   );
 }
 
+<<<<<<< Updated upstream
 /// Widget principal de l'application
+=======
+>>>>>>> Stashed changes
 class ICEMQualityApp extends StatelessWidget {
   const ICEMQualityApp({super.key});
 
@@ -39,6 +56,7 @@ class ICEMQualityApp extends StatelessWidget {
       title: 'ICEM Quality Control',
       theme: AppTheme.lightTheme,
       debugShowCheckedModeBanner: false,
+<<<<<<< Updated upstream
       // Page d'accueil dynamique selon l'état d'authentification
       home: Consumer<AuthProvider>(
         builder: (context, auth, _) {
@@ -48,6 +66,10 @@ class ICEMQualityApp extends StatelessWidget {
           return const HomeScreen();
         },
       ),
+=======
+      home: const WelcomeScreen(),
+>>>>>>> Stashed changes
     );
   }
 }
+
