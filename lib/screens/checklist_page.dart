@@ -1,70 +1,63 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import 'package:projeticem/models/checklist_item.dart';
-import 'package:projeticem/theme/app_theme.dart';
-import 'package:projeticem/services/orders_service.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/providers/auth_provider.dart';
+import 'package:projeticem/services/orders_service.dart';
+import 'package:projeticem/theme/app_theme.dart';
 
+// ─── Dimensions tableau ───────────────────────────────────────────────────────
+const double _rowH  = 38.0;
+const double _subH  = 28.0;
+const double _wRef  = 34.0;
+const double _wCode = 82.0;   // Code Câble
+const double _wNS   = 68.0;   // N° Série
+const double _wDef  = 92.0;   // Code défaut
+const double _wDer  = 62.0;   // Dérivation
+const double _wOK   = 56.0;   // OK/NOK
+const double _tableW = _wRef + _wCode + _wNS + _wDef + _wDer + _wOK; // 394px
 
-// ─── Définition des groupes de défauts ICEM ──────────────────────────────────
+// Codes défauts FOR QUA 06
+const _codes = [
+  ('A','Cosse déformée / mal agrafée'), ('B','Cosse éganchati'),
+  ('C','Cosse ouverte'),                ('D','Fil pincé / écrasé / coupé'),
+  ('E','Fils inversés'),                ('F','Fil tendu / torsionné'),
+  ('G','Fil sans cosse'),               ('H','Ticket électrique NC'),
+  ('I','Longueur fil / couleur / section'), ('J','Connecteur cassé / déformé / manquant'),
+  ('K','Bouchette manquante / mal serrée'), ('L','Tube thermo NC'),
+  ('M','Protection ouverte / manquante'),   ('N','Tube manqué / court / crevé'),
+  ('O','Vis mal serrée / manque'),          ('P','Composant manquant'),
+  ('Q','Manque fusible / erroné'),          ('R','Gamme déchirée / manquante'),
+  ('S','Scotch mal exécuté / manque'),      ('T','Mesure Dérivation'),
+  ('V','Étiquette manquante'),              ('W','Étiquette inversée'),
+  ('Z','Autres défauts'),
+];
 
-class _DefectGroup {
-  final String title;
-  final IconData icon;
-  final Color color;
-  final List<ChecklistItem> items;
-  const _DefectGroup(this.title, this.icon, this.color, this.items);
+// ─── Ligne du tableau ─────────────────────────────────────────────────────────
+class _VisualRow {
+  final TextEditingController codeCtrl;
+  final TextEditingController nsCtrl;
+  final TextEditingController defCtrl;
+  final TextEditingController derCtrl;
+  bool isConform;
+
+  _VisualRow({String cableCode = ''})
+      : codeCtrl = TextEditingController(text: cableCode),
+        nsCtrl   = TextEditingController(),
+        defCtrl  = TextEditingController(),
+        derCtrl  = TextEditingController(),
+        isConform = true;
+
+  void dispose() {
+    codeCtrl.dispose(); nsCtrl.dispose(); defCtrl.dispose(); derCtrl.dispose();
+  }
+
+  bool get hasCode => codeCtrl.text.trim().isNotEmpty;
 }
 
-List<_DefectGroup> _buildGroups() => [
-      _DefectGroup('Cosses & Fils', Icons.electrical_services_rounded,
-          const Color(0xFF1565C0), [
-        ChecklistItem(code: 'A', label: 'Cosse déformée / mal sertie'),
-        ChecklistItem(code: 'B', label: 'Cosse repercutée'),
-        ChecklistItem(code: 'C', label: 'Cosse ouverte'),
-        ChecklistItem(code: 'D', label: 'Fil pincé / écrasé / coupé'),
-        ChecklistItem(code: 'E', label: 'Fils inversés'),
-        ChecklistItem(code: 'F', label: 'Fil troublé / torsionné'),
-      ]),
-      _DefectGroup('Gaine & Protection', Icons.shield_rounded,
-          const Color(0xFF2E7D32), [
-        ChecklistItem(code: 'G', label: 'Gaine défectueuse NC'),
-        ChecklistItem(code: 'L', label: 'Tube therme NC'),
-        ChecklistItem(code: 'M', label: 'Protection incorrecte / manquante'),
-      ]),
-      _DefectGroup('Longueur & Bouchette', Icons.straighten_rounded,
-          const Color(0xFF6A1B9A), [
-        ChecklistItem(code: 'J', label: 'Longueur fil / couleur / section'),
-        ChecklistItem(code: 'K', label: 'Bouchette manquante / mal serrée'),
-      ]),
-      _DefectGroup('Connecteur & Composants', Icons.settings_input_component_rounded,
-          const Color(0xFFE65100), [
-        ChecklistItem(code: 'N', label: 'Connecteur cassé / déformé / manquant'),
-        ChecklistItem(code: 'O', label: 'Vis mal serrée / manque'),
-        ChecklistItem(code: 'P', label: 'Composant manquant'),
-        ChecklistItem(code: 'Q', label: 'Manque fusible / erroné'),
-      ]),
-      _DefectGroup('Finition', Icons.auto_fix_high_rounded,
-          const Color(0xFF00838F), [
-        ChecklistItem(code: 'R', label: 'Gestion déchirée / manquante'),
-        ChecklistItem(code: 'S', label: 'Scotch mal exécuté / manque'),
-      ]),
-      _DefectGroup('Étiquettes', Icons.label_rounded,
-          const Color(0xFFC62828), [
-        ChecklistItem(code: 'V', label: 'Étiquette manquante'),
-        ChecklistItem(code: 'W', label: 'Étiquette inversée'),
-      ]),
-      _DefectGroup('Autres', Icons.more_horiz_rounded,
-          const Color(0xFF546E7A), [
-        ChecklistItem(code: 'Z', label: 'Autres défauts'),
-      ]),
-    ];
+// ─── Page principale ──────────────────────────────────────────────────────────
 
-// ─── Page principale ─────────────────────────────────────────────────────────
-
-/// Page de checklist VISUELLE — 20 codes de défauts ICEM (A→Z)
-/// Effectuée par le contrôleur visuel APRÈS le contrôle électrique + scan QR
+/// Fiche de Contrôle Finale ICEM — FOR QUA 06
+/// Même style que la fiche électrique — tableau horizontal scrollable
 class ChecklistPage extends StatefulWidget {
   final String? orderId;
   final String? orderReference;
@@ -83,756 +76,570 @@ class ChecklistPage extends StatefulWidget {
 
 class _ChecklistPageState extends State<ChecklistPage> {
   bool _isSaving = false;
-  late final List<_DefectGroup> _groups;
-  List<ChecklistItem> get _allItems =>
-      _groups.expand((g) => g.items).toList();
+
+  // Header
+  late final TextEditingController _nomCtrl;
+  late final TextEditingController _noteCtrl;
+  late final TextEditingController _sigLigneCtrl;
+  late final TextEditingController _sigQualiteCtrl;
+
+  // Rows
+  final List<_VisualRow> _rows = [];
 
   @override
   void initState() {
     super.initState();
-    _groups = _buildGroups();
+    _nomCtrl       = TextEditingController();
+    _noteCtrl      = TextEditingController();
+    _sigLigneCtrl  = TextEditingController();
+    _sigQualiteCtrl = TextEditingController();
+    _addRow(cableCode: widget.cableReference ?? '');
+    if (_rows.isEmpty) _addRow();
   }
 
-  int get _totalItems => _allItems.length;
-  int get _completedCount =>
-      _allItems.where((i) => i.result != ChecklistResult.pending).length;
-  bool get _isComplete => _completedCount == _totalItems;
-  int get _nokCount => _allItems.where((i) => i.result == ChecklistResult.nok).length;
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    _nomCtrl.text = auth.currentUser?.fullName ?? auth.currentUser?.username ?? '';
+  }
 
-  // ─── Build ────────────────────────────────────────────────────────────────
+  @override
+  void dispose() {
+    _nomCtrl.dispose(); _noteCtrl.dispose();
+    _sigLigneCtrl.dispose(); _sigQualiteCtrl.dispose();
+    for (final r in _rows) r.dispose();
+    super.dispose();
+  }
+
+  void _addRow({String cableCode = ''}) {
+    final row = _VisualRow(cableCode: cableCode);
+    row.defCtrl.addListener(() {
+      setState(() => row.isConform = row.defCtrl.text.trim().isEmpty);
+    });
+    setState(() => _rows.add(row));
+  }
+
+  void _removeRow(int i) {
+    if (_rows.length <= 1) return;
+    setState(() {
+      _rows[i].dispose();
+      _rows.removeAt(i);
+    });
+  }
+
+  // ── Calculs ──────────────────────────────────────────────────────────────────
+  int get _totalControlled => _rows.where((r) => r.hasCode).length;
+  int get _nombreNC => _rows.where((r) => r.hasCode && !r.isConform).length;
+
+  // ── Submit ────────────────────────────────────────────────────────────────────
+  Future<void> _submit() async {
+    final auth = Provider.of<AuthProvider>(context, listen: false);
+    final validRows = _rows.where((r) => r.hasCode).toList();
+    if (validRows.isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    for (final row in validRows) {
+      final status = row.isConform ? 'Conforme' : 'Non conforme';
+      await OrdersService().saveCable(
+        reference: row.codeCtrl.text.trim(),
+        code: row.codeCtrl.text.trim(),
+        orderId: widget.orderId ?? '',
+        status: status,
+        technicianId: auth.currentUser?.id ?? 'unknown',
+        anomaliesCount: row.defCtrl.text.trim().isEmpty ? 0 : 1,
+        visualChecklistItems: [{
+          'codeDefaut':  row.defCtrl.text.trim(),
+          'numeroSerie': row.nsCtrl.text.trim(),
+          'derivation':  row.derCtrl.text.trim(),
+          'status':      status,
+          'note':        _noteCtrl.text.trim(),
+        }],
+      );
+    }
+
+    setState(() => _isSaving = false);
+    if (!mounted) return;
+    _showSuccess(validRows.length, _nombreNC);
+  }
+
+  void _showSuccess(int total, int nc) {
+    final ok = nc == 0;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 70, height: 70,
+                decoration: BoxDecoration(
+                  color: (ok ? Colors.green : Colors.orange).withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  ok ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
+                  color: ok ? Colors.green : Colors.orange, size: 38,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(ok ? 'Contrôle Terminé ✓' : '$nc câble(s) NC',
+                  style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Text('$total câble(s) contrôlé(s) — $nc non conforme(s)',
+                  style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textGrey)),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(10)),
+                child: Row(mainAxisSize: MainAxisSize.min, children: [
+                  Icon(Icons.cloud_done_rounded, size: 15, color: Colors.green.shade700),
+                  const SizedBox(width: 7),
+                  Text('Enregistré dans Firestore',
+                      style: GoogleFonts.inter(fontSize: 12, color: Colors.green.shade700)),
+                ]),
+              ),
+              const SizedBox(height: 22),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    Navigator.pop(context, {
+                      'status': nc == 0 ? 'Conforme' : 'Non conforme',
+                      'cableReference': widget.cableReference,
+                      'anomaliesCount': nc,
+                    });
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D47A1),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: Text('Terminé', style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUILD
+  // ═══════════════════════════════════════════════════════════════════════════
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
-      body: CustomScrollView(
-        slivers: [
-          _buildSliverAppBar(),
-          SliverToBoxAdapter(child: _buildCableBanner()),
-          SliverToBoxAdapter(child: _buildProgressCard()),
-          ..._groups.map((g) => SliverToBoxAdapter(child: _buildGroupSection(g))),
-          const SliverToBoxAdapter(child: SizedBox(height: 110)),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF0D47A1),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Fiche de Contrôle Finale',
+                style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white)),
+            Text(widget.orderReference ?? widget.cableReference ?? '',
+                style: GoogleFonts.inter(fontSize: 11, color: Colors.white60)),
+          ],
+        ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.add_circle_outline_rounded, color: Colors.white),
+            tooltip: 'Ajouter une ligne',
+            onPressed: () => _addRow(),
+          ),
+        ],
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(12),
+        children: [
+          _buildFormHeader(),
+          const SizedBox(height: 12),
+          _buildLegend(),
+          const SizedBox(height: 8),
+          _buildTable(),
+          const SizedBox(height: 12),
+          _buildAddRowButton(),
+          const SizedBox(height: 16),
+          _buildFooterSummary(),
+          const SizedBox(height: 80),
         ],
       ),
       bottomNavigationBar: _buildBottomBar(),
     );
   }
 
-  // ─── AppBar ───────────────────────────────────────────────────────────────
-  Widget _buildSliverAppBar() => SliverAppBar(
-        expandedHeight: 100,
-        pinned: true,
-        backgroundColor: const Color(0xFF2E7D32),
-        flexibleSpace: FlexibleSpaceBar(
-          background: Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFF1B5E20), Color(0xFF388E3C)],
+  // ── En-tête Fiche ─────────────────────────────────────────────────────────
+  Widget _buildFormHeader() {
+    final now = DateTime.now();
+    final dateStr = '${now.day.toString().padLeft(2,'0')}/${now.month.toString().padLeft(2,'0')}/${now.year}';
+    final months = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'];
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          children: [
+            // Logo / Titre
+            Row(children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(color: const Color(0xFF0D47A1), borderRadius: BorderRadius.circular(8)),
+                child: Text('ICeM.n', style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 16)),
               ),
-            ),
-            child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(10),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(children: [
+                  Text('MODULE D\'ENREGISTREMENT',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 10, letterSpacing: 0.5)),
+                  Text('FICHE DE CONTRÔLE FINALE',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 12, color: const Color(0xFF0D47A1))),
+                ]),
+              ),
+              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+                Text('FOR QUA 06',  style: GoogleFonts.inter(fontSize: 9, color: Colors.grey)),
+                Text('DEM 13/11/2008', style: GoogleFonts.inter(fontSize: 9, color: Colors.grey)),
+                Text('V07', style: GoogleFonts.inter(fontSize: 9, color: Colors.grey)),
+              ]),
+            ]),
+            const SizedBox(height: 12),
+            // Mois
+            Row(children: [
+              Text('Mois : ', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textGrey, fontWeight: FontWeight.w500)),
+              Expanded(
+                child: Wrap(
+                  spacing: 4,
+                  children: List.generate(12, (i) {
+                    final sel = i == now.month - 1;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                        color: sel ? const Color(0xFF0D47A1) : Colors.transparent,
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                      child: const Icon(Icons.visibility_rounded,
-                          color: Colors.lightGreenAccent, size: 28),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text('Checklist Visuelle',
-                            style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w800,
-                                fontSize: 19,
-                                color: Colors.white)),
-                        Text('20 points de contrôle ICEM',
-                            style: GoogleFonts.inter(
-                                fontSize: 12, color: Colors.white60)),
-                      ],
-                    ),
-                  ],
+                      child: Text(months[i], style: GoogleFonts.inter(
+                          fontSize: 10, color: sel ? Colors.white : Colors.grey,
+                          fontWeight: sel ? FontWeight.w700 : FontWeight.w400)),
+                    );
+                  }),
                 ),
               ),
-            ),
-          ),
-        ),
-      );
-
-  // ─── Bannière câble ───────────────────────────────────────────────────────
-  Widget _buildCableBanner() => Container(
-        margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border:
-              Border.all(color: Colors.green.withValues(alpha: 0.3), width: 1.5),
-          boxShadow: [
-            BoxShadow(
-                color: Colors.green.withValues(alpha: 0.08),
-                blurRadius: 10,
-                offset: const Offset(0, 3)),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.qr_code_rounded,
-                  color: Color(0xFF2E7D32), size: 22),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Câble en cours de contrôle',
-                      style: GoogleFonts.inter(
-                          fontSize: 11, color: AppTheme.textLight)),
-                  Text(widget.cableReference ?? 'Référence non spécifiée',
-                      style: GoogleFonts.inter(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w700,
-                          color: const Color(0xFF2E7D32))),
-                  if (widget.orderReference != null)
-                    Text('Ordre: ${widget.orderReference}',
-                        style: GoogleFonts.inter(
-                            fontSize: 11, color: AppTheme.textGrey)),
-                ],
-              ),
-            ),
-            // Badge électrique OK
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border:
-                    Border.all(color: Colors.blue.withValues(alpha: 0.3)),
-              ),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.electric_bolt_rounded,
-                    size: 12, color: Colors.blue),
-                const SizedBox(width: 4),
-                Text('Élec. ✓',
-                    style: GoogleFonts.inter(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.blue)),
-              ]),
+            ]),
+            const SizedBox(height: 10),
+            const Divider(height: 1),
+            const SizedBox(height: 10),
+            // Champs fiche
+            Table(
+              border: TableBorder.all(color: Colors.grey.shade300, width: 0.8),
+              children: [
+                TableRow(children: [
+                  _hCell('Nom Contrôleuse :'),
+                  _iCell(_nomCtrl),
+                  _hCell('Date :'),
+                  Padding(padding: const EdgeInsets.all(7),
+                    child: Text(dateStr, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)))),
+                  _hCell('Note :'),
+                  _iCell(_noteCtrl),
+                ]),
+                if (widget.orderReference != null) TableRow(children: [
+                  _hCell('Ordre :'),
+                  Padding(padding: const EdgeInsets.all(7),
+                    child: Text(widget.orderReference!, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)))),
+                  _hCell('Câble scané :'),
+                  Padding(padding: const EdgeInsets.all(7),
+                    child: Text(widget.cableReference ?? '—', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)))),
+                  _hCell(''),
+                  const SizedBox(),
+                ]),
+              ],
             ),
           ],
         ),
-      );
-
-  // ─── Carte progression ────────────────────────────────────────────────────
-  Widget _buildProgressCard() {
-    final pct = _totalItems == 0 ? 0.0 : _completedCount / _totalItems;
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(children: [
-            Text('Progression',
-                style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: AppTheme.textDark)),
-            const Spacer(),
-            _statChip('$_completedCount/$_totalItems', Colors.blue, 'Vérifiés'),
-            const SizedBox(width: 8),
-            _statChip('$_nokCount', Colors.red, 'Défauts'),
-          ]),
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: LinearProgressIndicator(
-              value: pct,
-              minHeight: 8,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                _isComplete
-                    ? (_nokCount == 0 ? Colors.green : Colors.orange)
-                    : const Color(0xFF2E7D32),
-              ),
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _isComplete
-                ? (_nokCount == 0
-                    ? '✅ Tous les points sont conformes'
-                    : '⚠️ $_nokCount défaut(s) détecté(s)')
-                : '${_totalItems - _completedCount} point(s) restant(s)',
-            style: GoogleFonts.inter(
-                fontSize: 12,
-                color: _isComplete
-                    ? (_nokCount == 0 ? Colors.green : Colors.orange)
-                    : AppTheme.textGrey),
-          ),
-        ],
       ),
     );
   }
 
-  Widget _statChip(String value, Color color, String label) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+  Widget _hCell(String t) => Padding(padding: const EdgeInsets.all(7),
+      child: Text(t, style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.grey.shade600)));
+
+  Widget _iCell(TextEditingController c) => Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      child: TextField(controller: c, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0D47A1)),
+          decoration: const InputDecoration(border: InputBorder.none, isDense: true, contentPadding: EdgeInsets.zero)));
+
+  // ── Légende compacte ──────────────────────────────────────────────────────
+  Widget _buildLegend() => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: color.withValues(alpha: 0.1),
+          color: Colors.grey.shade100,
           borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade300),
         ),
-        child: Column(children: [
-          Text(value,
-              style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w800,
-                  color: color)),
-          Text(label,
-              style:
-                  GoogleFonts.inter(fontSize: 9, color: color)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Codes défauts', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF0D47A1))),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 10,
+              runSpacing: 4,
+              children: _codes.map((e) => RichText(
+                text: TextSpan(children: [
+                  TextSpan(text: '${e.$1}: ', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 10, color: const Color(0xFF0D47A1))),
+                  TextSpan(text: e.$2, style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade700)),
+                ]),
+              )).toList(),
+            ),
+          ],
+        ),
+      );
+
+  // ── Tableau principal ─────────────────────────────────────────────────────
+  Widget _buildTable() => Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: _tableW,
+              child: Column(children: [
+                _buildSubHeaders(),
+                ...List.generate(_rows.length, _buildDataRow),
+              ]),
+            ),
+          ),
+        ),
+      );
+
+  Widget _buildSubHeaders() => SizedBox(
+        height: _subH,
+        child: Row(children: [
+          _subH2('N°',         _wRef,  Colors.grey.shade100),
+          _subH2('Code Câble', _wCode, Colors.blue.shade50),
+          _subH2('N° Série',   _wNS,   Colors.blue.shade50),
+          _subH2('Code défaut',_wDef,  Colors.orange.shade50),
+          _subH2('Dérivation', _wDer,  Colors.blue.shade50),
+          _subH2('OK/NOK',     _wOK,   Colors.grey.shade100),
         ]),
       );
 
-  // ─── Section groupe ───────────────────────────────────────────────────────
-  Widget _buildGroupSection(_DefectGroup group) {
-    final doneInGroup =
-        group.items.where((i) => i.result != ChecklistResult.pending).length;
-    final allDone = doneInGroup == group.items.length;
+  Widget _subH2(String t, double w, Color bg) => Container(
+        width: w, height: _subH,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(color: bg, border: Border.all(color: Colors.grey.shade300, width: 0.5)),
+        child: Text(t, textAlign: TextAlign.center,
+            style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.grey.shade700)));
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2)),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // En-tête du groupe
-          Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: group.color.withValues(alpha: 0.07),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(16)),
-              border: Border(
-                bottom: BorderSide(
-                    color: group.color.withValues(alpha: 0.2), width: 1),
+  Widget _buildDataRow(int i) {
+    final r  = _rows[i];
+    final bg = i.isOdd ? const Color(0xFFF9FFF9) : Colors.white;
+    return SizedBox(
+      height: _rowH,
+      child: Row(children: [
+        // Ref + remove
+        Container(
+          width: _wRef, height: _rowH,
+          decoration: BoxDecoration(color: bg, border: Border.all(color: Colors.grey.shade300, width: 0.5)),
+          child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Text('${i+1}', style: GoogleFonts.inter(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.w600)),
+            if (_rows.length > 1)
+              GestureDetector(
+                onTap: () => _removeRow(i),
+                child: Icon(Icons.close_rounded, size: 11, color: Colors.red.shade300),
               ),
-            ),
-            child: Row(children: [
-              Icon(group.icon, color: group.color, size: 20),
-              const SizedBox(width: 10),
-              Text(group.title,
-                  style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: group.color)),
-              const Spacer(),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: allDone
-                      ? group.color.withValues(alpha: 0.15)
-                      : Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  '$doneInGroup/${group.items.length}',
-                  style: GoogleFonts.inter(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: allDone ? group.color : Colors.grey),
-                ),
-              ),
-            ]),
-          ),
-          // Items du groupe
-          ...group.items.map((item) => _buildItem(item, group.color)),
-        ],
-      ),
+          ]),
+        ),
+        // Code Câble
+        _txtCell(r.codeCtrl, _wCode, bg, color: const Color(0xFF0D47A1), bold: true),
+        // N° Série
+        _txtCell(r.nsCtrl,   _wNS,  bg),
+        // Code défaut
+        _txtCell(r.defCtrl,  _wDef, r.defCtrl.text.trim().isEmpty ? bg : Colors.red.shade50,
+            color: Colors.red.shade700, hint: 'ex: A,V,W'),
+        // Dérivation
+        _txtCell(r.derCtrl,  _wDer, bg, hint: '—'),
+        // OK/NOK toggle
+        _okNokCell(r, i),
+      ]),
     );
   }
 
-  // ─── Item checklist ───────────────────────────────────────────────────────
-  Widget _buildItem(ChecklistItem item, Color groupColor) {
-    final isNok = item.result == ChecklistResult.nok;
-    final isOk = item.result == ChecklistResult.ok;
-    final done = item.result != ChecklistResult.pending;
+  Widget _txtCell(TextEditingController ctrl, double w, Color bg,
+      {Color? color, bool bold = false, String? hint}) =>
+      Container(
+        width: w, height: _rowH,
+        decoration: BoxDecoration(color: bg, border: Border.all(color: Colors.grey.shade300, width: 0.5)),
+        child: Center(
+          child: TextField(
+            controller: ctrl,
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: bold ? FontWeight.w700 : FontWeight.w500,
+                color: color ?? Colors.black87),
+            decoration: InputDecoration(
+              border: InputBorder.none, isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 2, vertical: 0),
+              hintText: hint,
+              hintStyle: GoogleFonts.inter(fontSize: 9, color: Colors.grey.shade400),
+            ),
+          ),
+        ),
+      );
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(14, 12, 14, 10),
+  Widget _okNokCell(_VisualRow row, int i) => GestureDetector(
+        onTap: () => setState(() => row.isConform = !row.isConform),
+        child: Container(
+          width: _wOK, height: _rowH,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: row.isConform ? Colors.green.withValues(alpha: 0.08) : Colors.red.withValues(alpha: 0.08),
+            border: Border.all(color: Colors.grey.shade300, width: 0.5),
+          ),
+          child: Text(
+            row.isConform ? 'OK' : 'NOK',
+            style: GoogleFonts.inter(
+                fontSize: 11, fontWeight: FontWeight.w800,
+                color: row.isConform ? Colors.green.shade700 : Colors.red.shade700),
+          ),
+        ),
+      );
+
+  // ── Bouton ajouter ligne ──────────────────────────────────────────────────
+  Widget _buildAddRowButton() => Center(
+        child: OutlinedButton.icon(
+          onPressed: () => _addRow(),
+          icon: const Icon(Icons.add_rounded, size: 18),
+          label: Text('Ajouter une ligne câble',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 13)),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: const Color(0xFF0D47A1),
+            side: const BorderSide(color: Color(0xFF0D47A1)),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          ),
+        ),
+      );
+
+  // ── Résumé pied de fiche ──────────────────────────────────────────────────
+  Widget _buildFooterSummary() => Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
+              Text('Résumé de la fiche',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.textDark)),
+              const SizedBox(height: 14),
+              Table(
+                border: TableBorder.all(color: Colors.grey.shade300, width: 0.8),
                 children: [
-                  // Code badge
-                  Container(
-                    width: 30,
-                    height: 30,
-                    decoration: BoxDecoration(
-                      color: done
-                          ? (isOk
-                              ? Colors.green
-                              : isNok
-                                  ? Colors.red
-                                  : Colors.grey)
-                          : groupColor.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: done
-                          ? Icon(
-                              isOk
-                                  ? Icons.check
-                                  : isNok
-                                      ? Icons.close
-                                      : Icons.remove,
-                              size: 16,
-                              color: Colors.white)
-                          : Text(item.code,
-                              style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w800,
-                                  color: groupColor)),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(item.label,
-                        style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.textDark)),
-                  ),
-                  if (done)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: (isOk
-                                ? Colors.green
-                                : isNok
-                                    ? Colors.red
-                                    : Colors.grey)
-                            .withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        isOk ? 'OK' : isNok ? 'NOK' : 'N/A',
-                        style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: isOk
-                                ? Colors.green
-                                : isNok
-                                    ? Colors.red
-                                    : Colors.grey),
-                      ),
-                    ),
+                  TableRow(children: [
+                    _sLabel('Total Contrôlé'),
+                    _sValue('$_totalControlled', const Color(0xFF0D47A1)),
+                    _sLabel('Nombre NC'),
+                    _sValue('$_nombreNC', _nombreNC > 0 ? Colors.red : Colors.green),
+                    _sLabel('Statut'),
+                    _sValue(_nombreNC == 0 ? 'Conforme' : 'NC',
+                        _nombreNC == 0 ? Colors.green : Colors.red),
+                  ]),
                 ],
               ),
-              const SizedBox(height: 10),
-              // Boutons OK / NOK / N/A
+              const SizedBox(height: 16),
               Row(children: [
-                _resultBtn(item, ChecklistResult.ok, 'OK', Colors.green,
-                    Icons.check_circle_rounded),
-                const SizedBox(width: 6),
-                _resultBtn(item, ChecklistResult.nok, 'NOK', Colors.red,
-                    Icons.cancel_rounded),
-                const SizedBox(width: 6),
-                _resultBtn(item, ChecklistResult.na, 'N/A', Colors.grey,
-                    Icons.remove_circle_rounded),
+                Expanded(child: _sigField(_sigLigneCtrl,   'Signature Resp. Ligne')),
+                const SizedBox(width: 12),
+                Expanded(child: _sigField(_sigQualiteCtrl, 'Signature Resp. Qualité')),
               ]),
-              // Champ commentaire si NOK
-              if (isNok) ...[
-                const SizedBox(height: 10),
-                TextField(
-                  decoration: InputDecoration(
-                    hintText: '[${item.code}] Décrire le défaut...',
-                    hintStyle:
-                        GoogleFonts.inter(fontSize: 12, color: Colors.grey),
-                    prefixIcon: const Icon(Icons.warning_amber_rounded,
-                        color: Colors.red, size: 18),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: Colors.red),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide:
-                          const BorderSide(color: Colors.red, width: 1.5),
-                    ),
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 10),
-                    filled: true,
-                    fillColor: Colors.red.withValues(alpha: 0.03),
-                  ),
-                  style: GoogleFonts.inter(fontSize: 13),
-                  onChanged: (val) => item.comment = val,
-                ),
-              ],
             ],
           ),
         ),
-        const Divider(height: 1, indent: 14, endIndent: 14),
-      ],
-    );
-  }
-
-  Widget _resultBtn(ChecklistItem item, ChecklistResult res, String label,
-      Color color, IconData icon) {
-    final selected = item.result == res;
-    return Expanded(
-      child: GestureDetector(
-        onTap: () => setState(() => item.result = res),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 9),
-          decoration: BoxDecoration(
-            color: selected
-                ? color
-                : color.withValues(alpha: 0.05),
-            border: Border.all(
-                color: selected
-                    ? color
-                    : color.withValues(alpha: 0.35),
-                width: selected ? 2 : 1),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon,
-                  size: 15,
-                  color: selected ? Colors.white : color),
-              const SizedBox(width: 4),
-              Text(label,
-                  style: GoogleFonts.inter(
-                      color: selected ? Colors.white : color,
-                      fontWeight: selected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                      fontSize: 12)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ─── Barre du bas ─────────────────────────────────────────────────────────
-  Widget _buildBottomBar() {
-    final pct = _totalItems == 0 ? 0.0 : _completedCount / _totalItems;
-    return Container(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, -4)),
-        ],
-      ),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(children: [
-              Text('$_completedCount/$_totalItems points',
-                  style:
-                      GoogleFonts.inter(fontSize: 12, color: AppTheme.textGrey)),
-              const Spacer(),
-              Text('${(pct * 100).toStringAsFixed(0)}%',
-                  style: GoogleFonts.inter(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                      color: _isComplete
-                          ? (_nokCount == 0 ? Colors.green : Colors.orange)
-                          : const Color(0xFF2E7D32))),
-            ]),
-            const SizedBox(height: 5),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: pct,
-                minHeight: 5,
-                backgroundColor: Colors.grey.shade200,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  _isComplete
-                      ? (_nokCount == 0 ? Colors.green : Colors.orange)
-                      : const Color(0xFF2E7D32),
-                ),
-              ),
-            ),
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _isComplete && !_isSaving ? _submit : null,
-                icon: _isSaving
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(
-                            color: Colors.white, strokeWidth: 2))
-                    : const Icon(Icons.check_circle_rounded),
-                label: Text(
-                  _isSaving
-                      ? 'Enregistrement...'
-                      : 'Valider le Contrôle Visuel',
-                  style: GoogleFonts.inter(
-                      fontSize: 15, fontWeight: FontWeight.w700),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _isComplete
-                      ? (_nokCount == 0
-                          ? const Color(0xFF2E7D32)
-                          : Colors.orange.shade700)
-                      : Colors.grey.shade400,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 15),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  elevation: _isComplete ? 3 : 0,
-                ),
-              ),
-            ),
-            const SizedBox(height: 4),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ─── Submit ───────────────────────────────────────────────────────────────
-  Future<void> _submit() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final status = _nokCount == 0 ? 'Conforme' : 'Non conforme';
-
-    if (widget.orderId != null && widget.cableReference != null) {
-      setState(() => _isSaving = true);
-      await OrdersService().saveCable(
-        reference: widget.cableReference!,
-        code: widget.cableReference!,
-        orderId: widget.orderId!,
-        status: status,
-        technicianId: auth.currentUser?.id ?? 'unknown',
-        anomaliesCount: _nokCount,
-        visualChecklistItems: _allItems.map((i) => i.toMap()).toList(),
       );
-      setState(() => _isSaving = false);
-    }
 
-    if (!mounted) return;
-    _showResult(status);
-  }
+  Widget _sLabel(String t) => Padding(padding: const EdgeInsets.all(8),
+      child: Text(t, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600)));
 
-  void _showResult(String status) {
-    final ok = status == 'Conforme';
-    // Collecte des défauts
-    final defauts = _allItems.where((i) => i.result == ChecklistResult.nok).toList();
+  Widget _sValue(String t, Color c) => Padding(padding: const EdgeInsets.all(8),
+      child: Text(t, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: c)));
 
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => Dialog(
-        shape:
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
+  Widget _sigField(TextEditingController c, String label) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: GoogleFonts.inter(fontSize: 11, color: Colors.grey.shade600)),
+          const SizedBox(height: 4),
+          Container(
+            height: 38,
+            decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(8)),
+            child: TextField(controller: c, style: GoogleFonts.inter(fontSize: 12),
+                decoration: const InputDecoration(border: InputBorder.none, isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 8, vertical: 10))),
+          ),
+        ],
+      );
+
+  // ── Barre du bas ──────────────────────────────────────────────────────────
+  Widget _buildBottomBar() => Container(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, -3))],
+        ),
+        child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  color: (ok ? Colors.green : Colors.orange)
-                      .withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  ok
-                      ? Icons.check_circle_rounded
-                      : Icons.warning_amber_rounded,
-                  color: ok ? Colors.green : Colors.orange,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                ok ? 'Câble Conforme ✓' : 'Défauts Relevés',
-                style: GoogleFonts.inter(
-                    fontSize: 18, fontWeight: FontWeight.w800),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                ok
-                    ? 'Aucun défaut détecté sur le câble ${widget.cableReference ?? ''}.'
-                    : '${defauts.length} défaut(s) sur le câble ${widget.cableReference ?? ''}.',
-                style: GoogleFonts.inter(
-                    fontSize: 13, color: AppTheme.textGrey, height: 1.5),
-                textAlign: TextAlign.center,
-              ),
-              // Liste des défauts NOK
-              if (defauts.isNotEmpty) ...[
-                const SizedBox(height: 12),
-                Container(
-                  constraints: const BoxConstraints(maxHeight: 140),
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.red.shade100),
-                  ),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    itemCount: defauts.length,
-                    separatorBuilder: (_, __) => const Divider(height: 8),
-                    itemBuilder: (_, i) => Row(children: [
-                      Container(
-                        width: 22,
-                        height: 22,
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Center(
-                          child: Text(defauts[i].code,
-                              style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white)),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                          child: Text(defauts[i].label,
-                              style: GoogleFonts.inter(fontSize: 11))),
-                    ]),
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              if (widget.orderId != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                      horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.green.shade50,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: Colors.green.shade100),
-                  ),
-                  child: Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.cloud_done_rounded,
-                        size: 15, color: Colors.green.shade700),
-                    const SizedBox(width: 7),
-                    Text('Enregistré dans Firestore',
-                        style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: Colors.green.shade700)),
-                  ]),
-                ),
-              const SizedBox(height: 20),
+              // Résumé compact
               Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.pop(context, {
-                        'status': status,
-                        'cableReference': widget.cableReference,
-                        'anomaliesCount': _nokCount,
-                      });
-                    },
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: Text('Fermer',
-                        style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w600)),
+                Icon(
+                  _nombreNC == 0 ? Icons.check_circle_rounded : Icons.warning_rounded,
+                  size: 16, color: _nombreNC == 0 ? Colors.green : Colors.red,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '$_totalControlled câble(s) contrôlé(s)  •  $_nombreNC NC',
+                  style: GoogleFonts.inter(fontSize: 12, color: _nombreNC == 0 ? Colors.green : Colors.red, fontWeight: FontWeight.w600),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: _isSaving ? null : _submit,
+                  icon: _isSaving
+                      ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                      : const Icon(Icons.save_rounded),
+                  label: Text(
+                    _isSaving ? 'Enregistrement...' : 'Enregistrer la Fiche Visuelle',
+                    style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF0D47A1),
+                    foregroundColor: Colors.white,
+                    disabledBackgroundColor: Colors.grey.shade300,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 3,
                   ),
                 ),
-                if (ok) ...[
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(ctx);
-                        Navigator.pop(context, {
-                          'status': status,
-                          'cableReference': widget.cableReference,
-                          'anomaliesCount': _nokCount,
-                        });
-                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                          content: const Text('Rapport généré !'),
-                          backgroundColor: Colors.green,
-                          behavior: SnackBarBehavior.floating,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10)),
-                        ));
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 13),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: Text('Rapport',
-                          style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700)),
-                    ),
-                  ),
-                ],
-              ]),
+              ),
+              const SizedBox(height: 4),
             ],
           ),
         ),
-      ),
-    );
-  }
+      );
 }
+

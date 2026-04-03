@@ -4,9 +4,9 @@ import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/screens/checklist_page.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:async';
+import 'dart:math';
 
-/// Page d'inspection simulant le flux camera avec des overlays IA
-/// Reçoit les données du câble scanné (orderId, cableReference) pour le pipeline
+/// Page d'inspection simulant un flux IA en plusieurs étapes
 class InspectionPage extends StatefulWidget {
   final String? orderId;
   final String? orderReference;
@@ -26,9 +26,14 @@ class InspectionPage extends StatefulWidget {
 class _InspectionPageState extends State<InspectionPage> {
   CameraController? _controller;
   bool _isCameraReady = false;
-  bool _isDetecting = false;
-  List<Map<String, dynamic>> _detections = [];
-  Timer? _detectionTimer;
+
+  // Compteur dynamique de pièces inspectées
+  int _partsInspectedCount = 0;
+
+  // État de l'analyse IA
+  bool _isProcessing = false;
+  bool _showResult = false;
+  Map<String, dynamic>? _stepResult;
 
   @override
   void initState() {
@@ -40,7 +45,7 @@ class _InspectionPageState extends State<InspectionPage> {
     try {
       final cameras = await availableCameras();
       if (cameras.isEmpty) {
-        _handleCameraError('Aucune caméra détectée. Passage en mode simulation.');
+        _handleCameraError('Aucune caméra détectée. Mode pure simulation.');
         return;
       }
 
@@ -56,7 +61,6 @@ class _InspectionPageState extends State<InspectionPage> {
         setState(() {
           _isCameraReady = true;
         });
-        _startSimulation();
       }
     } catch (e) {
       debugPrint('Camera error: $e');
@@ -65,12 +69,10 @@ class _InspectionPageState extends State<InspectionPage> {
   }
 
   void _handleCameraError(String message) {
-    debugPrint('Handling camera error: $message');
     if (mounted) {
       setState(() {
-        _isCameraReady = true;
+        _isCameraReady = true; // On affiche quand même l'UI en mode dégradé (sans preview)
       });
-      
       Future.delayed(const Duration(milliseconds: 100), () {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -78,60 +80,88 @@ class _InspectionPageState extends State<InspectionPage> {
               content: Text(message),
               backgroundColor: Colors.orange.shade800,
               duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'OK',
-                textColor: Colors.white,
-                onPressed: () {},
-              ),
             ),
           );
         }
       });
-      
-      _startSimulation();
     }
-  }
-
-  void _startSimulation() {
-    _detectionTimer = Timer.periodic(const Duration(milliseconds: 1500), (timer) {
-      if (mounted) {
-        setState(() {
-          _isDetecting = !_isDetecting;
-          if (_isDetecting) {
-            _detections = [
-              {
-                'rect': Rect.fromLTWH(100, 200, 150, 80),
-                'label': 'Défaut surface',
-                'confidence': 0.92,
-              },
-              if (timer.tick % 3 == 0)
-                {
-                  'rect': Rect.fromLTWH(50, 400, 100, 50),
-                  'label': 'Rayure',
-                  'confidence': 0.85,
-                }
-            ];
-          } else {
-            _detections = [];
-          }
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
-    _detectionTimer?.cancel();
     _controller?.dispose();
     super.dispose();
   }
 
-  /// Capturer et passer aux checklists avec les données du câble
-  void _captureAndProceed() async {
+  /// Au clic sur le bouton Capture
+  void _captureImage() async {
+    if (_isProcessing || _showResult) return;
+
+    setState(() {
+      _isProcessing = true;
+    });
+
+    // Optionnel : figer la preview si supporté, sinon ça continue derrière
+    try {
+      await _controller?.pausePreview();
+    } catch (_) {}
+
+    // Simulation d'appel API de 1.5s
+    await Future.delayed(const Duration(milliseconds: 1500));
+
+    if (!mounted) return;
+
+    // Simulation de résultat aléatoire
+    final result = _generateSimulatedResult();
+
+    setState(() {
+      _isProcessing = false;
+      _showResult = true;
+      _stepResult = result;
+      _partsInspectedCount++;
+    });
+  }
+
+  /// Recommence une nouvelle analyse de composant
+  void _nextComponent() async {
+    setState(() {
+      _showResult = false;
+      _stepResult = null;
+    });
+    try {
+      await _controller?.resumePreview();
+    } catch (_) {}
+  }
+
+  void _finishInspection() async {
+    setState(() {
+      _isProcessing = true;
+    });
+
+    // Simuler la génération du rapport PDF
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Image capturée ! Passage aux checklists...')),
+      SnackBar(
+        content: Row(
+          children: [
+            const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    color: Colors.white, strokeWidth: 2)),
+            const SizedBox(width: 15),
+            Text('Génération du rapport PDF automatique...',
+                style: GoogleFonts.inter()),
+          ],
+        ),
+        backgroundColor: AppTheme.primaryBlue,
+        duration: const Duration(seconds: 2),
+      ),
     );
-    
+
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
       MaterialPageRoute(
@@ -143,9 +173,37 @@ class _InspectionPageState extends State<InspectionPage> {
       ),
     );
 
-    // Retourner le résultat à OrderDetailPage
     if (mounted && result != null) {
       Navigator.pop(context, result);
+    }
+  }
+
+  Map<String, dynamic> _generateSimulatedResult() {
+    // Liste de défauts génériques applicables à n'importe quel composant
+    final List<String> possibleDefects = [
+      'Rayure détectée',
+      'Déformation',
+      'Élément mal positionné',
+      'Composant manquant',
+      'Couleur non conforme',
+      'Trace de brûlure',
+      'Fissure'
+    ];
+
+    final random = Random();
+    // 70% chance que ce soit "OK" (sans défaut)
+    if (random.nextDouble() > 0.3) {
+      return {
+        'status': 'OK',
+        'label': 'Aucun défaut',
+        'confidence': 0.85 + (random.nextDouble() * 0.14) // 85-99%
+      };
+    } else {
+      return {
+        'status': 'NOK',
+        'label': possibleDefects[random.nextInt(possibleDefects.length)],
+        'confidence': 0.70 + (random.nextDouble() * 0.25) // 70-95%
+      };
     }
   }
 
@@ -154,25 +212,8 @@ class _InspectionPageState extends State<InspectionPage> {
     if (!_isCameraReady) {
       return Scaffold(
         backgroundColor: Colors.black,
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const CircularProgressIndicator(color: Colors.white),
-              const SizedBox(height: 16),
-              const Text('Initialisation de la caméra...', style: TextStyle(color: Colors.white)),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: _initializeCamera,
-                child: const Text('Réessayer'),
-              ),
-              TextButton(
-                onPressed: () => _handleCameraError('Mode simulation activé manuellement.'),
-                child: const Text('Passer en simulation', style: TextStyle(color: Colors.white70)),
-              ),
-            ],
-          ),
-        ),
+        body: const Center(
+            child: CircularProgressIndicator(color: Colors.white)),
       );
     }
 
@@ -183,112 +224,84 @@ class _InspectionPageState extends State<InspectionPage> {
         children: [
           _controller != null && _controller!.value.isInitialized
               ? CameraPreview(_controller!)
-              : Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Color(0xFF0D1B2A),
-                        Color(0xFF1B2F4A),
-                        Color(0xFF0D1B2A),
-                      ],
-                    ),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(28),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
-                              width: 2,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.videocam_outlined,
-                            size: 56,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Text(
-                          'MODE SIMULATION',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 18,
-                            fontWeight: FontWeight.w800,
-                            letterSpacing: 2,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Caméra non disponible',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-          _buildGuidageOverlay(),
-          _buildDetectionOverlays(),
-          _buildBottomControls(),
+              : Container(color: const Color(0xFF1B2F4A)),
+          
+          if (!_showResult) _buildGuidageOverlay(),
+          if (_showResult && _stepResult != null) _buildResultOverlay(),
+          
           _buildTopBar(),
-          // Cable info bar
-          if (widget.cableReference != null)
-            _buildCableInfoBar(),
+          if (widget.cableReference != null) _buildCableInfoBar(),
+          
+          _buildBottomControls(),
         ],
       ),
     );
   }
 
-  /// Barre d'info du câble en cours d'inspection
+  Widget _buildTopBar() {
+    return Positioned(
+      top: 0, left: 0, right: 0,
+      child: Container(
+        padding: const EdgeInsets.only(top: 45, bottom: 15, left: 16, right: 16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
+          ),
+        ),
+        child: Row(
+          children: [
+            IconButton(
+              icon: const Icon(Icons.close, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
+            Expanded(
+              child: Column(
+                children: [
+                  Text(
+                    'INSPECTION IA',
+                    style: GoogleFonts.inter(
+                        color: Colors.white70,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 2),
+                  ),
+                  Text(
+                    'COMPOSANT N°${_partsInspectedCount + (_showResult ? 0 : 1)}',
+                    style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 1.5),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 48), // Balancing
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildCableInfoBar() {
     return Positioned(
-      top: 90,
-      left: 16,
-      right: 16,
+      top: 110, left: 16, right: 16,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: AppTheme.primaryBlue.withValues(alpha: 0.85),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.qr_code_rounded, color: Colors.white, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Câble: ${widget.cableReference}',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  if (widget.orderReference != null)
-                    Text(
-                      'Ordre: ${widget.orderReference}',
-                      style: GoogleFonts.inter(
-                        color: Colors.white70,
-                        fontSize: 11,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+            Text('Câble : ${widget.cableReference}',
+                style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13)),
           ],
         ),
       ),
@@ -296,125 +309,170 @@ class _InspectionPageState extends State<InspectionPage> {
   }
 
   Widget _buildGuidageOverlay() {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: _isDetecting ? AppTheme.successGreen : Colors.white.withValues(alpha: 0.5),
-          width: 2,
-        ),
-      ),
-      margin: const EdgeInsets.symmetric(horizontal: 40, vertical: 150),
-      child: Stack(
-        children: [
-          if (!_isDetecting)
-            const Center(
-              child: Text(
-                'Aligner le câble ici',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDetectionOverlays() {
-    return Stack(
-      children: _detections.map((det) {
-        final rect = det['rect'] as Rect;
-        return Positioned(
-          left: rect.left,
-          top: rect.top,
-          width: rect.width,
-          height: rect.height,
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border.all(color: AppTheme.errorRed, width: 2),
-            ),
-            child: Align(
-              alignment: Alignment.topLeft,
-              child: Container(
-                color: AppTheme.errorRed,
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-                child: Text(
-                  '${det['label']} ${(det['confidence'] * 100).toStringAsFixed(0)}%',
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildTopBar() {
-    return Positioned(
-      top: 0,
-      left: 0,
-      right: 0,
+    return Center(
       child: Container(
-        padding: const EdgeInsets.only(top: 40, bottom: 20, left: 16, right: 16),
+        width: 250,
+        height: 250,
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.3),
+            width: 2,
           ),
+          borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              icon: const Icon(Icons.close, color: Colors.white),
-              onPressed: () => Navigator.pop(context),
+        child: Center(
+          child: _isProcessing 
+          ? const CircularProgressIndicator(color: Colors.white)
+          : Text(
+              'Alignez ici',
+              style: GoogleFonts.inter(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const Text(
-              'INSPECTION IA EN DIRECT',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResultOverlay() {
+    final status = _stepResult!['status'] as String;
+    final label = _stepResult!['label'] as String;
+    final conf = _stepResult!['confidence'] as double;
+    final isOk = status == 'OK';
+
+    return Center(
+      child: Container(
+        width: 250,
+        height: 250,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isOk ? AppTheme.successGreen : AppTheme.errorRed,
+            width: 3,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          color: (isOk ? AppTheme.successGreen : AppTheme.errorRed).withValues(alpha: 0.1),
+        ),
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: isOk ? AppTheme.successGreen : AppTheme.errorRed,
+              borderRadius: const BorderRadius.only(
+                  bottomLeft: Radius.circular(17),
+                  bottomRight: Radius.circular(17)),
             ),
-            const SizedBox(width: 48),
-          ],
+            child: Text(
+              isOk ? 'OK — Conformité ${(conf * 100).toStringAsFixed(0)}%' : '$label (${(conf * 100).toStringAsFixed(0)}%)',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                  color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13),
+            ),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildBottomControls() {
+    final hasInspected = _partsInspectedCount > 0;
+
     return Positioned(
-      bottom: 0,
-      left: 0,
-      right: 0,
+      bottom: 0, left: 0, right: 0,
       child: Container(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [Colors.black.withValues(alpha: 0.7), Colors.transparent],
+            colors: [Colors.black.withValues(alpha: 0.9), Colors.transparent],
           ),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
           children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 4),
-              ),
-              child: InkWell(
-                onTap: _captureAndProceed,
-                child: Container(
-                  margin: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                  ),
+            // Texte d'état des inspections
+            if (hasInspected)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 25),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inventory_rounded, color: AppTheme.successGreen, size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      '$_partsInspectedCount composant(s) inspecté(s)',
+                      style: GoogleFonts.inter(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
                 ),
               ),
-            ),
+
+            // Bouton de capture principal
+            if (!_showResult && !_isProcessing)
+              GestureDetector(
+                onTap: _captureImage,
+                child: Container(
+                  width: 70, height: 70,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 4),
+                  ),
+                  child: Container(
+                    margin: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              )
+            else if (_isProcessing)
+              const SizedBox(height: 70) // Espace vide
+            else
+              // Boutons "Continuer" ou "Terminer"
+              Column(
+                children: [
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: _nextComponent,
+                      icon: const Icon(Icons.add_a_photo_rounded),
+                      label: Text(
+                        'Inspecter un autre composant',
+                        style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black87,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                    ),
+                  ),
+                  if (hasInspected) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: _finishInspection,
+                        icon: const Icon(Icons.check_circle_rounded),
+                        label: Text(
+                          'Terminer & Générer le rapport',
+                          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white54, width: 1.5),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
           ],
         ),
       ),
