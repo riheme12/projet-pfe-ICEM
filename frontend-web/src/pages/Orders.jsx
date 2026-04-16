@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Plus, Search, Eye, Pencil, Trash2, X, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
 import { OrderService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 const StatusBadge = ({ status }) => {
     const s = status?.toLowerCase() || 'en attente';
@@ -45,6 +46,7 @@ const Orders = () => {
         dateDebut: '', dateFin: ''
     });
     const navigate = useNavigate();
+    const { canCreate, canEdit, canDelete } = useAuth();
 
     const fetchOrders = async () => {
         try {
@@ -131,10 +133,12 @@ const Orders = () => {
                     <h1 className="text-2xl font-bold text-slate-800">Ordres de Fabrication</h1>
                     <p className="text-sm text-slate-500 mt-1">Gestion et suivi des ordres de production</p>
                 </div>
-                <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-                    <Plus size={18} />
-                    Nouvel Ordre
-                </button>
+                {canCreate('orders') && (
+                    <button onClick={openCreate} className="btn-primary flex items-center gap-2">
+                        <Plus size={18} />
+                        Nouvel Ordre
+                    </button>
+                )}
             </div>
 
             {/* Filters */}
@@ -204,20 +208,24 @@ const Orders = () => {
                                                 >
                                                     <Eye size={15} />
                                                 </button>
-                                                <button
-                                                    onClick={() => openEdit(order)}
-                                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-accent transition-colors"
-                                                    title="Modifier"
-                                                >
-                                                    <Pencil size={15} />
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteConfirm(order)}
-                                                    className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
-                                                    title="Supprimer"
-                                                >
-                                                    <Trash2 size={15} />
-                                                </button>
+                                                {canEdit('orders') && (
+                                                    <button
+                                                        onClick={() => openEdit(order)}
+                                                        className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-accent transition-colors"
+                                                        title="Modifier"
+                                                    >
+                                                        <Pencil size={15} />
+                                                    </button>
+                                                )}
+                                                {canDelete('orders') && (
+                                                    <button
+                                                        onClick={() => setDeleteConfirm(order)}
+                                                        className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                                        title="Supprimer"
+                                                    >
+                                                        <Trash2 size={15} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>

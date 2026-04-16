@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Eye, Search, CheckCircle, Clock, X } from 'lucide-react';
+import { AlertCircle, Eye, Search, CheckCircle, Clock, X, Download } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AnomalyService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
+import * as XLSX from 'xlsx';
 
 const SeverityBadge = ({ severity }) => {
     const s = severity?.toLowerCase() || 'mineur';
@@ -30,6 +32,28 @@ const Anomalies = () => {
     const [treatModal, setTreatModal] = useState(null);
     const [corrective, setCorrective] = useState('');
     const navigate = useNavigate();
+    const { canExport } = useAuth();
+
+    const handleExportExcel = () => {
+        const data = filteredAnomalies.map(a => ({
+            'Type': a.type || '—',
+            'Gravité': a.severity || '—',
+            'Câble ID': a.cableId || '—',
+            'Confiance IA (%)': a.confidence ? (a.confidence * 100).toFixed(0) : '0',
+            'Date Détection': a.detectedAt ? new Date(a.detectedAt).toLocaleDateString('fr-FR') : '—',
+            'Statut': a.statut === 'traitee' ? 'Traitée' : a.statut === 'en_traitement' ? 'En traitement' : 'Détectée',
+            'Description': a.description || 'Anomalie détectée par IA',
+        }));
+        const ws = XLSX.utils.json_to_sheet(data);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Anomalies');
+        // Ajuster la largeur des colonnes
+        ws['!cols'] = [
+            { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
+            { wch: 16 }, { wch: 14 }, { wch: 35 },
+        ];
+        XLSX.writeFile(wb, `ICEM_Anomalies_${new Date().toISOString().split('T')[0]}.xlsx`);
+    };
 
     const fetchAnomalies = async () => {
         try {
@@ -75,9 +99,20 @@ const Anomalies = () => {
                     <h1 className="text-2xl font-bold text-slate-800">Gestion des Anomalies</h1>
                     <p className="text-sm text-slate-500 mt-1">Suivi des défauts détectés par l'IA sur les câbles</p>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl">
-                    <AlertCircle size={16} className="text-red-600" />
-                    <span className="text-sm font-semibold text-red-700">{anomalies.length} anomalies</span>
+                <div className="flex items-center gap-3">
+                    {canExport && (
+                        <button
+                            onClick={handleExportExcel}
+                            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all"
+                        >
+                            <Download size={16} />
+                            Export Excel
+                        </button>
+                    )}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl">
+                        <AlertCircle size={16} className="text-red-600" />
+                        <span className="text-sm font-semibold text-red-700">{anomalies.length} anomalies</span>
+                    </div>
                 </div>
             </div>
 

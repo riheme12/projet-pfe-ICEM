@@ -90,4 +90,32 @@ router.patch('/:id', async (req, res) => {
     }
 });
 
+// Reset user password
+router.post('/:id/reset-password', async (req, res) => {
+    try {
+        const { newPassword } = req.body;
+        const doc = await db.collection('users').doc(req.params.id).get();
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (newPassword) {
+            // Reset with a specific new password
+            await admin.auth().updateUser(req.params.id, { password: newPassword });
+            res.status(200).json({ message: 'Mot de passe réinitialisé avec succès' });
+        } else {
+            // Generate a reset link via email
+            const userData = doc.data();
+            const link = await admin.auth().generatePasswordResetLink(userData.email);
+            res.status(200).json({ 
+                message: 'Lien de réinitialisation généré',
+                resetLink: link 
+            });
+        }
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

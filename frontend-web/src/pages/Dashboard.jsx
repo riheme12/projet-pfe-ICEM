@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, AlertTriangle, CheckCircle, Package, TrendingUp } from 'lucide-react';
-import { OrderService, AnomalyService, InspectionService } from '../services/api';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { Activity, AlertTriangle, CheckCircle, Package, TrendingUp, Download } from 'lucide-react';
+import { OrderService, AnomalyService, InspectionService, StatsService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+import {
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
+} from 'recharts';
 
 const StatCard = ({ icon, label, value, color, unit = "" }) => (
     <div className="card flex items-center gap-4">
@@ -24,7 +30,9 @@ const Dashboard = () => {
     });
     const [recentInspections, setRecentInspections] = useState([]);
     const [recentAnomalies, setRecentAnomalies] = useState([]);
+    const [trends, setTrends] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { canExport } = useAuth();
 
     useEffect(() => {
         const fetchData = async () => {
@@ -50,6 +58,14 @@ const Dashboard = () => {
                     .sort((a, b) => new Date(b.detectedAt || 0) - new Date(a.detectedAt || 0))
                     .slice(0, 5);
                 setRecentAnomalies(sortedAnomalies);
+
+                // Fetch trends
+                try {
+                    const trendsRes = await StatsService.getTrends();
+                    setTrends(trendsRes.data || []);
+                } catch (e) {
+                    console.error("Trends not available:", e);
+                }
             } catch (error) {
                 console.error("Erreur stats", error);
             } finally {
@@ -75,11 +91,82 @@ const Dashboard = () => {
         { name: 'Mineur', value: stats.anomalies.mineur || 0 },
     ].filter(d => d.value > 0);
 
+    // Filter trends to show only last 14 days with data
+    const trendData = trends.slice(-14);
+
+    const handleExportDashboardPDF = async () => {
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            // Header
+            doc.setFillColor(30, 41, 59);
+            doc.rect(0, 0, pageWidth, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('ICEM Quality Control', 14, 18);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Synthèse du Tableau de Bord', 14, 28);
+            doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 14, 35);
+
+            // KPIs
+            doc.setTextColor(51, 65, 85);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Indicateurs Clés de Performance', 14, 55);
+
+            doc.autoTable({
+                startY: 62,
+                head: [['Indicateur', 'Valeur']],
+                body: [
+                    ['Ordres en cours', (stats.orders.enCours || 0).toString()],
+                    ['Ordres terminés', (stats.orders.termine || 0).toString()],
+                    ['Ordres en attente', (stats.orders.enAttente || 0).toString()],
+                    ['Production totale', (stats.orders.total || 0).toString()],
+                    ['Anomalies critiques', (stats.anomalies.critique || 0).toString()],
+                    ['Anomalies majeures', (stats.anomalies.majeur || 0).toString()],
+                    ['Anomalies mineures', (stats.anomalies.mineur || 0).toString()],
+                    ['Taux de conformité', `${conformityRate}%`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 10, textColor: [51, 65, 85] },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                margin: { left: 14, right: 14 },
+            });
+
+            // Footer
+            doc.setFontSize(8);
+            doc.setTextColor(148, 163, 184);
+            doc.text(
+                `ICEM Quality Control — Synthèse Dashboard — ${new Date().toLocaleString('fr-FR')}`,
+                pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' }
+            );
+
+            doc.save(`ICEM_Dashboard_Synthese_${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (error) {
+            console.error('Erreur export PDF dashboard:', error);
+        }
+    };
+
     return (
         <div className="flex flex-col gap-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord</h1>
-                <p className="text-sm text-slate-500 mt-1">Vue d'ensemble de la qualité de production</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord</h1>
+                    <p className="text-sm text-slate-500 mt-1">Vue d'ensemble de la qualité de production</p>
+                </div>
+                {canExport && (
+                    <button
+                        onClick={handleExportDashboardPDF}
+                        className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all"
+                    >
+                        <Download size={16} />
+                        Export PDF
+                    </button>
+                )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -109,6 +196,47 @@ const Dashboard = () => {
                     color="bg-slate-700"
                 />
             </div>
+
+            {/* Trend Chart — Conformity Over Time */}
+            {trendData.length > 0 && (
+                <div className="card">
+                    <h3 className="text-base font-bold text-slate-800 mb-2">Tendances de Conformité</h3>
+                    <p className="text-xs text-slate-400 mb-6">Évolution des inspections et anomalies sur les 14 derniers jours</p>
+                    <div className="h-72 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <AreaChart data={trendData}>
+                                <defs>
+                                    <linearGradient id="colorInspections" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.15}/>
+                                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                                    </linearGradient>
+                                    <linearGradient id="colorAnomalies" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#dc2626" stopOpacity={0.15}/>
+                                        <stop offset="95%" stopColor="#dc2626" stopOpacity={0}/>
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11 }} />
+                                <Tooltip
+                                    contentStyle={{
+                                        borderRadius: '12px', border: '1px solid #e2e8f0',
+                                        boxShadow: '0 4px 12px rgb(0 0 0 / 0.08)', fontSize: 12
+                                    }}
+                                />
+                                <Area
+                                    type="monotone" dataKey="inspections" stroke="#2563eb" strokeWidth={2.5}
+                                    fill="url(#colorInspections)" name="Inspections"
+                                />
+                                <Area
+                                    type="monotone" dataKey="anomalies" stroke="#dc2626" strokeWidth={2.5}
+                                    fill="url(#colorAnomalies)" name="Anomalies"
+                                />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Bar Chart */}

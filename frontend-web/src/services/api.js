@@ -78,6 +78,7 @@ export const UserService = {
     getById: (id) => api.get(`/users/${id}`),
     create: (data) => api.post('/users', data),
     update: (id, data) => api.patch(`/users/${id}`, data),
+    resetPassword: (id, newPassword) => api.post(`/users/${id}/reset-password`, { newPassword }),
 };
 
 export const CableService = {
@@ -87,6 +88,15 @@ export const CableService = {
     create: (data) => api.post('/cables', data),
     update: (id, data) => api.patch(`/cables/${id}`, data),
     delete: (id) => api.delete(`/cables/${id}`),
+};
+
+export const StatsService = {
+    getTrends: () => api.get('/stats/trends'),
+};
+
+export const SettingsService = {
+    get: () => api.get('/settings'),
+    update: (data) => api.put('/settings', data),
 };
 
 export default api;

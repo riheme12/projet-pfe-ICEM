@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, FilePieChart, Calendar, Clock } from 'lucide-react';
-import { ReportService } from '../services/api';
+import { FileText, Download, FilePieChart, Calendar, Clock, FileSpreadsheet } from 'lucide-react';
+import { ReportService, OrderService, AnomalyService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const Reports = () => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
+    const { canGenerateReport, canExport } = useAuth();
 
     const fetchReports = async () => {
         try {
@@ -40,6 +44,126 @@ const Reports = () => {
         }
     };
 
+    const handleExportPDF = async (report) => {
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+
+            // En-tête
+            doc.setFillColor(30, 41, 59); // slate-800
+            doc.rect(0, 0, pageWidth, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('ICEM Quality Control', 14, 18);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Rapport: ${report.type || 'Rapport de Production'}`, 14, 28);
+            doc.text(`Généré le: ${new Date(report.generatedAt).toLocaleString('fr-FR')}`, 14, 35);
+
+            // Informations du rapport
+            doc.setTextColor(51, 65, 85);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Informations du Rapport', 14, 55);
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(100, 116, 139);
+            const infoY = 63;
+            doc.text(`ID: ${report.id}`, 14, infoY);
+            doc.text(`Source: ${report.orderId && report.orderId !== 'global' ? `Ordre #${report.orderId.substring(0, 8)}` : 'Données Globales'}`, 14, infoY + 7);
+            doc.text(`Type: ${report.type || 'Production'}`, 14, infoY + 14);
+
+            // Récupérer les données pour le rapport
+            let ordersData = [];
+            let anomaliesData = [];
+            try {
+                const [ordersRes, anomaliesRes] = await Promise.all([
+                    OrderService.getAll(),
+                    AnomalyService.getAll()
+                ]);
+                ordersData = ordersRes.data || [];
+                anomaliesData = anomaliesRes.data || [];
+            } catch (e) {
+                console.error('Error fetching data for PDF:', e);
+            }
+
+            // KPIs
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(51, 65, 85);
+            doc.text('Indicateurs Clés (KPIs)', 14, infoY + 30);
+
+            const kpiY = infoY + 38;
+            const totalOrders = ordersData.length;
+            const enCours = ordersData.filter(o => o.status?.toLowerCase() === 'en cours').length;
+            const termine = ordersData.filter(o => ['terminé', 'termine'].includes(o.status?.toLowerCase())).length;
+            const totalAnomalies = anomaliesData.length;
+            const critiques = anomaliesData.filter(a => a.severity?.toLowerCase() === 'critique').length;
+
+            doc.autoTable({
+                startY: kpiY,
+                head: [['Indicateur', 'Valeur']],
+                body: [
+                    ['Total Ordres de Fabrication', totalOrders.toString()],
+                    ['Ordres En Cours', enCours.toString()],
+                    ['Ordres Terminés', termine.toString()],
+                    ['Total Anomalies Détectées', totalAnomalies.toString()],
+                    ['Anomalies Critiques', critiques.toString()],
+                    ['Taux de Conformité', totalOrders > 0 ? `${Math.round(((totalOrders - totalAnomalies) / totalOrders) * 100)}%` : 'N/A'],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                bodyStyles: { fontSize: 9, textColor: [51, 65, 85] },
+                alternateRowStyles: { fillColor: [248, 250, 252] },
+                margin: { left: 14, right: 14 },
+            });
+
+            // Tableau des anomalies récentes
+            if (anomaliesData.length > 0) {
+                const lastTableY = doc.lastAutoTable.finalY + 15;
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Anomalies Récentes', 14, lastTableY);
+
+                doc.autoTable({
+                    startY: lastTableY + 8,
+                    head: [['Type', 'Gravité', 'Confiance IA', 'Date', 'Statut']],
+                    body: anomaliesData.slice(0, 15).map(a => [
+                        a.type || '—',
+                        a.severity || '—',
+                        a.confidence ? `${(a.confidence * 100).toFixed(0)}%` : '—',
+                        a.detectedAt ? new Date(a.detectedAt).toLocaleDateString('fr-FR') : '—',
+                        a.statut === 'traitee' ? 'Traitée' : a.statut === 'en_traitement' ? 'En traitement' : 'Détectée',
+                    ]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold', fontSize: 9 },
+                    bodyStyles: { fontSize: 8, textColor: [51, 65, 85] },
+                    alternateRowStyles: { fillColor: [254, 242, 242] },
+                    margin: { left: 14, right: 14 },
+                });
+            }
+
+            // Pied de page
+            const pageCount = doc.internal.getNumberOfPages();
+            for (let i = 1; i <= pageCount; i++) {
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(148, 163, 184);
+                doc.text(
+                    `ICEM Quality Control — Rapport généré le ${new Date().toLocaleString('fr-FR')} — Page ${i}/${pageCount}`,
+                    pageWidth / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' }
+                );
+            }
+
+            doc.save(`ICEM_Rapport_${report.type?.replace(/\s+/g, '_') || 'Production'}_${new Date().toISOString().split('T')[0]}.pdf`);
+        } catch (error) {
+            console.error('Erreur export PDF:', error);
+            alert("Erreur lors de l'export PDF");
+        }
+    };
+
     const sortedReports = [...reports].sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
     const lastReportDate = sortedReports.length > 0 ? new Date(sortedReports[0].generatedAt).toLocaleDateString() : 'Aucun';
 
@@ -50,23 +174,25 @@ const Reports = () => {
                     <h1 className="text-2xl font-bold text-slate-800">Rapports Qualité</h1>
                     <p className="text-sm text-slate-500 mt-1">Consultez et exportez l'historique de production et d'inspection</p>
                 </div>
-                <button
-                    onClick={handleGenerateReport}
-                    disabled={isGenerating}
-                    className="btn-primary flex items-center gap-2"
-                >
-                    {isGenerating ? (
-                        <>
-                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                            Génération...
-                        </>
-                    ) : (
-                        <>
-                            <FilePieChart size={18} />
-                            Générer Rapport Global
-                        </>
-                    )}
-                </button>
+                {canGenerateReport && (
+                    <button
+                        onClick={handleGenerateReport}
+                        disabled={isGenerating}
+                        className="btn-primary flex items-center gap-2"
+                    >
+                        {isGenerating ? (
+                            <>
+                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                Génération...
+                            </>
+                        ) : (
+                            <>
+                                <FilePieChart size={18} />
+                                Générer Rapport Global
+                            </>
+                        )}
+                    </button>
+                )}
             </div>
 
             {/* Stats Cards */}
@@ -147,10 +273,15 @@ const Reports = () => {
                                                 : 'Données Globales'}
                                         </td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 rounded-lg transition-all">
-                                                <Download size={14} />
-                                                EXPORT PDF
-                                            </button>
+                                            {canExport && (
+                                                <button
+                                                    onClick={() => handleExportPDF(report)}
+                                                    className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 rounded-lg transition-all"
+                                                >
+                                                    <Download size={14} />
+                                                    EXPORT PDF
+                                                </button>
+                                            )}
                                         </td>
                                     </tr>
                                 ))

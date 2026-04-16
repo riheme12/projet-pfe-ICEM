@@ -9,11 +9,27 @@ import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Login from './pages/Login';
 import InspectionDetails from './pages/InspectionDetails';
+import Settings from './pages/Settings';
+import { getCurrentUser } from './hooks/useAuth';
+import { ROLE_PERMISSIONS } from './hooks/useAuth';
 
-// Composant pour protéger les routes
+// Composant pour protéger les routes (authentification)
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Composant pour protéger les routes par rôle (RBAC)
+const RoleRoute = ({ page, children }) => {
+  const user = getCurrentUser();
+  const role = user?.role || 'technician';
+  const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.technician;
+
+  if (!permissions.pages.includes(page)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 };
 
 function App() {
@@ -30,14 +46,28 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="cables" element={<Cables />} />
-          <Route path="anomalies" element={<Anomalies />} />
-          <Route path="alerts" element={<Alerts />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="users" element={<Users />} />
+          <Route path="orders" element={
+            <RoleRoute page="orders"><Orders /></RoleRoute>
+          } />
+          <Route path="cables" element={
+            <RoleRoute page="cables"><Cables /></RoleRoute>
+          } />
+          <Route path="anomalies" element={
+            <RoleRoute page="anomalies"><Anomalies /></RoleRoute>
+          } />
+          <Route path="alerts" element={
+            <RoleRoute page="alerts"><Alerts /></RoleRoute>
+          } />
+          <Route path="reports" element={
+            <RoleRoute page="reports"><Reports /></RoleRoute>
+          } />
+          <Route path="users" element={
+            <RoleRoute page="users"><Users /></RoleRoute>
+          } />
           <Route path="inspections/:id" element={<InspectionDetails />} />
-          <Route path="settings" element={<div className="card"><h1 className="text-xl font-bold text-slate-800 mb-2">Paramètres</h1><p className="text-slate-500">Configuration du système en cours de développement...</p></div>} />
+          <Route path="settings" element={
+            <RoleRoute page="settings"><Settings /></RoleRoute>
+          } />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -19,6 +19,8 @@ const anomaliesRoutes = require('./routes/anomalies');
 const reportsRoutes = require('./routes/reports');
 const usersRoutes = require('./routes/users');
 const cablesRoutes = require('./routes/cables');
+const statsRoutes = require('./routes/stats');
+const settingsRoutes = require('./routes/settings');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/orders', ordersRoutes);
@@ -27,6 +29,8 @@ app.use('/api/anomalies', anomaliesRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/cables', cablesRoutes);
+app.use('/api/stats', statsRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

@@ -1,8 +1,11 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { useAuth } from '../hooks/useAuth';
 
 const Layout = () => {
+    const { user, roleLabel } = useAuth();
+
     return (
         <div className="flex min-h-screen bg-slate-50">
             <Sidebar />
@@ -14,11 +17,14 @@ const Layout = () => {
                     </div>
                     <div className="flex items-center gap-4">
                         <div className="text-right">
-                            <p className="text-sm font-bold text-slate-800">Responsable Qualité</p>
-                            <p className="text-xs text-slate-500">ICEM Production</p>
+                            <p className="text-sm font-bold text-slate-800">{user?.fullName || 'Utilisateur'}</p>
+                            <p className="text-xs text-slate-500">{roleLabel} — ICEM Production</p>
                         </div>
                         <div className="w-10 h-10 bg-slate-200 rounded-full border-2 border-white shadow-sm overflow-hidden">
-                            <img src="https://ui-avatars.com/api/?name=Admin&background=random" alt="User" />
+                            <img
+                                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=e2e8f0&color=475569&bold=true`}
+                                alt={user?.fullName || 'User'}
+                            />
                         </div>
                     </div>
                 </header>
