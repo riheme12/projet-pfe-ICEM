@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 /// Modèle représentant un rapport d'inspection
 /// 
 /// Un rapport est généré après chaque inspection de câble
@@ -31,7 +33,23 @@ class Report {
   /// Vérifier si le PDF est disponible
   bool get hasPdf => pdfUrl != null && pdfUrl!.isNotEmpty;
 
-  /// Créer depuis JSON
+  /// Créer depuis Firestore (DocumentSnapshot)
+  factory Report.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Report(
+      id: doc.id,
+      cableId: data['cableId'] as String? ?? '',
+      orderId: data['orderId'] as String? ?? '',
+      technicianId: data['technicianId'] as String? ?? '',
+      generatedAt: (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      conformityStatus: data['conformityStatus'] as String? ?? 'Inconnu',
+      anomaliesCount: data['anomaliesCount'] as int? ?? 0,
+      pdfUrl: data['pdfUrl'] as String?,
+      notes: data['notes'] as String?,
+    );
+  }
+
+  /// Créer depuis JSON (Map)
   factory Report.fromJson(Map<String, dynamic> json) {
     return Report(
       id: json['id'] as String,

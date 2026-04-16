@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import '../models/manufacturing_order.dart';
 import '../models/cable.dart';
 import '../models/electrical_checklist.dart';
@@ -10,29 +11,33 @@ class OrdersService {
   // Singleton
   static final OrdersService _instance = OrdersService._internal();
   factory OrdersService() => _instance;
-  OrdersService._internal();
+  late final CollectionReference _ordersCollection;
+  late final CollectionReference _cablesCollection;
+
+  OrdersService._internal() {
+    _ordersCollection = _db.collection('manufacturingOrder');
+    _cablesCollection = _db.collection('cable');
+  }
 
   /// Récupérer tous les ordres de fabrication
   Future<List<ManufacturingOrder>> getAllOrders() async {
     try {
-      final snapshot = await _db
-          .collection('manufacturingOrder')
+      final querySnapshot = await _ordersCollection
           .orderBy('DateLiv', descending: true)
           .get();
-      
-      return snapshot.docs
+      return querySnapshot.docs
           .map((doc) => ManufacturingOrder.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error fetching orders: $e');
-      // Fallback: essayer sans orderBy (si DateLiv n'a pas d'index)
+      debugPrint('Error fetching orders (with orderBy): $e');
+      // Fallback: essayer sans orderBy (si l'index Firestore n'existe pas encore)
       try {
-        final snapshot = await _db.collection('manufacturingOrder').get();
+        final snapshot = await _ordersCollection.get();
         return snapshot.docs
             .map((doc) => ManufacturingOrder.fromFirestore(doc))
             .toList();
       } catch (e2) {
-        print('Error fetching orders (fallback): $e2');
+        debugPrint('Error fetching orders (fallback): $e2');
         return [];
       }
     }
@@ -41,30 +46,34 @@ class OrdersService {
   /// Récupérer un ordre par son ID
   Future<ManufacturingOrder?> getOrderById(String id) async {
     try {
-      final doc = await _db.collection('manufacturingOrder').doc(id).get();
+      final doc = await _ordersCollection.doc(id).get();
       if (!doc.exists) return null;
       return ManufacturingOrder.fromFirestore(doc);
     } catch (e) {
-      print('Error fetching order $id: $e');
+      debugPrint('Error fetching order $id: $e');
       return null;
     }
   }
 
-  /// Rechercher des ordres par référence ou type de câble
+  /// Rechercher des ordres par référence, numéro d'OF, ou Gipros
   Future<List<ManufacturingOrder>> searchOrders(String query) async {
     if (query.isEmpty) return getAllOrders();
-    
+
     try {
-      final allOrders = await getAllOrders();
+      final snapshot = await _ordersCollection.get();
+      final allOrders = snapshot.docs
+          .map((doc) => ManufacturingOrder.fromFirestore(doc))
+          .toList();
+
       final lowerQuery = query.toLowerCase();
       return allOrders.where((order) {
         return order.reference.toLowerCase().contains(lowerQuery) ||
-            order.Gipros.toLowerCase().contains(lowerQuery) ||
+            order.gipros.toLowerCase().contains(lowerQuery) ||
             order.numeroOF.toLowerCase().contains(lowerQuery) ||
-            order.NumComd.toLowerCase().contains(lowerQuery);
+            order.numComd.toLowerCase().contains(lowerQuery);
       }).toList();
     } catch (e) {
-      print('Error searching orders: $e');
+      debugPrint('Error searching orders: $e');
       return [];
     }
   }
@@ -72,32 +81,45 @@ class OrdersService {
   /// Filtrer les ordres par statut
   Future<List<ManufacturingOrder>> filterOrders(String status) async {
     if (status == 'Tous') return getAllOrders();
-    
+
     try {
       final allOrders = await getAllOrders();
       final normalizedStatus = status.toLowerCase();
-      return allOrders.where((order) => 
-        order.status.toLowerCase() == normalizedStatus
-      ).toList();
+      return allOrders
+          .where((order) => order.status.toLowerCase() == normalizedStatus)
+          .toList();
     } catch (e) {
-      print('Error filtering orders: $e');
+      debugPrint('Error filtering orders: $e');
       return [];
+    }
+  }
+
+  /// Ajouter un ordre
+  Future<void> addOrder(ManufacturingOrder order) async {
+    try {
+      if (order.numeroOF.isEmpty) {
+        await _ordersCollection.add(order.toFirestore());
+      } else {
+        await _ordersCollection.doc(order.numeroOF).set(order.toFirestore());
+      }
+    } catch (e) {
+      debugPrint('Error adding order: $e');
+      rethrow;
     }
   }
 
   /// Récupérer les câbles d'un ordre
   Future<List<Cable>> getOrderCables(String orderId) async {
     try {
-      final snapshot = await _db
-          .collection('cable')
+      final querySnapshot = await _cablesCollection
           .where('orderId', isEqualTo: orderId)
           .get();
-      
-      return snapshot.docs
+
+      return querySnapshot.docs
           .map((doc) => Cable.fromFirestore(doc))
           .toList();
     } catch (e) {
-      print('Error fetching cables for order $orderId: $e');
+      debugPrint('Error fetching cables for order $orderId: $e');
       return [];
     }
   }
@@ -119,7 +141,7 @@ class OrdersService {
         'status': status,
         'inspectionDate': Timestamp.fromDate(DateTime.now()),
         'technicianId': technicianId,
-        'imageUrls': [],
+        'imageUrls': <String>[],
         'anomaliesCount': anomaliesCount,
         if (visualChecklistItems != null)
           'visualChecklist': visualChecklistItems,
@@ -131,7 +153,7 @@ class OrdersService {
 
       return docRef.id;
     } catch (e) {
-      print('Error saving cable: $e');
+      debugPrint('Error saving cable: $e');
       return null;
     }
   }
@@ -139,7 +161,7 @@ class OrdersService {
   /// Mettre à jour les statistiques de l'ordre après inspection d'un câble
   Future<void> _updateOrderStats(String orderId, bool isConform) async {
     try {
-      final doc = await _db.collection('manufacturingOrder').doc(orderId).get();
+      final doc = await _ordersCollection.doc(orderId).get();
       if (!doc.exists) return;
 
       final data = doc.data() as Map<String, dynamic>;
@@ -159,14 +181,14 @@ class OrdersService {
 
       final newInspected = inspected + 1;
 
-      await _db.collection('manufacturingOrder').doc(orderId).update({
+      await _ordersCollection.doc(orderId).update({
         'inspectedCount': newInspected,
         'conformCount': isConform ? conform + 1 : conform,
         'nonConformCount': isConform ? nonConform : nonConform + 1,
         'status': newInspected >= qta ? 'Terminé' : 'En cours',
       });
     } catch (e) {
-      print('Error updating order stats: $e');
+      debugPrint('Error updating order stats: $e');
     }
   }
 
@@ -175,15 +197,13 @@ class OrdersService {
   // ─────────────────────────────────────────────────────────────────
 
   /// Sauvegarder une checklist électrique dans Firestore
-  /// Collection : 'electrical_checklists'
   Future<String?> saveElectricalChecklist(ElectricalChecklist checklist) async {
     try {
       final docRef = await _db
           .collection('electrical_checklists')
           .add(checklist.toFirestore());
 
-      // Enregistrer le marquage dans l'ordre (électrique fait)
-      await _db.collection('manufacturingOrder').doc(checklist.orderId).update({
+      await _ordersCollection.doc(checklist.orderId).update({
         'electricalCheckDone': true,
         'electricalCheckDate': Timestamp.fromDate(checklist.date),
         'electricalCheckStatus': checklist.status,
@@ -192,7 +212,7 @@ class OrdersService {
 
       return docRef.id;
     } catch (e) {
-      print('Error saving electrical checklist: $e');
+      debugPrint('Error saving electrical checklist: $e');
       return null;
     }
   }
@@ -211,7 +231,7 @@ class OrdersService {
       if (snapshot.docs.isEmpty) return null;
       return ElectricalChecklist.fromFirestore(snapshot.docs.first);
     } catch (e) {
-      print('Error fetching electrical checklist for order $orderId: $e');
+      debugPrint('Error fetching electrical checklist for order $orderId: $e');
       return null;
     }
   }
@@ -226,7 +246,7 @@ class OrdersService {
           .get();
       return snapshot.docs.isNotEmpty;
     } catch (e) {
-      print('Error checking electrical check for order $orderId: $e');
+      debugPrint('Error checking electrical check for order $orderId: $e');
       return false;
     }
   }

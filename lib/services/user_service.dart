@@ -1,10 +1,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
+import 'package:flutter/foundation.dart';
 import '../models/user.dart';
 import './auth_service.dart';
+import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 
-/// Service pour gérer les données utilisateur
-/// 
+/// Service pour gérer les données utilisateur via Firestore
+///
 /// Connecté à Firebase Auth et Firestore (collection 'users')
 class UserService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -14,64 +15,21 @@ class UserService {
   // Singleton pattern
   static final UserService _instance = UserService._internal();
   factory UserService() => _instance;
-  UserService._internal();
 
-  final CollectionReference _usersCollection =
-      FirebaseFirestore.instance.collection('users');
+  late final CollectionReference _usersCollection;
 
   // Cache de l'utilisateur actuel
   User? _currentUser;
 
+  UserService._internal() {
+    _usersCollection = _db.collection('users');
+  }
+
   /// Récupérer l'utilisateur actuellement connecté depuis Firebase
   Future<User?> getCurrentUser() async {
-    if (_currentUser != null) return _currentUser!;
+    if (_currentUser != null) return _currentUser;
 
-<<<<<<< Updated upstream
-    try {
-      final firebaseUser = _auth.currentUser;
-      if (firebaseUser != null) {
-        final userDoc = await _usersCollection.doc(firebaseUser.uid).get();
-        if (userDoc.exists) {
-          final userData = userDoc.data() as Map<String, dynamic>;
-          _currentUser = User.fromJson({
-            'id': firebaseUser.uid,
-            ...userData,
-          });
-          return _currentUser!;
-        }
-      }
-    } catch (e) {
-      print('Error fetching current user: $e');
-    }
-
-    // Fallback: utilisateur par défaut si pas connecté
-    return User(
-      id: 'guest',
-      username: 'Invité',
-      fullName: 'Utilisateur non connecté',
-      email: '',
-      role: UserRole.operator,
-      createdAt: DateTime.now(),
-      stats: UserStats.empty(),
-=======
-    // Si pas d'utilisateur, créer un utilisateur de test
-    _currentUser ??= User(
-      id: 'user_001',
-      username: 'ahmed_benali',
-      fullName: 'Ahmed Ben Ali',
-      email: 'ahmed.benali@icem.tn',
-      role: UserRole.operator,
-      photoUrl: null, // Pas de photo pour l'instant
-      phone: '+216 20 123 456',
-      createdAt: DateTime(2024, 1, 15),
-      stats: UserStats(
-        inspectionsCount: 156,
-        anomaliesDetected: 23,
-        conformityRate: 94.5,
-        cablesProcessed: 156,
-      ),
->>>>>>> Stashed changes
-    );
+    return null;
   }
 
   /// Mettre à jour le profil utilisateur dans Firestore
@@ -84,45 +42,22 @@ class UserService {
       final firebaseUser = _auth.currentUser;
       if (firebaseUser == null) return;
 
-<<<<<<< Updated upstream
-      final Map<String, dynamic> updates = {};
+      Map<String, dynamic> updates = {};
       if (fullName != null) updates['fullName'] = fullName;
       if (phone != null) updates['phone'] = phone;
       if (photoUrl != null) updates['photoUrl'] = photoUrl;
 
       if (updates.isNotEmpty) {
         await _usersCollection.doc(firebaseUser.uid).update(updates);
-        
-        // Mettre à jour le cache
-        _currentUser = null;
-        await getCurrentUser();
+        _currentUser = null; // Invalidate cache to force refresh
       }
     } catch (e) {
-      print('Error updating profile: $e');
+      debugPrint('Error updating profile: $e');
       rethrow;
     }
   }
 
-  /// Récupérer les statistiques de l'utilisateur depuis Firestore
-=======
-    if (_currentUser != null) {
-      _currentUser = User(
-        id: _currentUser!.id,
-        username: _currentUser!.username,
-        fullName: fullName ?? _currentUser!.fullName,
-        email: _currentUser!.email,
-        role: _currentUser!.role,
-        photoUrl: photoUrl ?? _currentUser!.photoUrl,
-        phone: phone ?? _currentUser!.phone,
-        createdAt: _currentUser!.createdAt,
-        stats: _currentUser!.stats,
-      );
-    }
-  }
-
-
   /// Récupérer les statistiques de l'utilisateur
->>>>>>> Stashed changes
   Future<UserStats> getUserStats() async {
     final user = await getCurrentUser();
     return user?.stats ?? UserStats.empty();
@@ -134,7 +69,7 @@ class UserService {
       await _authService.logout();
       _currentUser = null;
     } catch (e) {
-      print('Logout error: $e');
+      debugPrint('Logout error: $e');
       rethrow;
     }
   }
@@ -144,7 +79,7 @@ class UserService {
     return _auth.currentUser != null;
   }
 
-  /// Invalider le cache (forcer le rechargement)
+  /// Invalider le cache
   void clearCache() {
     _currentUser = null;
   }

@@ -1,3 +1,4 @@
+require('dotenv').config();
 const admin = require('firebase-admin');
 const fs = require('fs');
 const path = require('path');
@@ -11,6 +12,8 @@ if (!fs.existsSync(serviceAccountPath)) {
 }
 
 const serviceAccount = require(serviceAccountPath);
+
+console.log('Utilisation du bucket:', process.env.STORAGE_BUCKET);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),

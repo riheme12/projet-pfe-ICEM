@@ -6,9 +6,10 @@ import 'package:projeticem/services/orders_service.dart';
 import 'package:projeticem/widgets/status_badge.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/services/pdf_export_service.dart';
-import 'package:projeticem/screens/qr_scanner_page.dart';
 import 'package:projeticem/screens/inspection_page.dart';
 import 'package:projeticem/screens/electrical_checklist_page.dart';
+import 'package:projeticem/screens/qr_scanner_page.dart';
+
 
 /// Page détails d'un ordre de fabrication
 ///
@@ -44,13 +45,14 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
-    // Charger câbles et statut électrique en parallèle
     final cables = await _ordersService.getOrderCables(widget.order.numeroOF);
     final elecChecklist =
         await _ordersService.getElectricalChecklistForOrder(widget.order.id);
 
+    if (!mounted) return;
     setState(() {
       _cables = cables;
       _electricalCheckDone = elecChecklist != null;
@@ -133,9 +135,8 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       context,
       MaterialPageRoute(
         builder: (context) => InspectionPage(
-          orderId: widget.order.id,
+          orderId: widget.order.numeroOF,
           orderReference: widget.order.reference,
-          cableReference: scannedCode,
         ),
       ),
     );
@@ -491,20 +492,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             runSpacing: 10,
             children: [
               _buildInfoRow(Icons.numbers, 'N° OF', widget.order.numeroOF),
-              _buildInfoRow(
-                  Icons.business_center, 'Client', widget.order.Client),
-              _buildInfoRow(
-                  Icons.assignment, 'Gi pros', widget.order.Gipros),
-              _buildInfoRow(
-                  Icons.receipt_long, 'N° Commande', widget.order.NumComd),
-              _buildInfoRow(Icons.precision_manufacturing, 'Ligne',
-                  widget.order.ligne ?? 'N/A'),
-              _buildInfoRow(
-                  Icons.calendar_today,
-                  'Livraison',
-                  '${widget.order.DateLiv.day}/${widget.order.DateLiv.month}/${widget.order.DateLiv.year}'),
-              _buildInfoRow(Icons.inventory, 'Quantité',
-                  '${widget.order.QTA} unités'),
+              _buildInfoRow(Icons.business_center, 'Client', widget.order.client),
+              _buildInfoRow(Icons.assignment, 'Gi pros', widget.order.gipros),
+              _buildInfoRow(Icons.receipt_long, 'N° Commande', widget.order.numComd),
+              _buildInfoRow(Icons.precision_manufacturing, 'Ligne', widget.order.ligne ?? 'N/A'),
+              _buildInfoRow(Icons.calendar_today, 'Livraison',
+                  '${widget.order.dateLiv.day}/${widget.order.dateLiv.month}/${widget.order.dateLiv.year}'),
+              _buildInfoRow(Icons.inventory, 'Quantité', '${widget.order.qta} unités'),
             ],
           ),
         ],
@@ -541,10 +535,10 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             children: [
               Expanded(
                 child: _buildStatCard(
-                    'Progression',
-                    '${widget.order.inspectedCount}/${widget.order.QTA}',
-                    '${widget.order.progressPercentage.toStringAsFixed(0)}%',
-                    AppTheme.primaryBlue),
+                  'Progression',
+                  '${widget.order.inspectedCount}/${widget.order.qta}',
+                  '${widget.order.progressPercentage.toStringAsFixed(0)}%',
+                  AppTheme.primaryBlue),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -708,12 +702,11 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     : AppTheme.errorRed,
           ),
         ),
-        title: Text(cable.reference,
-            style: const TextStyle(fontWeight: FontWeight.w600)),
+        title: Text(cable.code, style: const TextStyle(fontWeight: FontWeight.w600)),
         subtitle: Text(
           cable.inspectionDate != null
               ? 'Inspecté le ${cable.inspectionDate!.day}/${cable.inspectionDate!.month}/${cable.inspectionDate!.year}'
-              : cable.code,
+              : 'En attente d\'inspection',
         ),
         trailing: StatusBadge(status: cable.status, isSmall: true),
       ),

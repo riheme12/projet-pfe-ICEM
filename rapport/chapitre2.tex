@@ -1,0 +1,403 @@
+%=============================================================
+% CHAPITRE 2 : Analyse de besoins et planification
+%=============================================================
+\chapter{Analyse de besoins et planification}
+
+%-------------------------------------------------------------
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+%-------------------------------------------------------------
+
+Ce chapitre présente l'analyse complète des besoins du système de contrôle qualité intelligent développé pour ICeM.tn. Il identifie l'ensemble des acteurs impliqués, spécifie les besoins fonctionnels et non fonctionnels, décrit le système d'intelligence artificielle intégré, et expose l'architecture générale retenue pour la solution.
+
+%-------------------------------------------------------------
+\section{Analyse des besoins}
+%-------------------------------------------------------------
+
+\subsection{Identification des acteurs}
+
+L'identification des acteurs est la première étape de l'analyse des besoins. Elle permet de délimiter précisément le périmètre du système et les interactions entre ses utilisateurs et ses composants. Un acteur représente toute entité externe — humaine ou automatisée — qui interagit directement avec le système.
+
+\subsection{Acteurs du Système}
+
+Le système implique cinq acteurs principaux ayant des rôles, des responsabilités et des interfaces distinctes.
+
+\begin{table}[H]
+\centering
+\caption{Acteurs du système et leurs responsabilités}
+\label{tab:acteurs}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|l|l|X|}
+\hline
+\textbf{Acteur} & \textbf{Interface} & \textbf{Profil} & \textbf{Responsabilités Principales} \\
+\hline
+Technicien Qualité
+  & Application Mobile
+  & Opérateur terrain, exécute les contrôles physiques
+  & Effectuer les inspections visuelles ; capturer les images des câbles ; valider les checklists ; consulter les ordres de fabrication ; signaler les anomalies \\
+\hline
+Administrateur Système
+  & Application Web
+  & Responsable de la gestion technique et opérationnelle
+  & Gérer les comptes utilisateurs et rôles ; gérer les ordres de fabrication ; consulter et traiter les alertes d'anomalies ; configurer les modèles IA ; consulter les statistiques et rapports \\
+\hline
+Responsable Qualité
+  & Application Web
+  & Supervise la qualité, prend les décisions correctives
+  & Superviser les inspections en cours ; analyser les KPIs qualité ; gérer les anomalies critiques ; valider les rapports d'inspection \\
+\hline
+Direction
+  & Application Web
+  & Décideur, consulte les données agrégées
+  & Consulter les tableaux de bord décisionnels ; exporter les rapports ; analyser les tendances de conformité \\
+\hline
+Système IA
+  & Backend Automatisé
+  & Acteur non humain, traitement automatisé des images
+  & Analyser les images reçues ; détecter et localiser les défauts (YOLOv8) ; calculer le score de conformité ; renvoyer les résultats au backend \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\subsection{Besoins fonctionnels}
+%-------------------------------------------------------------
+
+\subsubsection{Application Mobile – Technicien Qualité}
+
+\paragraph{Authentification et Gestion de Session}
+
+L'application mobile doit proposer un mécanisme d'authentification sécurisé permettant au technicien d'accéder à ses fonctionnalités selon son rôle.
+
+\begin{itemize}
+    \item Connexion sécurisée par email et mot de passe via Firebase Authentication.
+    \item Gestion automatique des jetons (tokens) d'accès avec renouvellement transparent.
+    \item Déconnexion sécurisée et nettoyage de la session.
+    \item Gestion des erreurs d'authentification avec messages explicites.
+    \item Mode hors ligne partiel permettant de consulter les dernières données synchronisées.
+\end{itemize}
+
+\paragraph{Gestion des Ordres de Fabrication}
+
+Le technicien doit pouvoir consulter et gérer les ordres de fabrication qui lui sont assignés depuis l'application mobile.
+
+\begin{itemize}
+    \item Affichage de la liste complète des ordres de fabrication avec leur statut (en cours, terminé, suspendu).
+    \item Filtrage des ordres par date, statut, type de câble ou référence.
+    \item Consultation du détail d'un ordre : référence, type de câble, quantité prévue, quantité réalisée, date de début et de fin.
+    \item Sélection d'un ordre pour démarrer une session d'inspection associée.
+    \item Saisie de la référence et du code (QR code ou manuel) du câble à inspecter.
+\end{itemize}
+
+\paragraph{Inspection par Caméra et Intelligence Artificielle}
+
+Il s'agit du cœur fonctionnel de l'application mobile. Le technicien utilise la caméra de son smartphone pour effectuer une inspection visuelle guidée par l'IA.
+
+\begin{itemize}
+    \item Activation de la caméra en mode inspection avec interface dédiée et plein écran.
+    \item Système de guidage intelligent : l'IA locale analyse le flux vidéo en temps réel pour guider le technicien dans le positionnement optimal du câble dans le cadre de capture.
+    \item Indicateurs visuels de guidage : flèches directionnelles, cadre de détection coloré (vert = bon positionnement, orange = à corriger).
+    \item Capture automatique de l'image lorsque le positionnement est jugé optimal par l'IA.
+    \item Possibilité de capture manuelle par le technicien si nécessaire.
+    \item Envoi automatique de l'image au service IA cloud (YOLOv8) pour analyse approfondie.
+    \item Affichage du résultat d'analyse : câble conforme (vert) ou non-conforme (rouge) avec le score de confiance.
+    \item Visualisation des zones d'anomalies sur l'image avec des \textit{bounding boxes} et étiquettes de type de défaut.
+    \item Possibilité de capturer plusieurs images pour un même câble sous différents angles.
+\end{itemize}
+
+\paragraph{Gestion des Anomalies sur Mobile}
+
+En cas de détection d'anomalie, le technicien dispose d'outils pour les gérer et compléter l'inspection.
+
+\begin{itemize}
+    \item Affichage de la liste des anomalies détectées avec type, gravité et localisation.
+    \item Vue détaillée de chaque anomalie avec image annotée et description.
+    \item Génération automatique d'une alerte envoyée au responsable qualité et à l'administrateur.
+    \item Lancement de la checklist visuelle : validation de critères visuels prédéfinis (état de la gaine, connecteurs, marquages, etc.).
+    \item Lancement de la checklist électrique : saisie des mesures électriques (résistance, isolation, continuité) et comparaison aux valeurs nominales.
+    \item Possibilité d'ajouter des commentaires libres et des photos supplémentaires sur une anomalie.
+\end{itemize}
+
+\paragraph{Traçabilité, Rapports et Synchronisation}
+
+\begin{itemize}
+    \item Enregistrement automatique et continu de toutes les données d'inspection dans Firebase Firestore.
+    \item Génération automatique d'un rapport d'inspection en fin de contrôle (PDF).
+    \item Synchronisation bidirectionnelle et temps réel avec la plateforme web.
+    \item Historique local des inspections effectuées consultable hors ligne.
+\end{itemize}
+
+%-----------------------------------------------------
+\subsubsection{Application Web – Administrateur / Responsable Qualité / Direction}
+
+\paragraph{Authentification et Gestion des Accès}
+
+\begin{itemize}
+    \item Connexion sécurisée par email et mot de passe.
+    \item Gestion des rôles (RBAC) : Administrateur, Responsable Qualité, Direction.
+    \item Tableau de bord personnalisé selon le rôle de l'utilisateur connecté.
+    \item Réinitialisation de mot de passe par email.
+\end{itemize}
+
+\paragraph{Tableau de Bord (Dashboard) et Statistiques}
+
+L'application web offre un tableau de bord centralisé avec des indicateurs clés de performance (KPIs) mis à jour en temps réel.
+
+\begin{itemize}
+    \item Nombre total d'inspections effectuées (jour, semaine, mois).
+    \item Taux de conformité global et par type de câble.
+    \item Nombre et types d'anomalies détectées avec graphiques de répartition (camembert, barres, courbes de tendance).
+    \item Indicateur de performance par technicien (nombre d'inspections, taux de détection).
+    \item Cartographie des anomalies les plus fréquentes par période.
+    \item Alertes actives non traitées affichées de manière prioritaire.
+    \item Comparaison des taux de conformité entre périodes pour analyse des tendances.
+\end{itemize}
+
+\paragraph{Gestion des Alertes}
+
+L'application web permet à l'administrateur et au responsable qualité de consulter et traiter les alertes générées automatiquement lors de la détection d'anomalies.
+
+\begin{itemize}
+    \item Liste des alertes en temps réel avec niveau de gravité (faible, moyen, critique) et câble concerné.
+    \item Notification visuelle (badge, couleur) selon le niveau de gravité.
+    \item Détail d'une alerte : image annotée, type d'anomalie, score IA, technicien ayant effectué l'inspection, date et heure.
+    \item Possibilité de marquer une alerte comme traitée, avec saisie de la mesure corrective prise.
+    \item Historique des alertes traitées et archivées.
+    \item Filtrage des alertes par date, type d'anomalie, ordre de fabrication ou technicien.
+\end{itemize}
+
+\paragraph{Gestion des Anomalies}
+
+\begin{itemize}
+    \item Liste complète des anomalies détectées avec pagination et filtres avancés.
+    \item Consultation du détail de chaque anomalie : images annotées, coordonnées de la bounding box, score de confiance, type et gravité.
+    \item Historique des anomalies par câble et par ordre de fabrication.
+    \item Export de la liste des anomalies en Excel pour analyse externe.
+\end{itemize}
+
+\paragraph{Gestion des Ordres de Fabrication}
+
+\begin{itemize}
+    \item Création d'un nouvel ordre de fabrication avec saisie : référence, type de câble, quantité prévue, date de début et de fin prévue.
+    \item Modification d'un ordre existant (statut, quantités, dates).
+    \item Consultation de la liste des ordres avec statut en temps réel.
+    \item Suivi de l'avancement d'un ordre : nombre de câbles inspectés / quantité prévue, taux de conformité de l'ordre.
+    \item Archivage des ordres terminés.
+    \item Recherche et filtrage des ordres par référence, type, statut ou période.
+\end{itemize}
+
+\paragraph{Gestion des Utilisateurs}
+
+Cette fonctionnalité est réservée à l'Administrateur.
+
+\begin{itemize}
+    \item Création d'un compte utilisateur avec saisie : nom, prénom, email, rôle et mot de passe initial.
+    \item Modification des informations d'un utilisateur (rôle, statut actif/inactif).
+    \item Désactivation (sans suppression) d'un compte utilisateur.
+    \item Réinitialisation du mot de passe d'un utilisateur.
+    \item Liste des utilisateurs avec leur rôle et statut.
+    \item Attribution et modification des rôles (Technicien, Responsable, Administrateur, Direction).
+\end{itemize}
+
+\paragraph{Reporting et Export}
+
+\begin{itemize}
+    \item Génération de rapports d'inspection complets au format PDF (rapport par câble, par ordre de fabrication, ou synthèse périodique).
+    \item Export des données de contrôle au format Excel (avec filtres personnalisables : période, type de câble, statut).
+    \item Archivage des rapports générés avec accès à l'historique.
+    \item Téléchargement direct depuis l'interface web.
+\end{itemize}
+
+%-------------------------------------------------------------
+\subsection{Besoins non fonctionnels}
+%-------------------------------------------------------------
+
+Les exigences non fonctionnelles définissent les contraintes de qualité auxquelles le système doit répondre indépendamment de ses fonctionnalités métier.
+
+\begin{table}[H]
+\centering
+\caption{Exigences non fonctionnelles du système}
+\label{tab:non-fonctionnels}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|X|l|X|}
+\hline
+\textbf{Exigence} & \textbf{Description} & \textbf{Métrique Cible} & \textbf{Solution Technique} \\
+\hline
+Performance
+  & Temps de réponse du système IA et de l'API
+  & Inférence IA < 3 s ; API REST < 500 ms
+  & YOLOv8 optimisé, mise en cache backend, CDN Firebase \\
+\hline
+Sécurité
+  & Protection des données et authentification forte
+  & HTTPS obligatoire, tokens JWT expirants, RBAC
+  & Firebase Authentication, HTTPS/TLS, validation des rôles middleware \\
+\hline
+Fiabilité IA
+  & Précision de la détection des anomalies
+  & Précision (mAP) > 90\% sur le dataset de test
+  & Entraînement YOLOv8 sur dataset annoté, validation humaine \\
+\hline
+Scalabilité
+  & Capacité à monter en charge selon la demande
+  & Support de 1\,000+ inspections/jour sans dégradation
+  & Firebase auto-scaling, architecture microservices, Docker \\
+\hline
+Disponibilité
+  & Taux de disponibilité du système
+  & 99\% uptime, mode offline mobile avec sync automatique
+  & Firebase SLA 99.95\%, gestion offline Flutter avec file de sync \\
+\hline
+Maintenabilité
+  & Facilité de mise à jour et déploiement de nouveaux modèles
+  & Déploiement d'un nouveau modèle IA en < 1 heure
+  & CI/CD pipeline, versioning des modèles, API découplée \\
+\hline
+Utilisabilité
+  & Prise en main intuitive pour les techniciens terrain
+  & Formation < 2 heures, taux d'erreur utilisateur < 5\%
+  & UI/UX guidée, feedback visuel immédiat, guidage IA intégré \\
+\hline
+Traçabilité
+  & Conservation des données d'inspection et d'audit
+  & Conservation des données sur 5 ans minimum
+  & Firebase Firestore avec archivage, logs horodatés, images stockées \\
+\hline
+\end{tabularx}
+\end{table}
+
+%-------------------------------------------------------------
+\section{Système d'Intelligence Artificielle}
+%-------------------------------------------------------------
+
+\subsection{Vue d'Ensemble}
+
+Le système IA constitue le composant différenciant de la solution. Il est responsable de l'analyse automatique des images de câbles capturées par les techniciens sur le terrain. Il s'articule autour de trois modules complémentaires.
+
+\subsection{Modèles IA}
+
+\begin{table}[H]
+\centering
+\caption{Modèles IA et leurs caractéristiques}
+\label{tab:modeles-ia}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|X|X|l|}
+\hline
+\textbf{Modèle} & \textbf{Rôle} & \textbf{Technologie} & \textbf{Déploiement} \\
+\hline
+Modèle de Guidage
+  & Analyse le flux vidéo en temps réel pour guider le positionnement du câble
+  & Modèle léger optimisé (TensorFlow Lite / ONNX), traitement local sur mobile
+  & Embarqué sur mobile (Flutter) \\
+\hline
+Modèle de Détection des Défauts
+  & Détecte et localise les anomalies sur les câbles (détection d'objets)
+  & YOLOv8 (Ultralytics), entraîné sur un dataset propriétaire ICEM annoté
+  & Cloud (Python FastAPI) \\
+\hline
+Modèle de Conformité
+  & Calcule un score global de conformité du câble à partir des résultats de détection
+  & Algorithme de scoring basé sur les résultats YOLOv8 + règles métier ICEM
+  & Cloud (Python FastAPI) \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Types de Défauts Détectables}
+
+Le modèle YOLOv8 est entraîné pour détecter les classes de défauts suivantes, spécifiques aux câbles électriques et faisceaux automobiles ICeM.tn :
+
+\begin{itemize}
+    \item Rayures superficielles sur la gaine isolante du câble.
+    \item Déformations et malformations de la gaine (écrasements, boursouflures, torsions anormales).
+    \item Coupures, entailles ou ruptures de la gaine extérieure.
+    \item Défauts de sertissage sur les connecteurs et cosses (sertissage insuffisant, mal positionné).
+    \item Problèmes de regroupement des fils dans le faisceau (fils manquants, croisements anormaux).
+    \item Défauts d'agrafage ou de fixation des colliers et attaches du faisceau.
+    \item Défauts de marquage et d'identification (codes couleur non conformes, étiquettes illisibles ou absentes).
+    \item Contaminations (huile, corps étrangers, humidité sur les connecteurs).
+    \item Longueur de dénudage non conforme sur les extrémités de câbles.
+\end{itemize}
+
+\subsection{Pipeline de Traitement IA}
+
+Le pipeline de traitement des images suit les étapes présentées ci-dessous :
+
+\begin{enumerate}
+    \item \textbf{Acquisition Image :} capture via caméra mobile après validation du guidage.
+    \item \textbf{Prétraitement :} redimensionnement (640$\times$640), normalisation des valeurs de pixels, suppression du bruit.
+    \item \textbf{Inférence YOLOv8 :} détection des objets (défauts) avec génération des bounding boxes, classes et scores.
+    \item \textbf{Post-traitement :} filtrage par seuil de confiance ($> 0{,}5$), NMS (\textit{Non-Maximum Suppression}), calcul du score global.
+    \item \textbf{Classification de conformité :} le câble est déclaré conforme si aucun défaut critique n'est détecté et si le score global dépasse le seuil défini.
+    \item \textbf{Retour des résultats :} envoi au backend (JSON), sauvegarde dans Firestore, notification à l'application mobile.
+\end{enumerate}
+
+\subsection{Dataset et Entraînement}
+
+\begin{itemize}
+    \item Collecte d'images de câbles sur le site de production ICEM dans des conditions réelles.
+    \item Annotation manuelle des défauts avec l'outil Label Studio (bounding boxes et classes).
+    \item Augmentation des données (rotation, zoom, variations de luminosité) pour enrichir le dataset.
+    \item Entraînement du modèle YOLOv8 sur GPU (Google Colab ou serveur dédié).
+    \item Validation croisée et ajustement des hyperparamètres pour atteindre une précision > 90\%.
+    \item Versioning des modèles pour permettre les mises à jour sans interruption de service.
+\end{itemize}
+
+%-------------------------------------------------------------
+\section{Architecture Générale du Système}
+%-------------------------------------------------------------
+
+\subsection{Vue d'Ensemble Architecturale}
+
+Le système repose sur une architecture distribuée à 4 couches, orientée microservices et cloud-native, garantissant la scalabilité, la disponibilité et la maintenabilité.
+
+\begin{table}[H]
+\centering
+\caption{Architecture du système par couches}
+\label{tab:architecture}
+\renewcommand{\arraystretch}{1.4}
+\begin{tabularx}{\textwidth}{|l|l|l|X|}
+\hline
+\textbf{Couche} & \textbf{Composant} & \textbf{Technologie} & \textbf{Rôle} \\
+\hline
+\multirow{2}{*}{Frontend}
+  & Application Mobile  & Flutter / Dart
+  & Interface technicien, capture images, IA locale guidage \\
+\cline{2-4}
+  & Application Web     & React.js, Material-UI, Chart.js
+  & Dashboard, gestion anomalies, reporting, administration \\
+\hline
+Backend
+  & API REST            & Node.js, Express.js
+  & Logique métier, orchestration services, gestion données \\
+\hline
+Service IA
+  & Microservice IA     & Python, FastAPI, YOLOv8, OpenCV, PyTorch
+  & Analyse images, détection anomalies, inférence modèles \\
+\hline
+Cloud Firebase
+  & Firestore, Cloud Storage, Auth & Google Firebase
+  & Base de données NoSQL temps réel, stockage fichiers, authentification \\
+\hline
+\end{tabularx}
+\end{table}
+
+\subsection{Communication entre Composants}
+
+Les différents composants du système communiquent via des protocoles standardisés et sécurisés :
+
+\begin{itemize}
+    \item \textbf{Application Mobile $\leftrightarrow$ Backend API :} communication HTTPS/REST avec jetons JWT.
+    \item \textbf{Application Web $\leftrightarrow$ Backend API :} communication HTTPS/REST avec jetons JWT.
+    \item \textbf{Backend API $\leftrightarrow$ Service IA :} appels REST internes (\texttt{POST /analyze}) pour l'envoi des images et la réception des résultats.
+    \item \textbf{Backend API $\leftrightarrow$ Firebase Firestore :} SDK Firebase Admin pour lecture/écriture des données.
+    \item \textbf{Application Mobile $\leftrightarrow$ Firebase Firestore :} \texttt{onSnapshot} pour la synchronisation en temps réel.
+    \item \textbf{Application Web $\leftrightarrow$ Firebase Firestore :} \texttt{onSnapshot} pour le rafraîchissement du dashboard en temps réel.
+\end{itemize}
+
+%-------------------------------------------------------------
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+%-------------------------------------------------------------
+
+Ce chapitre a permis de définir de manière exhaustive les besoins du système : les cinq acteurs principaux et leurs responsabilités, les besoins fonctionnels couvrant l'application mobile du technicien et la plateforme web multi-rôle, le système d'intelligence artificielle basé sur YOLOv8, ainsi que l'architecture distribuée à quatre couches retenue. Ces spécifications constituent la base de référence pour la conception détaillée et le développement présentés dans les chapitres suivants.

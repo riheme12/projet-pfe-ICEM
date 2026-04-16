@@ -77,7 +77,7 @@ class OrderCard extends StatelessWidget {
 
                         // Gipros
                         Text(
-                          'Gi pros: ${order.Gipros}',
+                          'Gi pros: ${order.gipros}',
                           style: const TextStyle(
                             fontSize: 14,
                             color: AppTheme.textGrey,
@@ -93,7 +93,7 @@ class OrderCard extends StatelessWidget {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '${order.inspectedCount} / ${order.QTA} inspectés',
+                                  '${order.inspectedCount} / ${order.qta} inspectés',
                                   style: const TextStyle(
                                     fontSize: 12,
                                     color: AppTheme.textGrey,

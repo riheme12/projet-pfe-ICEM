@@ -48,7 +48,7 @@ class _OrdersListPageState extends State<OrdersListPage> {
             order.reference
                 .toLowerCase()
                 .contains(_searchQuery.toLowerCase()) ||
-            order.Gipros.toLowerCase().contains(_searchQuery.toLowerCase());
+            order.gipros.toLowerCase().contains(_searchQuery.toLowerCase());
         return matchesStatus && matchesSearch;
       }).toList();
     });

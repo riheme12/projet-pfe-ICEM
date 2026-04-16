@@ -1,8 +1,9 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../models/user.dart';
+import 'package:projeticem/models/user.dart';
 
 /// Authentication service handling login, logout, and session management using Firebase
 class AuthService {
@@ -13,9 +14,10 @@ class AuthService {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Authenticate user with username (email) and password
-  Future<User?> login(String email, String password, bool rememberMe) async {
+  /// Authenticate user with username and password
+  Future<User?> login(String username, String password, bool rememberMe) async {
     try {
+      final email = '$username@icem.app';
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: email,
         password: password,
@@ -36,23 +38,11 @@ class AuthService {
       }
 
       final userData = userDoc.data()!;
-<<<<<<< Updated upstream
       // Handle potential missing fields gracefully
       final user = User.fromJson({
         'id': userCredential.user!.uid,
         ...userData,
       });
-=======
-      final user = User(
-        id: userCredential.user!.uid,
-        username: userData['username'] ?? email.split('@')[0],
-        fullName: userData['fullName'] ?? 'Unknown',
-        email: email,
-        role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
-        createdAt: DateTime.now(), // Fallback
-        stats: UserStats.empty(),
-      );
->>>>>>> Stashed changes
 
 
       // Save session
@@ -62,13 +52,13 @@ class AuthService {
 
       return user;
     } catch (e) {
+      debugPrint('Login error: $e');
       rethrow;
     }
   }
 
   /// Register new user
   Future<User?> signup({
-    required String email,
     required String password,
     required String fullName,
     required String username,
@@ -76,6 +66,7 @@ class AuthService {
     String? phone,
   }) async {
     try {
+      final email = '$username@icem.app';
       // Create user in Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
@@ -93,23 +84,17 @@ class AuthService {
         fullName: fullName,
         email: email,
         role: role,
-<<<<<<< Updated upstream
         phone: phone,
-=======
->>>>>>> Stashed changes
         createdAt: DateTime.now(),
         stats: UserStats.empty(),
       );
 
-<<<<<<< Updated upstream
       // Save to Firestore. Use user.toJson() which now handles everything correctly.
-=======
-
->>>>>>> Stashed changes
       await _firestore.collection('users').doc(uid).set(user.toJson());
 
       return user;
     } catch (e) {
+      debugPrint('Signup error: $e');
       rethrow;
     }
   }
@@ -136,7 +121,7 @@ class AuthService {
           try {
             return User.fromJson(jsonDecode(userJson));
           } catch (e) {
-             print('Error parsing session user: $e');
+             debugPrint('Error parsing session user: $e');
              // Proceed to fetch from Firebase
           }
         }
@@ -152,24 +137,11 @@ class AuthService {
 
         if (userDoc.exists) {
           final userData = userDoc.data()!;
-<<<<<<< Updated upstream
           final user = User.fromJson({
             'id': firebaseUser.uid,
             ...userData,
           });
           
-=======
-          final user = User(
-             id: firebaseUser.uid,
-             username: userData['username'] ?? firebaseUser.email!.split('@')[0],
-             fullName: userData['fullName'] ?? 'Unknown',
-             email: firebaseUser.email!,
-             role: UserRoleExtension.fromString(userData['role'] ?? 'operator'),
-             createdAt: DateTime.now(),
-             stats: UserStats.empty(),
-          );
-
->>>>>>> Stashed changes
           // Refresh session
           await _saveSession(user, true); 
           return user;
@@ -178,6 +150,7 @@ class AuthService {
 
       return null;
     } catch (e) {
+      debugPrint('Get current user error: $e');
       return null;
     }
   }
@@ -191,6 +164,7 @@ class AuthService {
       await prefs.remove(_keyCurrentUser);
       await prefs.remove(_keyRememberMe); // Also clear remember me flag? Usually yes if logging out explicitely.
     } catch (e) {
+      debugPrint('Logout error: $e');
       rethrow;
     }
   }
