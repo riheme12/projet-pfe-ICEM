@@ -28,6 +28,25 @@ const InspectionDetails = () => {
         fetchDetails();
     }, [id]);
 
+    const handleValidate = async () => {
+        if (!window.confirm("Voulez-vous valider manuellement cette inspection comme 'Conforme' ?")) return;
+        
+        try {
+            setLoading(true);
+            await InspectionService.patch(id, { status: 'Conforme' });
+            
+            // Re-fetch data to reflect changes
+            const insRes = await InspectionService.getById(id);
+            setInspection(insRes.data);
+            alert("Inspection validée avec succès !");
+        } catch (error) {
+            console.error("Erreur validation", error);
+            alert("Erreur lors de la validation");
+        } finally {
+            setLoading(false);
+        }
+    };
+
     if (loading) return <div className="p-10 text-center font-bold text-slate-500 animate-pulse">Chargement de l'inspection...</div>;
 
     return (
@@ -61,9 +80,10 @@ const InspectionDetails = () => {
                     </button>
                     <button
                         className="btn-primary px-8"
-                        onClick={() => alert("Fonctionnalité de validation manuelle en cours de développement")}
+                        onClick={handleValidate}
+                        disabled={inspection?.status === 'Conforme'}
                     >
-                        Valider Inspection
+                        {inspection?.status === 'Conforme' ? 'Inspection Validée' : 'Valider Inspection'}
                     </button>
                 </div>
             </div>

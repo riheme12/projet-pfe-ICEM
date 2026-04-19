@@ -10,6 +10,9 @@ app.use(cors());
 app.use(express.json());
 app.use(morgan('dev'));
 
+// Auth middleware
+const { authenticateToken } = require('./middleware/auth');
+
 // Routes
 const authRoutes = require('./routes/auth');
 const ordersRoutes = require('./routes/orders');
@@ -21,15 +24,18 @@ const cablesRoutes = require('./routes/cables');
 const statsRoutes = require('./routes/stats');
 const settingsRoutes = require('./routes/settings');
 
+// Auth routes (public — no middleware)
 app.use('/api/auth', authRoutes);
-app.use('/api/orders', ordersRoutes);
-app.use('/api/inspections', inspectionsRoutes);
-app.use('/api/anomalies', anomaliesRoutes);
-app.use('/api/reports', reportsRoutes);
-app.use('/api/users', usersRoutes);
-app.use('/api/cables', cablesRoutes);
-app.use('/api/stats', statsRoutes);
-app.use('/api/settings', settingsRoutes);
+
+// Protected routes (require valid Firebase token)
+app.use('/api/orders', authenticateToken, ordersRoutes);
+app.use('/api/inspections', authenticateToken, inspectionsRoutes);
+app.use('/api/anomalies', authenticateToken, anomaliesRoutes);
+app.use('/api/reports', authenticateToken, reportsRoutes);
+app.use('/api/users', authenticateToken, usersRoutes);
+app.use('/api/cables', authenticateToken, cablesRoutes);
+app.use('/api/stats', authenticateToken, statsRoutes);
+app.use('/api/settings', authenticateToken, settingsRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

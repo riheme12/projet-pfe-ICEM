@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
 
-<<<<<<< Updated upstream
 class CustomScaffold extends StatelessWidget {
   const CustomScaffold({super.key, this.child});
-=======
-class CustomScaffold extends StatelessWidget{
-  const CustomScaffold({super.key,this.child});
->>>>>>> Stashed changes
   final Widget? child;
 
   @override

@@ -1,83 +1,65 @@
-/// Rôles possibles pour un utilisateur
+/// Rôles utilisateur disponibles dans le système ICEM
 enum UserRole {
   operator,
   inspector,
   supervisor,
-  admin;
-
-  String get name {
-    switch (this) {
-      case UserRole.operator: return 'Opérateur';
-      case UserRole.inspector: return 'Inspecteur';
-      case UserRole.supervisor: return 'Superviseur';
-      case UserRole.admin: return 'Administrateur';
-    }
-  }
-}
-
-extension UserRoleExtension on UserRole {
-  static UserRole fromString(String role) {
-    switch (role.toLowerCase()) {
-      case 'inspector': return UserRole.inspector;
-      case 'supervisor': return UserRole.supervisor;
-      case 'admin': return UserRole.admin;
-      default: return UserRole.operator;
-    }
-  }
-}
-
-/// Modèle représentant un utilisateur du système ICEM
-<<<<<<< Updated upstream
-///
-/// Ce modèle contient toutes les informations d'un utilisateur :
-/// - Informations personnelles (nom, email, téléphone)
-/// - Rôle dans le système
-/// - Statistiques personnelles
-/// Rôles utilisateur disponibles
-enum UserRole {
+  admin,
   technician,
   manager,
-  admin,
-  operator,
 }
 
 /// Extension pour la conversion String <-> UserRole
 extension UserRoleExtension on UserRole {
   String get name {
     switch (this) {
+      case UserRole.operator:
+        return 'Opérateur';
+      case UserRole.inspector:
+        return 'Inspecteur';
+      case UserRole.supervisor:
+        return 'Superviseur';
+      case UserRole.admin:
+        return 'Administrateur';
       case UserRole.technician:
         return 'Technicien';
       case UserRole.manager:
         return 'Responsable';
-      case UserRole.admin:
-        return 'Administrateur';
-      case UserRole.operator:
-        return 'Opérateur';
     }
   }
 
   static UserRole fromString(String role) {
-    switch (role) {
-      case 'Technicien':
-      case 'technician':
-        return UserRole.technician;
-      case 'Responsable':
-      case 'manager':
-        return UserRole.manager;
-      case 'Administrateur':
-      case 'admin':
-        return UserRole.admin;
-      case 'Opérateur':
+    switch (role.toLowerCase()) {
+      case 'opérateur':
       case 'operator':
         return UserRole.operator;
+      case 'inspecteur':
+      case 'inspector':
+        return UserRole.inspector;
+      case 'superviseur':
+      case 'supervisor':
+        return UserRole.supervisor;
+      case 'administrateur':
+      case 'admin':
+        return UserRole.admin;
+      case 'technicien':
+      case 'technician':
+        return UserRole.technician;
+      case 'responsable':
+      case 'manager':
+        return UserRole.manager;
       default:
         return UserRole.operator;
     }
   }
 }
 
-=======
->>>>>>> Stashed changes
+/// Modèle représentant un utilisateur du système ICEM
+///
+/// Ce modèle contient toutes les informations d'un utilisateur :
+/// - Informations personnelles (nom, email, téléphone)
+/// - Rôle dans le système
+/// - Statistiques personnelles
+
 class User {
   final String id;
   final String username;
@@ -106,26 +88,15 @@ class User {
     return User(
       id: json['id'] as String? ?? '',
       username: json['username'] as String? ?? '',
-<<<<<<< Updated upstream
-      fullName: json['fullName'] as String? ?? '',
-=======
       fullName: json['fullName'] as String? ?? json['name'] as String? ?? '',
->>>>>>> Stashed changes
       email: json['email'] as String? ?? '',
       role: UserRoleExtension.fromString(json['role'] as String? ?? 'operator'),
       photoUrl: json['photoUrl'] as String?,
       phone: json['phone'] as String?,
-<<<<<<< Updated upstream
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
       stats: json['stats'] != null
-=======
-      createdAt: json['createdAt'] != null 
-          ? DateTime.parse(json['createdAt'] as String) 
-          : DateTime.now(),
-      stats: json['stats'] != null 
->>>>>>> Stashed changes
           ? UserStats.fromJson(json['stats'] as Map<String, dynamic>)
           : UserStats.empty(),
     );
@@ -138,11 +109,7 @@ class User {
       'username': username,
       'fullName': fullName,
       'email': email,
-<<<<<<< Updated upstream
       'role': role.toString().split('.').last, // Store logical name (e.g., 'operator')
-=======
-      'role': role.toString().split('.').last,
->>>>>>> Stashed changes
       'photoUrl': photoUrl,
       'phone': phone,
       'createdAt': createdAt.toIso8601String(),

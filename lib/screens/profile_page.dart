@@ -112,7 +112,6 @@ class _ProfilePageState extends State<ProfilePage> {
               shape: BoxShape.circle,
               color: Colors.white.withValues(alpha: 0.3),
             ),
-<<<<<<< Updated upstream
             child: Container(
               width: 96,
               height: 96,
@@ -131,16 +130,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     fontWeight: FontWeight.w800,
                     color: AppTheme.primaryBlue,
                   ),
-=======
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.2),
-              child: Text(
-                _user!.fullName.substring(0, 1).toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryBlue,
->>>>>>> Stashed changes
                 ),
               ),
             ),
@@ -149,15 +138,9 @@ class _ProfilePageState extends State<ProfilePage> {
           // Nom
           Text(
             _user!.fullName,
-<<<<<<< Updated upstream
             style: GoogleFonts.inter(
               fontSize: 22,
               fontWeight: FontWeight.w800,
-=======
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
->>>>>>> Stashed changes
               color: Colors.white,
               letterSpacing: -0.3,
             ),
@@ -175,13 +158,8 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             child: Text(
               _user!.role.name,
-<<<<<<< Updated upstream
               style: GoogleFonts.inter(
                 fontSize: 13,
-=======
-              style: const TextStyle(
-                fontSize: 14,
->>>>>>> Stashed changes
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
               ),

@@ -12,8 +12,6 @@ import 'package:projeticem/screens/inspection_page.dart';
 import 'package:projeticem/screens/anomalies_list_page.dart';
 import 'package:projeticem/services/orders_service.dart';
 import 'package:projeticem/services/reports_service.dart';
-import 'package:provider/provider.dart';
-import '../providers/auth_provider.dart';
 
 /// Page d'accueil de l'application ICEM Quality Control
 class HomePage extends StatefulWidget {
@@ -126,15 +124,10 @@ class _HomePageState extends State<HomePage> {
                                 _buildAppBarIcon(
                                   Icons.notifications_outlined,
                                   () {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content:
-                                            const Text('Notifications — À venir'),
-                                        behavior: SnackBarBehavior.floating,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius:
-                                              BorderRadius.circular(10),
-                                        ),
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => const AnomaliesListPage(),
                                       ),
                                     );
                                   },
@@ -164,27 +157,7 @@ class _HomePageState extends State<HomePage> {
                   ),
                 ),
               ),
-<<<<<<< Updated upstream
             ),
-=======
-            ],
-          ),
-          const SizedBox(height: 12),
-          
-          // Message de bienvenue
-          Consumer<AuthProvider>(
-            builder: (context, authProvider, child) {
-              final name = authProvider.currentUser?.fullName ?? 'Technicien';
-              return Text(
-                'Bonjour, $name!',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                ),
-              );
-            },
->>>>>>> Stashed changes
           ),
 
           // Body content

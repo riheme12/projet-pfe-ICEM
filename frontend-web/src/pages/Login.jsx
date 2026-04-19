@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Shield, Mail, Lock, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { auth, signInWithEmailAndPassword } from '../services/firebase';
+import { Shield, Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle } from 'lucide-react';
+import { auth, signInWithEmailAndPassword, sendPasswordResetEmail } from '../services/firebase';
 import { AuthService } from '../services/api';
 
 const Login = () => {
@@ -10,6 +10,11 @@ const Login = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showForgotPassword, setShowForgotPassword] = useState(false);
+    const [resetEmail, setResetEmail] = useState('');
+    const [resetLoading, setResetLoading] = useState(false);
+    const [resetSent, setResetSent] = useState(false);
+    const [resetError, setResetError] = useState('');
     const navigate = useNavigate();
 
     const handleLogin = async (e) => {
@@ -38,6 +43,31 @@ const Login = () => {
             }
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleForgotPassword = async (e) => {
+        e.preventDefault();
+        if (!resetEmail) {
+            setResetError('Veuillez entrer votre adresse email.');
+            return;
+        }
+        setResetLoading(true);
+        setResetError('');
+        try {
+            await sendPasswordResetEmail(auth, resetEmail);
+            setResetSent(true);
+        } catch (err) {
+            const code = err.code || '';
+            if (code === 'auth/user-not-found') {
+                setResetError('Aucun compte trouvé avec cet email.');
+            } else if (code === 'auth/invalid-email') {
+                setResetError('Adresse email invalide.');
+            } else {
+                setResetError('Erreur lors de l\'envoi. Veuillez réessayer.');
+            }
+        } finally {
+            setResetLoading(false);
         }
     };
 
@@ -84,7 +114,10 @@ const Login = () => {
                     <div className="space-y-2">
                         <label className="text-sm font-semibold text-slate-300 ml-1 flex justify-between">
                             Mot de passe
-                            <span className="text-blue-400 text-xs hover:underline cursor-pointer">Oublié ?</span>
+                            <span
+                                onClick={() => { setShowForgotPassword(true); setResetSent(false); setResetError(''); setResetEmail(''); }}
+                                className="text-blue-400 text-xs hover:underline cursor-pointer"
+                            >Oublié ?</span>
                         </label>
                         <div className="relative group">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
@@ -132,6 +165,80 @@ const Login = () => {
             <p className="absolute bottom-6 left-1/2 -translate-x-1/2 text-slate-700 text-xs font-medium tracking-wider">
                 © 2026 ICEM Industrial Solutions • v1.1.0
             </p>
+
+            {/* Modal Mot de passe oublié */}
+            {showForgotPassword && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="w-full max-w-md bg-slate-900/90 backdrop-blur-xl border border-slate-800/60 rounded-3xl shadow-2xl p-8" style={{ animation: 'modal-in 0.3s ease-out' }}>
+                        <button
+                            onClick={() => setShowForgotPassword(false)}
+                            className="flex items-center gap-2 text-slate-400 hover:text-white text-sm transition-colors mb-6"
+                        >
+                            <ArrowLeft size={16} /> Retour à la connexion
+                        </button>
+
+                        {resetSent ? (
+                            <div className="flex flex-col items-center text-center py-4">
+                                <div className="w-16 h-16 bg-emerald-600/20 rounded-2xl flex items-center justify-center mb-6">
+                                    <CheckCircle className="text-emerald-400" size={30} />
+                                </div>
+                                <h2 className="text-xl font-bold text-white mb-2">Email envoyé !</h2>
+                                <p className="text-slate-400 text-sm leading-relaxed">
+                                    Un lien de réinitialisation a été envoyé à <strong className="text-slate-200">{resetEmail}</strong>.
+                                    Vérifiez votre boîte de réception (et le dossier spam).
+                                </p>
+                                <button
+                                    onClick={() => setShowForgotPassword(false)}
+                                    className="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-all"
+                                >
+                                    Retour à la connexion
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-col items-center mb-6 text-center">
+                                    <div className="w-14 h-14 bg-amber-600/20 rounded-2xl flex items-center justify-center mb-4">
+                                        <Lock className="text-amber-400" size={24} />
+                                    </div>
+                                    <h2 className="text-xl font-bold text-white mb-2">Mot de passe oublié</h2>
+                                    <p className="text-slate-400 text-sm">Entrez votre email pour recevoir un lien de réinitialisation</p>
+                                </div>
+
+                                {resetError && (
+                                    <div className="bg-red-500/10 border border-red-500/20 text-red-400 text-sm p-3 rounded-xl mb-4 flex items-center gap-2">
+                                        <Shield size={16} />{resetError}
+                                    </div>
+                                )}
+
+                                <form onSubmit={handleForgotPassword} className="space-y-4">
+                                    <div className="relative group">
+                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400 transition-colors" size={18} />
+                                        <input
+                                            type="email"
+                                            required
+                                            value={resetEmail}
+                                            onChange={(e) => setResetEmail(e.target.value)}
+                                            className="w-full bg-slate-800/50 border border-slate-700/50 text-white pl-12 pr-4 py-3.5 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-3 focus:ring-blue-500/10 transition-all placeholder:text-slate-600 text-sm"
+                                            placeholder="votre-email@icem.tn"
+                                        />
+                                    </div>
+                                    <button
+                                        type="submit"
+                                        disabled={resetLoading}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-600/50 text-white font-semibold py-3.5 rounded-xl shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition-all"
+                                    >
+                                        {resetLoading ? (
+                                            <><Loader2 className="animate-spin" size={18} /> Envoi en cours...</>
+                                        ) : (
+                                            'Envoyer le lien de réinitialisation'
+                                        )}
+                                    </button>
+                                </form>
+                            </>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

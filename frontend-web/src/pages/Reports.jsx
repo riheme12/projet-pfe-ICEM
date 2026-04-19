@@ -4,6 +4,8 @@ import { ReportService, OrderService, AnomalyService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const Reports = () => {
     const [reports, setReports] = useState([]);
@@ -164,6 +166,83 @@ const Reports = () => {
         }
     };
 
+    const handleExportExcel = async () => {
+        try {
+            const [ordersRes, anomaliesRes] = await Promise.all([
+                OrderService.getAll(),
+                AnomalyService.getAll()
+            ]);
+            const ordersData = ordersRes.data || [];
+            const anomaliesData = anomaliesRes.data || [];
+
+            // Feuille 1: Ordres de Fabrication
+            const ordersSheet = ordersData.map(o => ({
+                'Référence': o.reference || '',
+                'N° OF': o.numeroOF || '',
+                'Client': o.client || '',
+                'Statut': o.status || '',
+                'Quantité': o.qta || 0,
+                'Inspectés': o.inspectedCount || 0,
+                'Conformes': o.conformCount || 0,
+                'Non Conformes': o.nonConformCount || 0,
+                'Taux Conformité (%)': o.inspectedCount > 0 ? Math.round((o.conformCount / o.inspectedCount) * 100) : 0,
+                'Date Livraison': o.dateLiv ? new Date(o.dateLiv).toLocaleDateString('fr-FR') : '',
+            }));
+
+            // Feuille 2: Anomalies
+            const anomaliesSheet = anomaliesData.map(a => ({
+                'Type': a.type || '',
+                'Gravité': a.severity || '',
+                'Confiance IA (%)': a.confidence ? (a.confidence * 100).toFixed(0) : '',
+                'Câble': a.cableId || '',
+                'Ordre': a.orderId || '',
+                'Statut': a.statut === 'traitee' ? 'Traitée' : a.statut === 'en_traitement' ? 'En traitement' : 'Détectée',
+                'Date Détection': a.detectedAt ? new Date(a.detectedAt).toLocaleDateString('fr-FR') : '',
+                'Description': a.description || '',
+            }));
+
+            // Feuille 3: Résumé (KPIs)
+            const totalOrders = ordersData.length;
+            const enCours = ordersData.filter(o => o.status?.toLowerCase() === 'en cours').length;
+            const termine = ordersData.filter(o => ['terminé', 'termine'].includes(o.status?.toLowerCase())).length;
+            const totalAnomalies = anomaliesData.length;
+            const critiques = anomaliesData.filter(a => a.severity?.toLowerCase() === 'critique').length;
+
+            const summarySheet = [
+                { 'Indicateur': 'Total Ordres', 'Valeur': totalOrders },
+                { 'Indicateur': 'Ordres En Cours', 'Valeur': enCours },
+                { 'Indicateur': 'Ordres Terminés', 'Valeur': termine },
+                { 'Indicateur': 'Total Anomalies', 'Valeur': totalAnomalies },
+                { 'Indicateur': 'Anomalies Critiques', 'Valeur': critiques },
+                { 'Indicateur': 'Taux Conformité (%)', 'Valeur': totalOrders > 0 ? Math.round(((totalOrders - totalAnomalies) / totalOrders) * 100) : 'N/A'},
+                { 'Indicateur': 'Date Export', 'Valeur': new Date().toLocaleString('fr-FR') },
+            ];
+
+            // Créer le workbook Excel
+            const wb = XLSX.utils.book_new();
+            const ws1 = XLSX.utils.json_to_sheet(summarySheet);
+            const ws2 = XLSX.utils.json_to_sheet(ordersSheet);
+            const ws3 = XLSX.utils.json_to_sheet(anomaliesSheet);
+
+            // Définir la largeur des colonnes
+            ws1['!cols'] = [{ wch: 25 }, { wch: 20 }];
+            ws2['!cols'] = Array(10).fill({ wch: 18 });
+            ws3['!cols'] = Array(8).fill({ wch: 18 });
+
+            XLSX.utils.book_append_sheet(wb, ws1, 'Résumé');
+            XLSX.utils.book_append_sheet(wb, ws2, 'Ordres');
+            XLSX.utils.book_append_sheet(wb, ws3, 'Anomalies');
+
+            // Générer et télécharger
+            const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `ICEM_Rapport_${new Date().toISOString().split('T')[0]}.xlsx`);
+        } catch (error) {
+            console.error('Erreur export Excel:', error);
+            alert("Erreur lors de l'export Excel");
+        }
+    };
+
     const sortedReports = [...reports].sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
     const lastReportDate = sortedReports.length > 0 ? new Date(sortedReports[0].generatedAt).toLocaleDateString() : 'Aucun';
 
@@ -192,6 +271,15 @@ const Reports = () => {
                             </>
                         )}
                     </button>
+                )}
+                {canExport && (
+                <button
+                    onClick={handleExportExcel}
+                    className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all"
+                >
+                    <FileSpreadsheet size={18} />
+                    Export Excel
+                </button>
                 )}
             </div>
 

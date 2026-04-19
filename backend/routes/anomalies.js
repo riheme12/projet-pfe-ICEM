@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { db } = require('../firebase');
 const { Anomaly } = require('../models');
+const emailService = require('../services/emailService');
 
 // Get all anomalies
 router.get('/', async (req, res) => {
@@ -50,7 +51,39 @@ router.post('/', async (req, res) => {
         const data = anomaly.toJson();
         delete data.id;
         const docRef = await db.collection('anomaly').add(data);
-        res.status(201).json({ id: docRef.id, ...data });
+        const createdAnomaly = { id: docRef.id, ...data };
+
+        // Handle Email Alerts if Critical
+        if (createdAnomaly.severity?.toLowerCase() === 'critique') {
+            try {
+                // Fetch settings for notification config
+                const settingsDoc = await db.collection('settings').doc('global_config').get();
+                const settings = settingsDoc.exists ? settingsDoc.data() : null;
+                
+                const alertsConfig = settings?.alerts;
+                const enableEmail = alertsConfig?.enableEmailNotifications;
+                const recipientsStr = alertsConfig?.emailRecipients;
+
+                if (enableEmail && recipientsStr) {
+                    const recipients = recipientsStr.split(',').map(r => r.trim()).filter(r => r);
+                    if (recipients.length > 0) {
+                        // Async send (don't block response)
+                        emailService.sendCriticalAlert({
+                            recipients,
+                            anomalyType: createdAnomaly.type,
+                            severity: createdAnomaly.severity,
+                            confidence: createdAnomaly.confidence,
+                            cableId: createdAnomaly.cableId,
+                            orderId: createdAnomaly.orderId
+                        }).catch(err => console.error('Delayed email sending error:', err));
+                    }
+                }
+            } catch (err) {
+                console.error('Email alert trigger error:', err);
+            }
+        }
+
+        res.status(201).json(createdAnomaly);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -91,7 +124,6 @@ router.patch('/:id', async (req, res) => {
         const anomaly = Anomaly.fromJson(updatedData);
         const data = anomaly.toJson();
         delete data.id;
-        // Preserve extra fields like status, mesureCorrective
         if (req.body.statut) data.statut = req.body.statut;
         if (req.body.mesureCorrective) data.mesureCorrective = req.body.mesureCorrective;
         await db.collection('anomaly').doc(req.params.id).update(data);
