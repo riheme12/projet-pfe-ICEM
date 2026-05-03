@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Calendar, User, Package, Image as ImageIcon } from 'lucide-react';
 import { InspectionService, AnomalyService, OrderService } from '../services/api';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 const InspectionDetails = () => {
     const { id } = useParams();
@@ -33,7 +35,7 @@ const InspectionDetails = () => {
         
         try {
             setLoading(true);
-            await InspectionService.patch(id, { status: 'Conforme' });
+            await InspectionService.update(id, { status: 'Conforme' });
             
             // Re-fetch data to reflect changes
             const insRes = await InspectionService.getById(id);
@@ -47,35 +49,93 @@ const InspectionDetails = () => {
         }
     };
 
+    const handleExportPDF = () => {
+        try {
+            const doc = new jsPDF();
+            const pageWidth = doc.internal.pageSize.getWidth();
+            
+            doc.setFillColor(30, 41, 59);
+            doc.rect(0, 0, pageWidth, 40, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(20);
+            doc.setFont('helvetica', 'bold');
+            doc.text('ICEM QUALITY CONTROL', 14, 18);
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`RAPPORT D'INSPECTION - CÂBLE: ${inspection?.reference || id.substring(0, 8)}`, 14, 28);
+            
+            doc.setTextColor(51, 65, 85);
+            doc.setFontSize(12);
+            doc.text(`Ordre de Fabrication: ${inspection?.orderId || 'Non défini'}`, 14, 50);
+            doc.text(`Technicien: ${inspection?.technicianName || 'Système IA'}`, 14, 58);
+            doc.text(`Date: ${inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString() : 'En attente'}`, 14, 66);
+            doc.text(`Statut: ${inspection?.status || 'En attente'}`, 14, 74);
+            
+            if (anomalies.length > 0) {
+                doc.setFontSize(14);
+                doc.setFont('helvetica', 'bold');
+                doc.text('Défauts Détectés', 14, 90);
+                
+                const tableData = anomalies.map(a => [
+                    a.type || 'Inconnu',
+                    a.severity || 'Mineur',
+                    a.confidence ? `${(a.confidence * 100).toFixed(0)}%` : '—',
+                    a.location || 'Non précisée'
+                ]);
+                
+                doc.autoTable({
+                    startY: 95,
+                    head: [['Type', 'Gravité', 'Confiance IA', 'Localisation']],
+                    body: tableData,
+                    theme: 'grid',
+                    headStyles: { fillColor: [220, 38, 38], textColor: 255 },
+                    margin: { left: 14, right: 14 }
+                });
+            } else {
+                doc.setFontSize(12);
+                doc.setTextColor(16, 185, 129); // Emerald 500
+                doc.text('Aucune anomalie détectée. Câble conforme.', 14, 90);
+            }
+            
+            doc.save(`Rapport_Inspection_${inspection?.reference || id}.pdf`);
+        } catch (err) {
+            console.error("Erreur PDF:", err);
+            alert("Impossible de générer le PDF.");
+        }
+    };
+
     if (loading) return <div className="p-10 text-center font-bold text-slate-500 animate-pulse">Chargement de l'inspection...</div>;
 
     return (
         <div className="flex flex-col gap-8">
             <button
                 onClick={() => navigate(-1)}
-                className="flex items-center gap-2 text-slate-500 hover:text-accent transition-colors font-bold text-sm w-fit"
+                className="flex items-center gap-2 text-slate-500 hover:text-accent transition-colors font-bold text-base w-fit"
             >
-                <ArrowLeft size={18} />
+                <ArrowLeft size={24} />
                 Retour
             </button>
 
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
                 <div>
-                    <div className="flex items-center gap-3 mb-2">
-                        <h1 className="text-3xl font-black text-slate-800">Inspection #{inspection?.reference || id.substring(0, 8)}</h1>
-                        <span className={`px-3 py-1 border rounded-full text-xs font-black uppercase ${inspection?.status === 'Conforme' ? 'bg-success/10 text-success border-success/20' :
-                                inspection?.status === 'Non conforme' ? 'bg-danger/10 text-danger border-danger/20' :
-                                    'bg-warning/10 text-warning border-warning/20'
+                    <div className="flex items-center gap-3 mb-3">
+                        <h1 className="text-4xl font-black text-slate-900">Inspection #{inspection?.reference || id.substring(0, 8)}</h1>
+                        <span className={`px-4 py-1.5 border-2 rounded-xl text-sm font-black uppercase ${inspection?.status === 'Conforme' ? 'bg-emerald-50 text-emerald-600 border-emerald-200' :
+                                inspection?.status === 'Non conforme' ? 'bg-red-50 text-red-600 border-red-200' :
+                                    'bg-amber-50 text-amber-600 border-amber-200'
                             }`}>
                             {inspection?.status}
                         </span>
                     </div>
-                    <p className="text-slate-500 font-medium flex items-center gap-2">
-                        <Package size={16} /> Rapport d'inspection pour l'ordre <span className="text-accent font-bold underline cursor-pointer">{inspection?.orderId}</span>
+                    <p className="text-slate-600 text-lg font-medium flex items-center gap-2">
+                        <Package size={24} /> Rapport d'inspection pour l'ordre <span className="text-blue-600 font-bold underline cursor-pointer">{inspection?.orderId}</span>
                     </p>
                 </div>
                 <div className="flex gap-3">
-                    <button className="px-6 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-200 transition-all">
+                    <button 
+                        onClick={handleExportPDF}
+                        className="px-6 py-2.5 bg-slate-100 text-slate-600 font-bold rounded-xl border border-slate-200 hover:bg-slate-200 transition-all"
+                    >
                         Imprimer Rapport
                     </button>
                     <button
@@ -89,32 +149,32 @@ const InspectionDetails = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="card flex flex-col gap-1">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <User size={14} /> Technicien
+                <div className="card flex flex-col gap-2 p-6 bg-blue-50/40 border border-blue-100">
+                    <p className="text-sm font-bold text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                        <User size={20} /> Technicien
                     </p>
-                    <p className="text-lg font-bold text-slate-800">{inspection?.technicianId || 'IA System'}</p>
+                    <p className="text-2xl font-black text-slate-900">{inspection?.technicianName || inspection?.technicianId || 'IA System'}</p>
                 </div>
-                <div className="card flex flex-col gap-1">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <Calendar size={14} /> Date de contrôle
+                <div className="card flex flex-col gap-2 p-6 bg-slate-50 border border-slate-100">
+                    <p className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <Calendar size={20} /> Date de contrôle
                     </p>
-                    <p className="text-lg font-bold text-slate-800">
+                    <p className="text-2xl font-black text-slate-900">
                         {inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString() : 'En attente'}
                     </p>
                 </div>
-                <div className="card flex flex-col gap-1">
-                    <p className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                        <ShieldCheck size={14} /> Défauts détectés
+                <div className="card flex flex-col gap-2 p-6 bg-slate-50 border border-slate-100">
+                    <p className="text-sm font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                        <ShieldCheck size={20} /> Défauts détectés
                     </p>
-                    <p className={`text-2xl font-black ${anomalies.length > 0 ? 'text-danger' : 'text-success'}`}>
+                    <p className={`text-3xl font-black ${anomalies.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                         {anomalies.length}
                     </p>
                 </div>
             </div>
 
-            <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-                <AlertTriangle size={24} className="text-danger" />
+            <h2 className="text-2xl font-bold text-slate-900 flex items-center gap-3 mt-4">
+                <AlertTriangle size={32} className="text-red-500" />
                 Défauts Détectés ({anomalies.length})
             </h2>
 
@@ -135,16 +195,16 @@ const InspectionDetails = () => {
                         </div>
                         <div className="flex-1 p-6 flex flex-col justify-between">
                             <div>
-                                <div className="flex justify-between items-center mb-3">
-                                    <h3 className="text-xl font-black text-slate-800 capitalize">{anomaly.type}</h3>
-                                    <span className={`px-2 py-1 rounded text-[10px] font-black uppercase text-white ${anomaly.severity === 'Critique' ? 'bg-danger shadow-lg shadow-danger/30' :
-                                            anomaly.severity === 'Majeur' ? 'bg-warning shadow-lg shadow-warning/30' :
-                                                'bg-success shadow-lg shadow-success/30'
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-2xl font-black text-slate-900 capitalize">{anomaly.type}</h3>
+                                    <span className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase text-white ${anomaly.severity === 'Critique' ? 'bg-red-500 shadow-lg shadow-red-500/30' :
+                                            anomaly.severity === 'Majeur' ? 'bg-amber-500 shadow-lg shadow-amber-500/30' :
+                                                'bg-emerald-500 shadow-lg shadow-emerald-500/30'
                                         }`}>
                                         Gravité {anomaly.severity}
                                     </span>
                                 </div>
-                                <p className="text-sm text-slate-600 font-medium leading-relaxed mb-6">
+                                <p className="text-base text-slate-700 font-medium leading-relaxed mb-6">
                                     {anomaly.location || "Localisation non précisée."}
                                 </p>
                             </div>

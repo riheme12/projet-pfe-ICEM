@@ -158,45 +158,45 @@ const Users = () => {
                                     />
                                 </div>
                                 <div className="min-w-0 flex-1">
-                                    <h3 className="font-bold text-slate-800 text-sm truncate">{user.fullName}</h3>
+                                    <h3 className="font-black text-slate-900 text-lg truncate mb-1">{user.fullName}</h3>
                                     <RoleBadge role={user.role} />
                                 </div>
                                 <button
                                     onClick={() => openEdit(user)}
-                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-accent transition-colors flex-shrink-0"
+                                    className="p-3 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-accent transition-colors flex-shrink-0 shadow-sm"
                                     title="Modifier"
                                 >
-                                    <Pencil size={15} />
+                                    <Pencil size={20} />
                                 </button>
                             </div>
 
-                            <div className="space-y-2.5 mb-5">
-                                <div className="flex items-center gap-3 text-slate-500 text-sm">
-                                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                                        <Mail size={14} className="text-slate-400" />
+                            <div className="space-y-3 mb-6 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
+                                <div className="flex items-center gap-3 text-slate-700 text-base font-medium">
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
+                                        <Mail size={18} className="text-slate-400" />
                                     </div>
                                     <span className="truncate">{user.email}</span>
                                 </div>
                                 {user.phone && (
-                                    <div className="flex items-center gap-3 text-slate-500 text-sm">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                                            <Phone size={14} className="text-slate-400" />
+                                    <div className="flex items-center gap-3 text-slate-700 text-base font-medium">
+                                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
+                                            <Phone size={18} className="text-slate-400" />
                                         </div>
                                         <span>{user.phone}</span>
                                     </div>
                                 )}
-                                <div className="flex items-center gap-3 text-slate-500 text-sm">
-                                    <div className="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center">
-                                        <Shield size={14} className={user.isActive ? 'text-emerald-500' : 'text-red-400'} />
+                                <div className="flex items-center gap-3 text-slate-700 text-base font-medium">
+                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
+                                        <Shield size={18} className={user.isActive ? 'text-emerald-500' : 'text-red-500'} />
                                     </div>
                                     <span>Accès {user.isActive ? 'autorisé' : 'suspendu'}</span>
                                 </div>
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="flex gap-3">
                                 <button
                                     onClick={() => toggleUserStatus(user)}
-                                    className={`flex-1 py-2.5 text-xs font-semibold rounded-xl transition-all ${
+                                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all shadow-sm ${
                                         user.isActive
                                             ? 'text-red-600 bg-red-50 hover:bg-red-100 border border-red-200'
                                             : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
@@ -207,10 +207,10 @@ const Users = () => {
                                 {canResetPassword && (
                                     <button
                                         onClick={() => { setResetModal(user); setNewPassword(''); }}
-                                        className="flex items-center gap-1.5 px-3 py-2.5 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all"
+                                        className="flex items-center gap-2 px-4 py-3 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all shadow-sm"
                                         title="Réinitialiser le mot de passe"
                                     >
-                                        <KeyRound size={14} />
+                                        <KeyRound size={18} />
                                         MDP
                                     </button>
                                 )}

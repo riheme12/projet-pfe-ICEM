@@ -6,7 +6,7 @@
  * Elle a un type, une gravité et un score de confiance
  */
 class Anomaly {
-    constructor({ id, type, severity, confidence, location = null, cableId, detectedAt }) {
+    constructor({ id, type, severity, confidence, location = null, cableId, detectedAt, technicianId = null, technicianName = null }) {
         this.id = id;
         this.type = type;                // 'Rayure', 'Déformation', 'Défaut de surface', etc.
         this.severity = severity;        // 'Mineur', 'Majeur', 'Critique'
@@ -14,6 +14,8 @@ class Anomaly {
         this.location = location;        // Description de la localisation
         this.cableId = cableId;          // ID du câble concerné
         this.detectedAt = detectedAt instanceof Date ? detectedAt : new Date(detectedAt || Date.now());
+        this.technicianId = technicianId;
+        this.technicianName = technicianName;
     }
 
     /**
@@ -58,6 +60,8 @@ class Anomaly {
             location: json.location || null,
             cableId: json.cableId || '',
             detectedAt: detectedAt,
+            technicianId: json.technicianId || null,
+            technicianName: json.technicianName || json.technicianFullName || 'Inconnu',
         });
     }
 
@@ -73,6 +77,8 @@ class Anomaly {
             location: this.location,
             cableId: this.cableId,
             detectedAt: this.detectedAt.toISOString(),
+            technicianId: this.technicianId,
+            technicianName: this.technicianName,
         };
     }
 }

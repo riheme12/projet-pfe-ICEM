@@ -6,11 +6,13 @@
  * Il contient toutes les informations de l'inspection
  */
 class Report {
-    constructor({ id, cableId, orderId, technicianId, generatedAt, conformityStatus, anomaliesCount = 0, pdfUrl = null, notes = null }) {
+    constructor({ id, cableId, orderId, technicianId, technicianName = null, type = null, generatedAt, conformityStatus, anomaliesCount = 0, pdfUrl = null, notes = null }) {
         this.id = id;
         this.cableId = cableId;                  // ID du câble inspecté
         this.orderId = orderId;                  // ID de l'ordre de fabrication
         this.technicianId = technicianId;        // ID du technicien
+        this.technicianName = technicianName;    // Nom du technicien
+        this.type = type;                        // Type du rapport
         this.generatedAt = generatedAt instanceof Date ? generatedAt : new Date(generatedAt || Date.now());
         this.conformityStatus = conformityStatus; // 'Conforme' ou 'Non conforme'
         this.anomaliesCount = anomaliesCount;    // Nombre d'anomalies détectées
@@ -52,6 +54,8 @@ class Report {
             cableId: json.cableId || '',
             orderId: json.orderId || '',
             technicianId: json.technicianId || '',
+            technicianName: json.technicianName || null,
+            type: json.type || null,
             generatedAt: generatedAt,
             conformityStatus: json.conformityStatus || 'En attente',
             anomaliesCount: Number(json.anomaliesCount) || 0,
@@ -69,6 +73,8 @@ class Report {
             cableId: this.cableId,
             orderId: this.orderId,
             technicianId: this.technicianId,
+            technicianName: this.technicianName,
+            type: this.type,
             generatedAt: this.generatedAt.toISOString(),
             conformityStatus: this.conformityStatus,
             anomaliesCount: this.anomaliesCount,

@@ -40,8 +40,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
         title: const Text('Modifier le profil'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _isSaving ? null : _saveProfile,
+            icon: const Icon(Icons.info_outline),
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Les modifications sont désactivées')),
+              );
+            },
           ),
         ],
       ),
@@ -69,19 +73,24 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       keyboardType: TextInputType.phone,
                     ),
                     const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 55,
-                      child: ElevatedButton(
-                        onPressed: _isSaving ? null : _saveProfile,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.primaryBlue,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _isSaving
-                            ? const CircularProgressIndicator(color: Colors.white)
-                            : const Text('Enregistrer les modifications', style: TextStyle(fontSize: 16)),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.lock_outline, color: Colors.amber),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Modification impossible. Contactez votre administrateur pour changer vos informations.',
+                              style: TextStyle(fontSize: 13, color: Colors.amber),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -148,6 +157,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }) {
     return TextFormField(
       controller: controller,
+      readOnly: true,
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: AppTheme.primaryBlue),

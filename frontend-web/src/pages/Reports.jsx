@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Download, FilePieChart, Calendar, Clock, FileSpreadsheet } from 'lucide-react';
-import { ReportService, OrderService, AnomalyService } from '../services/api';
+import { ReportService, OrderService, AnomalyService, CableService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -57,11 +57,11 @@ const Reports = () => {
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(20);
             doc.setFont('helvetica', 'bold');
-            doc.text('ICEM Quality Control', 14, 18);
+            doc.text('ICEM QUALITY CONTROL', 14, 18);
             doc.setFontSize(11);
             doc.setFont('helvetica', 'normal');
-            doc.text(`Rapport: ${report.type || 'Rapport de Production'}`, 14, 28);
-            doc.text(`Généré le: ${new Date(report.generatedAt).toLocaleString('fr-FR')}`, 14, 35);
+            doc.text(`RAPPORT DE PRODUCTION : ${report.type || 'Standard'}`, 14, 28);
+            doc.text(`GÉNÉRÉ LE : ${new Date(report.generatedAt || Date.now()).toLocaleString('fr-FR')}`, 14, 35);
 
             // Informations du rapport
             doc.setTextColor(51, 65, 85);
@@ -80,13 +80,16 @@ const Reports = () => {
             // Récupérer les données pour le rapport
             let ordersData = [];
             let anomaliesData = [];
+            let cableStats = { total: 0, conforme: 0, nonConforme: 0, enAttente: 0 };
             try {
-                const [ordersRes, anomaliesRes] = await Promise.all([
+                const [ordersRes, anomaliesRes, cableStatsRes] = await Promise.all([
                     OrderService.getAll(),
-                    AnomalyService.getAll()
+                    AnomalyService.getAll(),
+                    CableService.getStats(),
                 ]);
                 ordersData = ordersRes.data || [];
                 anomaliesData = anomaliesRes.data || [];
+                cableStats = cableStatsRes.data || cableStats;
             } catch (e) {
                 console.error('Error fetching data for PDF:', e);
             }
@@ -111,9 +114,11 @@ const Reports = () => {
                     ['Total Ordres de Fabrication', totalOrders.toString()],
                     ['Ordres En Cours', enCours.toString()],
                     ['Ordres Terminés', termine.toString()],
+                    ['Câbles Inspectés', (cableStats.total || 0).toString()],
+                    ['Câbles Conformes', (cableStats.conforme || 0).toString()],
                     ['Total Anomalies Détectées', totalAnomalies.toString()],
                     ['Anomalies Critiques', critiques.toString()],
-                    ['Taux de Conformité', totalOrders > 0 ? `${Math.round(((totalOrders - totalAnomalies) / totalOrders) * 100)}%` : 'N/A'],
+                    ['Taux de Conformité', cableStats.total > 0 ? `${Math.round(((cableStats.conforme || 0) / cableStats.total) * 100)}%` : 'N/A'],
                 ],
                 theme: 'grid',
                 headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: 'bold', fontSize: 10 },
@@ -131,10 +136,11 @@ const Reports = () => {
 
                 doc.autoTable({
                     startY: lastTableY + 8,
-                    head: [['Type', 'Gravité', 'Confiance IA', 'Date', 'Statut']],
+                    head: [['Type', 'Gravité', 'Technicien', 'Confiance IA', 'Date', 'Statut']],
                     body: anomaliesData.slice(0, 15).map(a => [
                         a.type || '—',
                         a.severity || '—',
+                        a.technicianName || 'Système',
                         a.confidence ? `${(a.confidence * 100).toFixed(0)}%` : '—',
                         a.detectedAt ? new Date(a.detectedAt).toLocaleDateString('fr-FR') : '—',
                         a.statut === 'traitee' ? 'Traitée' : a.statut === 'en_traitement' ? 'En traitement' : 'Détectée',
@@ -159,21 +165,23 @@ const Reports = () => {
                 );
             }
 
-            doc.save(`ICEM_Rapport_${report.type?.replace(/\s+/g, '_') || 'Production'}_${new Date().toISOString().split('T')[0]}.pdf`);
+            doc.save(`ICEM_RAPPORT_${new Date().toISOString().split('T')[0]}.pdf`);
         } catch (error) {
             console.error('Erreur export PDF:', error);
-            alert("Erreur lors de l'export PDF");
+            alert("Erreur lors de l'exportation du document PDF. Veuillez vérifier la console.");
         }
     };
 
     const handleExportExcel = async () => {
         try {
-            const [ordersRes, anomaliesRes] = await Promise.all([
+            const [ordersRes, anomaliesRes, cableStatsRes] = await Promise.all([
                 OrderService.getAll(),
-                AnomalyService.getAll()
+                AnomalyService.getAll(),
+                CableService.getStats(),
             ]);
             const ordersData = ordersRes.data || [];
             const anomaliesData = anomaliesRes.data || [];
+            const cableStats = cableStatsRes.data || { total: 0, conforme: 0, nonConforme: 0, enAttente: 0 };
 
             // Feuille 1: Ordres de Fabrication
             const ordersSheet = ordersData.map(o => ({
@@ -193,11 +201,11 @@ const Reports = () => {
             const anomaliesSheet = anomaliesData.map(a => ({
                 'Type': a.type || '',
                 'Gravité': a.severity || '',
+                'Technicien': a.technicianName || 'Système',
                 'Confiance IA (%)': a.confidence ? (a.confidence * 100).toFixed(0) : '',
                 'Câble': a.cableId || '',
-                'Ordre': a.orderId || '',
                 'Statut': a.statut === 'traitee' ? 'Traitée' : a.statut === 'en_traitement' ? 'En traitement' : 'Détectée',
-                'Date Détection': a.detectedAt ? new Date(a.detectedAt).toLocaleDateString('fr-FR') : '',
+                'Date Détection': a.detectedAt ? new Date(a.detectedAt).toLocaleString('fr-FR') : '',
                 'Description': a.description || '',
             }));
 
@@ -212,9 +220,11 @@ const Reports = () => {
                 { 'Indicateur': 'Total Ordres', 'Valeur': totalOrders },
                 { 'Indicateur': 'Ordres En Cours', 'Valeur': enCours },
                 { 'Indicateur': 'Ordres Terminés', 'Valeur': termine },
+                { 'Indicateur': 'Câbles Inspectés', 'Valeur': cableStats.total || 0 },
+                { 'Indicateur': 'Câbles Conformes', 'Valeur': cableStats.conforme || 0 },
                 { 'Indicateur': 'Total Anomalies', 'Valeur': totalAnomalies },
                 { 'Indicateur': 'Anomalies Critiques', 'Valeur': critiques },
-                { 'Indicateur': 'Taux Conformité (%)', 'Valeur': totalOrders > 0 ? Math.round(((totalOrders - totalAnomalies) / totalOrders) * 100) : 'N/A'},
+                { 'Indicateur': 'Taux Conformité (%)', 'Valeur': cableStats.total > 0 ? Math.round(((cableStats.conforme || 0) / cableStats.total) * 100) : 'N/A'},
                 { 'Indicateur': 'Date Export', 'Valeur': new Date().toLocaleString('fr-FR') },
             ];
 
@@ -359,6 +369,9 @@ const Reports = () => {
                                             {report.orderId && report.orderId !== 'global'
                                                 ? `Ordre #${report.orderId.substring(0, 8)}`
                                                 : 'Données Globales'}
+                                            <div className="text-xs text-slate-400 mt-0.5">
+                                                {report.technicianName || report.technicianId || 'Système'}
+                                            </div>
                                         </td>
                                         <td className="px-6 py-4 text-right">
                                             {canExport && (

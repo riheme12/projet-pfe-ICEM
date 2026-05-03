@@ -11,6 +11,8 @@ class Anomaly {
   final double confidence;          // Score de confiance IA (0.0 - 1.0)
   final String? location;           // Description de la localisation
   final String cableId;             // ID du câble concerné
+  final String? technicianId;       // ID du technicien ayant détecté
+  final String? technicianName;     // Nom du technicien
   final DateTime detectedAt;        // Date de détection
 
   Anomaly({
@@ -21,6 +23,8 @@ class Anomaly {
     this.location,
     required this.cableId,
     required this.detectedAt,
+    this.technicianId,
+    this.technicianName,
   });
 
   /// Obtenir la couleur associée à la gravité
@@ -63,6 +67,8 @@ class Anomaly {
       detectedAt: data['detectedAt'] != null && data['detectedAt'] is Timestamp
           ? (data['detectedAt'] as Timestamp).toDate()
           : DateTime.now(),
+      technicianId: data['technicianId'] as String?,
+      technicianName: data['technicianName'] as String?,
     );
   }
 
@@ -75,6 +81,8 @@ class Anomaly {
       'location': location,
       'cableId': cableId,
       'detectedAt': Timestamp.fromDate(detectedAt),
+      'technicianId': technicianId,
+      'technicianName': technicianName,
     };
   }
 
@@ -96,6 +104,8 @@ class Anomaly {
                   ? DateTime.parse(json['timestamp'] as String)
                   : (json['timestamp'] as dynamic).toDate())
               : DateTime.now()),
+      technicianId: json['technicianId']?.toString(),
+      technicianName: json['technicianName']?.toString() ?? json['technicianFullName']?.toString(),
     );
   }
 
@@ -109,6 +119,8 @@ class Anomaly {
       'location': location,
       'cableId': cableId,
       'detectedAt': detectedAt.toIso8601String(),
+      'technicianId': technicianId,
+      'technicianName': technicianName,
     };
   }
 }

@@ -36,18 +36,22 @@ router.get('/trends', async (req, res) => {
 
             if (data.inspectionDate) {
                 // Handle Firestore Timestamp or ISO string
-                const d = data.inspectionDate._seconds
-                    ? new Date(data.inspectionDate._seconds * 1000)
+                const d = data.inspectionDate.toDate 
+                    ? data.inspectionDate.toDate() 
                     : new Date(data.inspectionDate);
-                dateStr = d.toISOString().split('T')[0];
+                
+                // Vérifier si la date est valide avant d'appeler toISOString()
+                if (!isNaN(d.getTime())) {
+                    dateStr = d.toISOString().split('T')[0];
+                }
             }
 
             if (dateStr && days[dateStr]) {
                 days[dateStr].inspections++;
                 const status = (data.status || '').toLowerCase();
-                if (status === 'conforme') {
+                if (status === 'conforme' || status === 'ok') {
                     days[dateStr].conformes++;
-                } else if (status === 'non conforme') {
+                } else if (status === 'non conforme' || status === 'nok') {
                     days[dateStr].nonConformes++;
                 }
             }
@@ -59,10 +63,13 @@ router.get('/trends', async (req, res) => {
             let dateStr = null;
 
             if (data.detectedAt) {
-                const d = data.detectedAt._seconds
-                    ? new Date(data.detectedAt._seconds * 1000)
+                const d = data.detectedAt.toDate 
+                    ? data.detectedAt.toDate() 
                     : new Date(data.detectedAt);
-                dateStr = d.toISOString().split('T')[0];
+                
+                if (!isNaN(d.getTime())) {
+                    dateStr = d.toISOString().split('T')[0];
+                }
             }
 
             if (dateStr && days[dateStr]) {

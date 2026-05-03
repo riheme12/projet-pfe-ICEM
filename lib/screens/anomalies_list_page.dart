@@ -18,11 +18,25 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
   List<Anomaly> _anomalies = [];
   bool _isLoading = true;
   String _selectedSeverity = 'Tous';
+  String _selectedType = 'Tous';
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadAnomalies();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.trim().toLowerCase();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadAnomalies() async {
@@ -35,8 +49,18 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
   }
 
   List<Anomaly> get _filteredAnomalies {
-    if (_selectedSeverity == 'Tous') return _anomalies;
-    return _anomalies.where((a) => a.severity == _selectedSeverity).toList();
+    return _anomalies.where((a) {
+      final matchesSeverity = _selectedSeverity == 'Tous' || a.severity == _selectedSeverity;
+      final matchesType = _selectedType == 'Tous' || a.type == _selectedType;
+      final matchesSearch = _searchQuery.isEmpty || a.cableId.toLowerCase().contains(_searchQuery);
+      return matchesSeverity && matchesType && matchesSearch;
+    }).toList();
+  }
+
+  List<String> get _availableTypes {
+    final types = _anomalies.map((a) => a.type).toSet().toList();
+    types.sort();
+    return ['Tous', ...types];
   }
 
   @override
@@ -53,7 +77,9 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
       ),
       body: Column(
         children: [
+          _buildSearchBar(),
           _buildFilterSection(),
+          _buildTypeFilterSection(),
           Expanded(
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
@@ -73,11 +99,39 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: TextField(
+        controller: _searchController,
+        decoration: InputDecoration(
+          hintText: 'Rechercher par code câble...',
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear_rounded),
+                  onPressed: () {
+                    _searchController.clear();
+                  },
+                )
+              : null,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(12),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterSection() {
     final severities = ['Tous', 'Mineur', 'Majeur', 'Critique'];
     return Container(
-      height: 60,
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -91,14 +145,47 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
               label: Text(severity),
               selected: isSelected,
               onSelected: (selected) {
-                if (selected) {
-                  setState(() => _selectedSeverity = severity);
-                }
+                if (selected) setState(() => _selectedSeverity = severity);
               },
               selectedColor: AppTheme.primaryBlue,
               labelStyle: TextStyle(
                 color: isSelected ? Colors.white : AppTheme.textDark,
+                fontSize: 12,
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildTypeFilterSection() {
+    final types = _availableTypes;
+    return Container(
+      height: 50,
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: types.length,
+        itemBuilder: (context, index) {
+          final type = types[index];
+          final isSelected = _selectedType == type;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(type),
+              selected: isSelected,
+              onSelected: (selected) {
+                if (selected) setState(() => _selectedType = type);
+              },
+              selectedColor: AppTheme.secondaryOrange,
+              labelStyle: TextStyle(
+                color: isSelected ? Colors.white : AppTheme.textDark,
+                fontSize: 12,
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
             ),
           );
         },
@@ -109,7 +196,10 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
   Widget _buildAnomalyCard(Anomaly anomaly) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () {
           Navigator.push(
             context,
@@ -118,23 +208,71 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
             ),
           ).then((_) => _loadAnomalies());
         },
-        leading: Icon(
-          Icons.report_problem,
-          color: _getSeverityColor(anomaly.severity),
-        ),
-        title: Text(anomaly.type),
-        subtitle: Text('Câble: ${anomaly.cableId} • ${anomaly.location ?? "Zone inconnue"}'),
-        trailing: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            StatusBadge(status: anomaly.severity, isSmall: true),
-            const SizedBox(height: 4),
-            Text(
-              '${(anomaly.confidence * 100).toStringAsFixed(0)}% fiable',
-              style: const TextStyle(fontSize: 10, color: AppTheme.textGrey),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: _getSeverityColor(anomaly.severity).withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.report_problem_rounded,
+                  color: _getSeverityColor(anomaly.severity),
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      anomaly.type,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Câble: ${anomaly.cableId}',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.primaryBlue),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Zone: ${anomaly.location ?? "Inconnue"}',
+                      style: const TextStyle(fontSize: 12, color: AppTheme.textGrey),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Détecté le ${anomaly.detectedAt.day}/${anomaly.detectedAt.month}/${anomaly.detectedAt.year} à ${anomaly.detectedAt.hour}h${anomaly.detectedAt.minute.toString().padLeft(2, '0')}',
+                      style: const TextStyle(fontSize: 11, color: AppTheme.textLight),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  StatusBadge(status: anomaly.severity, isSmall: true),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      '${(anomaly.confidence * 100).toStringAsFixed(0)}% IA',
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

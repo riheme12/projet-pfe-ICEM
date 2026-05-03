@@ -67,14 +67,9 @@ class _ReportsPageState extends State<ReportsPage> {
           IconButton(
             icon: const Icon(Icons.file_download_outlined, color: Colors.white),
             onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Export PDF - À venir'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10)),
-                ),
-              );
+              if (_globalStats != null) {
+                PdfExportService.exportGlobalStatsReport(_globalStats!, _anomaliesByType);
+              }
             },
           ),
         ],

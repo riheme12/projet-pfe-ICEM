@@ -49,9 +49,26 @@ router.post('/', async (req, res) => {
     try {
         const anomaly = Anomaly.fromJson(req.body);
         const data = anomaly.toJson();
+        data.statut = req.body.statut || 'detectee';
+        if (req.body.mesureCorrective !== undefined) data.mesureCorrective = req.body.mesureCorrective;
+        if (req.body.orderId !== undefined) data.orderId = req.body.orderId;
+        if (req.body.inspectionId !== undefined) data.inspectionId = req.body.inspectionId;
+        if (req.body.imageUrl !== undefined) data.imageUrl = req.body.imageUrl;
         delete data.id;
         const docRef = await db.collection('anomaly').add(data);
         const createdAnomaly = { id: docRef.id, ...data };
+
+        await db.collection('notifications').add({
+            type: 'anomaly_detected',
+            title: `Anomalie ${createdAnomaly.severity || 'Inconnue'} détectée`,
+            message: `${createdAnomaly.type || 'Anomalie'} sur câble ${createdAnomaly.cableId || 'N/A'}`,
+            anomalyId: docRef.id,
+            orderId: createdAnomaly.orderId || null,
+            cableId: createdAnomaly.cableId || null,
+            technicianId: createdAnomaly.technicianId || null,
+            statut: 'unread',
+            createdAt: new Date().toISOString(),
+        });
 
         // Handle Email Alerts if Critical
         if (createdAnomaly.severity?.toLowerCase() === 'critique') {
@@ -120,12 +137,24 @@ router.patch('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Anomaly not found' });
         }
         const existingData = { id: doc.id, ...doc.data() };
-        const updatedData = { ...existingData, ...req.body };
-        const anomaly = Anomaly.fromJson(updatedData);
-        const data = anomaly.toJson();
+        const data = { ...existingData, ...req.body };
+        data.updatedAt = new Date().toISOString();
+        if (req.body.statut === 'traitee') {
+            data.resolvedAt = new Date().toISOString();
+            if (!existingData.statut || existingData.statut !== 'traitee') {
+                await db.collection('notifications').add({
+                    type: 'anomaly_resolved',
+                    title: 'Anomalie traitée',
+                    message: `${existingData.type || 'Anomalie'} a été marquée comme traitée`,
+                    anomalyId: req.params.id,
+                    orderId: existingData.orderId || null,
+                    cableId: existingData.cableId || null,
+                    statut: 'unread',
+                    createdAt: new Date().toISOString(),
+                });
+            }
+        }
         delete data.id;
-        if (req.body.statut) data.statut = req.body.statut;
-        if (req.body.mesureCorrective) data.mesureCorrective = req.body.mesureCorrective;
         await db.collection('anomaly').doc(req.params.id).update(data);
         res.status(200).json({ id: req.params.id, ...data });
     } catch (error) {

@@ -29,7 +29,23 @@ class UserService {
   Future<User?> getCurrentUser() async {
     if (_currentUser != null) return _currentUser;
 
-    return null;
+    try {
+      final firebaseUser = _auth.currentUser;
+      if (firebaseUser == null) return null;
+
+      final doc = await _usersCollection.doc(firebaseUser.uid).get();
+      if (!doc.exists) return null;
+
+      final data = doc.data() as Map<String, dynamic>;
+      _currentUser = User.fromJson({
+        'id': doc.id,
+        ...data,
+      });
+      return _currentUser;
+    } catch (e) {
+      debugPrint('Error getting current user: $e');
+      return null;
+    }
   }
 
   /// Mettre à jour le profil utilisateur dans Firestore

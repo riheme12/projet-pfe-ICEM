@@ -10,6 +10,7 @@ import Users from './pages/Users';
 import Login from './pages/Login';
 import InspectionDetails from './pages/InspectionDetails';
 import Settings from './pages/Settings';
+import AdminProfile from './pages/AdminProfile';
 import { getCurrentUser } from './hooks/useAuth';
 import { ROLE_PERMISSIONS } from './hooks/useAuth';
 
@@ -68,6 +69,7 @@ function App() {
           <Route path="settings" element={
             <RoleRoute page="settings"><Settings /></RoleRoute>
           } />
+          <Route path="profile" element={<AdminProfile />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -52,24 +52,6 @@ class _ProfilePageState extends State<ProfilePage> {
             color: Colors.white,
           ),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit_outlined, color: Colors.white),
-            onPressed: () async {
-              if (_user != null) {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EditProfilePage(user: _user!),
-                  ),
-                );
-                if (result == true) {
-                  _loadUserData();
-                }
-              }
-            },
-          ),
-        ],
       ),
       body: _isLoading
           ? const Center(

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Activity, AlertTriangle, CheckCircle, Package, TrendingUp, Download } from 'lucide-react';
-import { OrderService, AnomalyService, InspectionService, StatsService } from '../services/api';
+import { OrderService, AnomalyService, InspectionService, StatsService, CableService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -8,15 +8,27 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
     PieChart, Pie, Cell, LineChart, Line, Area, AreaChart
 } from 'recharts';
+import { db } from '../services/firebase';
+import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import toast, { Toaster } from 'react-hot-toast';
 
 const StatCard = ({ icon, label, value, color, unit = "" }) => (
-    <div className="card flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
-            {React.cloneElement(icon, { className: 'text-white', size: 22 })}
-        </div>
-        <div>
-            <p className="text-sm text-slate-500 font-medium">{label}</p>
-            <p className="text-2xl font-bold text-slate-800">{value}{unit}</p>
+    <div className={`card relative overflow-hidden group hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 ${color} border-none`}>
+        {/* Decorative background circle */}
+        <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl group-hover:scale-150 transition-transform duration-700"></div>
+        <div className="absolute -left-6 -bottom-6 w-32 h-32 bg-black/10 rounded-full blur-3xl group-hover:scale-150 transition-transform duration-700"></div>
+        
+        <div className="relative z-10 flex items-center gap-5">
+            <div className="w-14 h-14 rounded-2xl flex items-center justify-center bg-white/20 backdrop-blur-md border border-white/20 shadow-[0_4px_16px_rgba(0,0,0,0.1)] group-hover:scale-110 transition-transform duration-300">
+                {React.cloneElement(icon, { className: 'text-white drop-shadow-md', size: 26 })}
+            </div>
+            <div>
+                <p className="text-white/80 font-semibold text-[11px] tracking-widest uppercase mb-1">{label}</p>
+                <p className="text-3xl font-black text-white tracking-tight drop-shadow-sm flex items-baseline gap-1">
+                    {value}
+                    {unit && <span className="text-lg font-bold text-white/70">{unit}</span>}
+                </p>
+            </div>
         </div>
     </div>
 );
@@ -26,7 +38,8 @@ const COLORS = ['#2563eb', '#16a34a', '#d97706', '#dc2626'];
 const Dashboard = () => {
     const [stats, setStats] = useState({
         orders: { total: 0, enCours: 0, termine: 0, enAttente: 0 },
-        anomalies: { total: 0, critique: 0, majeur: 0, mineur: 0 }
+        anomalies: { total: 0, critique: 0, majeur: 0, mineur: 0 },
+        cables: { total: 0, conforme: 0, nonConforme: 0, enAttente: 0 },
     });
     const [recentInspections, setRecentInspections] = useState([]);
     const [recentAnomalies, setRecentAnomalies] = useState([]);
@@ -35,48 +48,71 @@ const Dashboard = () => {
     const { canExport } = useAuth();
 
     useEffect(() => {
-        const fetchData = async () => {
+        // --- ÉCOUTE EN TEMPS RÉEL FIRESTORE ---
+        
+        // Écouter les anomalies
+        const qAnomalies = query(collection(db, 'anomalies'), orderBy('detectedAt', 'desc'), limit(5));
+        let isFirstLoad = true;
+        const unsubAnomalies = onSnapshot(qAnomalies, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setRecentAnomalies(list);
+            
+            // Sécurité : Vérifier que list[0] existe avant d'afficher le toast
+            if (!isFirstLoad && snapshot.docChanges().some(change => change.type === 'added')) {
+                const newAnomaly = list[0];
+                if (newAnomaly && newAnomaly.type) {
+                    toast.error(`Alerte : ${newAnomaly.type} détecté sur le câble #${newAnomaly.cableId?.substring(0,8) || 'N/A'}`, {
+                        duration: 5000,
+                        icon: '🚨',
+                        style: { borderRadius: '12px', background: '#334155', color: '#fff', fontSize: '14px' }
+                    });
+                }
+            }
+            isFirstLoad = false;
+            
+            // Recalculer les stats d'anomalies en toute sécurité
+            const crit = list.filter(a => a.severity?.toLowerCase() === 'critique').length;
+            setStats(prev => ({
+                ...prev,
+                anomalies: { ...prev.anomalies, total: list.length, critique: crit }
+            }));
+        }, (error) => {
+            console.error("Erreur Firestore (anomalies):", error);
+        });
+
+        // Écouter les inspections récentes (collection 'cable')
+        const qInspections = query(collection(db, 'cable'), orderBy('inspectionDate', 'desc'), limit(5));
+        const unsubInspections = onSnapshot(qInspections, (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            setRecentInspections(list);
+        });
+
+        // Charger le reste des stats via API une fois au démarrage
+        const fetchInitialStats = async () => {
             try {
-                const [orderRes, anomalyRes, inspectionsRes, anomaliesListRes] = await Promise.all([
+                const [orderRes, anomalyRes, cableRes] = await Promise.all([
                     OrderService.getStats(),
                     AnomalyService.getStats(),
-                    InspectionService.getAll().catch(() => ({ data: [] })),
-                    AnomalyService.getAll().catch(() => ({ data: [] })),
+                    CableService.getStats(),
                 ]);
-
                 setStats({
                     orders: orderRes.data,
-                    anomalies: anomalyRes.data
+                    anomalies: anomalyRes.data,
+                    cables: cableRes.data,
                 });
-
-                const sortedInspections = (inspectionsRes.data || [])
-                    .sort((a, b) => new Date(b.inspectionDate || 0) - new Date(a.inspectionDate || 0))
-                    .slice(0, 5);
-                setRecentInspections(sortedInspections);
-
-                const sortedAnomalies = (anomaliesListRes.data || [])
-                    .sort((a, b) => new Date(b.detectedAt || 0) - new Date(a.detectedAt || 0))
-                    .slice(0, 5);
-                setRecentAnomalies(sortedAnomalies);
-
-                // Fetch trends
-                try {
-                    const trendsRes = await StatsService.getTrends();
-                    setTrends(trendsRes.data || []);
-                } catch (e) {
-                    console.error("Trends not available:", e);
-                }
-            } catch (error) {
-                console.error("Erreur stats", error);
-            } finally {
                 setLoading(false);
-            }
+            } catch (e) { console.error(e); }
         };
-        fetchData();
+        fetchInitialStats();
+
+        return () => {
+            unsubAnomalies();
+            unsubInspections();
+        };
     }, []);
 
-    const conformityRate = stats.orders.total > 0
-        ? Math.round(((stats.orders.total - (stats.anomalies.total || 0)) / stats.orders.total) * 100)
+    const conformityRate = stats.cables.total > 0
+        ? Math.round(((stats.cables.conforme || 0) / stats.cables.total) * 100)
         : 0;
 
     const chartData = [
@@ -153,6 +189,7 @@ const Dashboard = () => {
 
     return (
         <div className="flex flex-col gap-6">
+            <Toaster position="top-right" />
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                 <div>
                     <h1 className="text-2xl font-bold text-slate-800">Tableau de Bord</h1>
@@ -174,26 +211,26 @@ const Dashboard = () => {
                     icon={<Package />}
                     label="Ordres en cours"
                     value={stats.orders.enCours || 0}
-                    color="bg-blue-600"
+                    color="bg-gradient-to-br from-blue-500 via-indigo-600 to-violet-700"
                 />
                 <StatCard
                     icon={<AlertTriangle />}
                     label="Anomalies Critiques"
                     value={stats.anomalies.critique || 0}
-                    color="bg-red-600"
+                    color="bg-gradient-to-br from-rose-500 via-red-600 to-pink-700"
                 />
                 <StatCard
                     icon={<CheckCircle />}
                     label="Taux de Conformité"
                     value={conformityRate || 0}
                     unit="%"
-                    color="bg-emerald-600"
+                    color="bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-600"
                 />
                 <StatCard
                     icon={<TrendingUp />}
-                    label="Production Totale"
-                    value={stats.orders.total || 0}
-                    color="bg-slate-700"
+                    label="Câbles Inspectés"
+                    value={stats.cables.total || 0}
+                    color="bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900"
                 />
             </div>
 

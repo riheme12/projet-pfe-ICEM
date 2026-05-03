@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/providers/auth_provider.dart';
 import 'package:projeticem/services/orders_service.dart';
 import 'package:projeticem/theme/app_theme.dart';
+import 'package:projeticem/services/pdf_service.dart';
 
 // ─── Dimensions tableau ───────────────────────────────────────────────────────
 const double _rowH  = 38.0;
@@ -62,12 +63,18 @@ class ChecklistPage extends StatefulWidget {
   final String? orderId;
   final String? orderReference;
   final String? cableReference;
+  final String? serialNumber;           // Nouveau : N° de série scanné
+  final List<String>? detectedDefects;  // Nouveau : Liste des codes défauts IA
+  final String? imageUrl;               // Nouveau : URL de la photo prise
 
   const ChecklistPage({
     super.key,
     this.orderId,
     this.orderReference,
     this.cableReference,
+    this.serialNumber,
+    this.detectedDefects,
+    this.imageUrl,
   });
 
   @override
@@ -93,8 +100,24 @@ class _ChecklistPageState extends State<ChecklistPage> {
     _noteCtrl      = TextEditingController();
     _sigLigneCtrl  = TextEditingController();
     _sigQualiteCtrl = TextEditingController();
-    _addRow(cableCode: widget.cableReference ?? '');
-    if (_rows.isEmpty) _addRow();
+    
+    // Créer la première ligne avec les données IA si disponibles
+    final row = _VisualRow(cableCode: widget.cableReference ?? '');
+    
+    // Auto-remplissage du N° de série (Provient du QR Code)
+    row.nsCtrl.text = widget.serialNumber ?? widget.cableReference ?? '';
+    
+    // Auto-remplissage des codes défauts IA
+    if (widget.detectedDefects != null && widget.detectedDefects!.isNotEmpty) {
+      row.defCtrl.text = widget.detectedDefects!.join(', ');
+      row.isConform = false;
+    }
+
+    row.defCtrl.addListener(() {
+      if (mounted) setState(() => row.isConform = row.defCtrl.text.trim().isEmpty);
+    });
+    
+    _rows.add(row);
   }
 
   @override
@@ -148,7 +171,9 @@ class _ChecklistPageState extends State<ChecklistPage> {
         orderId: widget.orderId ?? '',
         status: status,
         technicianId: auth.currentUser?.id ?? 'unknown',
+        technicianName: auth.currentUser?.fullName ?? auth.currentUser?.username ?? 'Technicien Mobile',
         anomaliesCount: row.defCtrl.text.trim().isEmpty ? 0 : 1,
+        imageUrl: widget.imageUrl, // Enregistrement de l'URL de la photo !
         visualChecklistItems: [{
           'codeDefaut':  row.defCtrl.text.trim(),
           'numeroSerie': row.nsCtrl.text.trim(),
@@ -161,6 +186,24 @@ class _ChecklistPageState extends State<ChecklistPage> {
 
     setState(() => _isSaving = false);
     if (!mounted) return;
+
+    // --- NOUVEAU : GÉNÉRATION DU PDF AUTOMATIQUE ---
+    try {
+      await PdfService.generateInspectionReport(
+        technicianName: _nomCtrl.text.trim(),
+        cableRef: widget.cableReference ?? 'N/A',
+        orderRef: widget.orderReference ?? 'N/A',
+        checklistItems: validRows.map((r) => {
+          'numeroSerie': r.nsCtrl.text.trim(),
+          'codeDefaut': r.defCtrl.text.trim(),
+          'derivation': r.derCtrl.text.trim(),
+          'status': r.isConform ? 'Conforme' : 'Non conforme',
+        }).toList(),
+      );
+    } catch (e) {
+      debugPrint('Erreur PDF: $e');
+    }
+
     _showSuccess(validRows.length, _nombreNC);
   }
 

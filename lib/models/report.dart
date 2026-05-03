@@ -9,6 +9,7 @@ class Report {
   final String cableId;             // ID du câble inspecté
   final String orderId;             // ID de l'ordre de fabrication
   final String technicianId;        // ID du technicien
+  final String? technicianName;     // Nom du technicien
   final DateTime generatedAt;       // Date de génération
   final String conformityStatus;    // 'Conforme' ou 'Non conforme'
   final int anomaliesCount;         // Nombre d'anomalies détectées
@@ -20,6 +21,7 @@ class Report {
     required this.cableId,
     required this.orderId,
     required this.technicianId,
+    this.technicianName,
     required this.generatedAt,
     required this.conformityStatus,
     required this.anomaliesCount,
@@ -41,6 +43,7 @@ class Report {
       cableId: data['cableId'] as String? ?? '',
       orderId: data['orderId'] as String? ?? '',
       technicianId: data['technicianId'] as String? ?? '',
+      technicianName: data['technicianName'] as String?,
       generatedAt: (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       conformityStatus: data['conformityStatus'] as String? ?? 'Inconnu',
       anomaliesCount: data['anomaliesCount'] as int? ?? 0,
@@ -56,6 +59,7 @@ class Report {
       cableId: json['cableId'] as String,
       orderId: json['orderId'] as String,
       technicianId: json['technicianId'] as String,
+      technicianName: json['technicianName'] as String?,
       generatedAt: DateTime.parse(json['generatedAt'] as String),
       conformityStatus: json['conformityStatus'] as String,
       anomaliesCount: json['anomaliesCount'] as int,
@@ -71,6 +75,7 @@ class Report {
       'cableId': cableId,
       'orderId': orderId,
       'technicianId': technicianId,
+      'technicianName': technicianName,
       'generatedAt': generatedAt.toIso8601String(),
       'conformityStatus': conformityStatus,
       'anomaliesCount': anomaliesCount,

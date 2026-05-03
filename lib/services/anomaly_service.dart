@@ -60,13 +60,52 @@ class AnomalyService {
   }
 
   /// Enregistrer une nouvelle anomalie détectée
-  Future<String?> createAnomaly(Anomaly anomaly) async {
+  Future<String?> createAnomaly(
+    Anomaly anomaly, {
+    Map<String, dynamic>? extraData,
+  }) async {
     try {
-      final docRef = await _anomaliesCollection.add(anomaly.toFirestore());
+      final payload = {
+        ...anomaly.toFirestore(),
+        if (extraData != null) ...extraData,
+      };
+      final docRef = await _anomaliesCollection.add(payload);
+
+      // Créer la notification pour le dashboard Web
+      await _db.collection('notifications').add({
+        'type': 'anomaly_detected',
+        'title': 'Anomalie ${anomaly.severity} détectée',
+        'message': '${anomaly.type} sur câble ${anomaly.cableId}',
+        'anomalyId': docRef.id,
+        'orderId': extraData?['orderId'],
+        'cableId': anomaly.cableId,
+        'technicianId': anomaly.technicianId,
+        'statut': 'unread',
+        'createdAt': DateTime.now().toIso8601String(),
+      });
+
       return docRef.id;
     } catch (e) {
       debugPrint('Error creating anomaly: $e');
       return null;
+    }
+  }
+
+  /// Marquer une anomalie comme résolue
+  Future<bool> markAsResolved(
+    String anomalyId, {
+    String correctiveAction = '',
+  }) async {
+    try {
+      await _anomaliesCollection.doc(anomalyId).update({
+        'statut': 'traitee',
+        'mesureCorrective': correctiveAction,
+        'resolvedAt': Timestamp.fromDate(DateTime.now()),
+      });
+      return true;
+    } catch (e) {
+      debugPrint('Error marking anomaly as resolved: $e');
+      return false;
     }
   }
 

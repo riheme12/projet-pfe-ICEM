@@ -105,16 +105,6 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
   /// ⚠️ BLOQUÉ si le contrôle électrique n'est pas fait
   Future<void> _startVisualInspectionFlow() async {
     // 1. Vérifier si le contrôle électrique est fait
-    setState(() => _isCheckingElectrical = true);
-    final hasElec = await _ordersService
-        .hasElectricalCheckForOrder(widget.order.id);
-    setState(() => _isCheckingElectrical = false);
-
-    if (!hasElec && mounted) {
-      _showElectricalRequiredDialog();
-      return;
-    }
-
     if (!mounted) return;
 
     // 2. Scanner le QR code du câble
@@ -137,6 +127,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
         builder: (context) => InspectionPage(
           orderId: widget.order.numeroOF,
           orderReference: widget.order.reference,
+          cableReference: scannedCode,
         ),
       ),
     );
@@ -360,7 +351,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                     isDone: _cables.isNotEmpty,
                     status: _cables.isNotEmpty ? '${_cables.length} câbles' : null,
                     color: const Color(0xFF2E7D32),
-                    isLocked: !_electricalCheckDone,
+                    isLocked: false,
                   ),
                 ),
               ],
@@ -789,33 +780,15 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
-                          onPressed: _isCheckingElectrical
-                              ? null
-                              : _startVisualInspectionFlow,
-                          icon: _isCheckingElectrical
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(
-                                      color: Colors.white, strokeWidth: 2),
-                                )
-                              : Icon(
-                                  !_electricalCheckDone
-                                      ? Icons.lock_rounded
-                                      : Icons.qr_code_scanner_rounded,
-                                  size: 18,
-                                ),
+                          onPressed: _startVisualInspectionFlow,
+                          icon: const Icon(Icons.qr_code_scanner_rounded, size: 18),
                           label: Text(
-                            _isCheckingElectrical
-                                ? 'Vérification...'
-                                : 'Scanner \u0026 Contrôle Visuel',
+                            'Scanner & Contrôle Visuel',
                             style: GoogleFonts.inter(
                                 fontSize: 13, fontWeight: FontWeight.w700),
                           ),
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: !_electricalCheckDone
-                                ? Colors.grey.shade400
-                                : const Color(0xFF2E7D32),
+                            backgroundColor: const Color(0xFF2E7D32),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(

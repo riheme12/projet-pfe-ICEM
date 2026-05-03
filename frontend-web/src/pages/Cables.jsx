@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { Cable as CableIcon, Plus, Search, QrCode, Eye, Pencil, Trash2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { CableService, OrderService } from '../services/api';
 
@@ -20,8 +21,9 @@ const StatusBadge = ({ status }) => {
 const Cables = () => {
     const [cables, setCables] = useState([]);
     const [orders, setOrders] = useState([]);
+    const location = useLocation();
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState('');
+    const [searchTerm, setSearchTerm] = useState(location.state?.search || '');
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editCable, setEditCable] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
@@ -135,13 +137,13 @@ const Cables = () => {
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-slate-50/80 border-b border-slate-200">
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Référence</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Code QR</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Ordre</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Statut</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date Contrôle</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                            <tr className="bg-blue-50/60 border-b border-blue-100">
+                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Référence</th>
+                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Code QR</th>
+                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Ordre</th>
+                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Statut</th>
+                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Date Contrôle</th>
+                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
@@ -155,35 +157,35 @@ const Cables = () => {
                             ) : filteredCables.length > 0 ? (
                                 filteredCables.map((cable) => (
                                     <tr key={cable.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-4">
-                                            <span className="font-semibold text-slate-800 text-sm">{cable.reference}</span>
+                                        <td className="px-6 py-5">
+                                            <span className="font-bold text-slate-900 text-base">{cable.reference}</span>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-2 text-sm text-slate-600">
-                                                <QrCode size={14} className="text-slate-400" />
+                                        <td className="px-6 py-5">
+                                            <div className="flex items-center gap-2 text-base text-slate-700 font-medium">
+                                                <QrCode size={18} className="text-slate-400" />
                                                 {cable.code || '—'}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-600">{getOrderRef(cable.orderId)}</td>
-                                        <td className="px-6 py-4"><StatusBadge status={cable.status} /></td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">
+                                        <td className="px-6 py-5 text-base text-slate-700 font-medium">{getOrderRef(cable.orderId)}</td>
+                                        <td className="px-6 py-5"><StatusBadge status={cable.status} /></td>
+                                        <td className="px-6 py-5 text-base font-medium text-slate-600">
                                             {cable.inspectionDate ? new Date(cable.inspectionDate).toLocaleDateString() : '—'}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <div className="flex justify-end gap-1">
+                                        <td className="px-6 py-5">
+                                            <div className="flex justify-end gap-2">
                                                 <button
                                                     onClick={() => openEdit(cable)}
-                                                    className="p-2 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-accent transition-colors"
+                                                    className="p-2.5 bg-amber-50 hover:bg-amber-100 rounded-xl text-amber-600 transition-colors shadow-sm"
                                                     title="Modifier"
                                                 >
-                                                    <Pencil size={15} />
+                                                    <Pencil size={20} />
                                                 </button>
                                                 <button
                                                     onClick={() => setDeleteConfirm(cable)}
-                                                    className="p-2 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors"
+                                                    className="p-2.5 bg-red-50 hover:bg-red-100 rounded-xl text-red-600 transition-colors shadow-sm"
                                                     title="Supprimer"
                                                 >
-                                                    <Trash2 size={15} />
+                                                    <Trash2 size={20} />
                                                 </button>
                                             </div>
                                         </td>
@@ -250,7 +252,7 @@ const Cables = () => {
                                 >
                                     <option value="">— Sélectionner un ordre —</option>
                                     {orders.map(o => (
-                                        <option key={o.id} value={o.id}>{o.reference} — {o.cableType}</option>
+                                        <option key={o.id} value={o.id}>{o.reference} — {o.client || o.cableType}</option>
                                     ))}
                                 </select>
                             </div>

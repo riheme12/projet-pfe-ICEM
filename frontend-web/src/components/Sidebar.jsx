@@ -1,10 +1,14 @@
-import { LayoutDashboard, ClipboardList, AlertCircle, Users, FileBarChart, Settings, LogOut, Bell, Cable } from 'lucide-react';
+import { LayoutDashboard, ClipboardList, AlertCircle, Users, FileBarChart, Settings, LogOut, Bell, Cable, User } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useEffect, useState } from 'react';
+import { AnomalyService } from '../services/api';
+import logo from '../assets/logo.png';
 
 const Sidebar = () => {
     const navigate = useNavigate();
     const { hasPageAccess, roleLabel, user } = useAuth();
+    const [activeAlertsCount, setActiveAlertsCount] = useState(0);
 
     const allMenuItems = [
         { icon: <LayoutDashboard size={20} />, label: 'Tableau de bord', path: '/', page: 'dashboard' },
@@ -19,6 +23,29 @@ const Sidebar = () => {
     // Filtrer les menus selon le rôle de l'utilisateur
     const menuItems = allMenuItems.filter(item => hasPageAccess(item.page));
 
+    useEffect(() => {
+        let mounted = true;
+
+        const loadAlertCount = async () => {
+            try {
+                const response = await AnomalyService.getAll();
+                if (!mounted) return;
+                const anomalies = response.data || [];
+                const active = anomalies.filter(a => a.statut !== 'traitee' && a.statut !== 'archivee').length;
+                setActiveAlertsCount(active);
+            } catch (_) {
+                if (mounted) setActiveAlertsCount(0);
+            }
+        };
+
+        loadAlertCount();
+        const timer = setInterval(loadAlertCount, 30000);
+        return () => {
+            mounted = false;
+            clearInterval(timer);
+        };
+    }, []);
+
     const handleLogout = () => {
         localStorage.removeItem('isAuthenticated');
         localStorage.removeItem('currentUser');
@@ -27,8 +54,10 @@ const Sidebar = () => {
 
     return (
         <aside className="w-64 bg-primary h-screen sticky top-0 text-white p-5 hidden md:flex flex-col gap-6 shadow-xl">
-            <div className="flex items-center gap-3 px-2 py-4">
-                <div className="w-9 h-9 bg-accent rounded-xl flex items-center justify-center font-bold text-sm">IC</div>
+            <div className="flex items-center gap-3 px-2 py-4 cursor-pointer" onClick={() => navigate('/')}>
+                <div className="bg-white p-1.5 rounded-lg shadow-sm border border-slate-100">
+                    <img src={logo} alt="Logo" className="w-8 h-8 object-contain" />
+                </div>
                 <h1 className="text-lg font-bold tracking-tight">ICEM Quality</h1>
             </div>
 
@@ -43,6 +72,11 @@ const Sidebar = () => {
                     >
                         {item.icon}
                         <span>{item.label}</span>
+                        {item.page === 'alerts' && activeAlertsCount > 0 && (
+                            <span className="ml-auto inline-flex min-w-6 h-6 px-1 items-center justify-center rounded-full bg-red-500 text-white text-xs font-bold">
+                                {activeAlertsCount > 99 ? '99+' : activeAlertsCount}
+                            </span>
+                        )}
                     </NavLink>
                 ))}
             </nav>
@@ -53,6 +87,11 @@ const Sidebar = () => {
                     <p className="text-sm font-bold text-white truncate">{user?.fullName || 'Utilisateur'}</p>
                     <p className="text-xs text-slate-400">{roleLabel}</p>
                 </div>
+
+                <NavLink to="/profile" className="sidebar-item">
+                    <User size={20} />
+                    <span>Mon Profil</span>
+                </NavLink>
 
                 {hasPageAccess('settings') && (
                     <NavLink to="/settings" className="sidebar-item">

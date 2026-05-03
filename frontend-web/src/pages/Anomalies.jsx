@@ -31,8 +31,10 @@ const Anomalies = () => {
     const [filterSeverity, setFilterSeverity] = useState('Tous');
     const [treatModal, setTreatModal] = useState(null);
     const [corrective, setCorrective] = useState('');
+    const [selectedImage, setSelectedImage] = useState(null); // Nouveau : État pour le zoom image
     const navigate = useNavigate();
     const { canExport } = useAuth();
+
 
     const handleExportExcel = () => {
         const data = filteredAnomalies.map(a => ({
@@ -40,7 +42,8 @@ const Anomalies = () => {
             'Gravité': a.severity || '—',
             'Câble ID': a.cableId || '—',
             'Confiance IA (%)': a.confidence ? (a.confidence * 100).toFixed(0) : '0',
-            'Date Détection': a.detectedAt ? new Date(a.detectedAt).toLocaleDateString('fr-FR') : '—',
+            'Par': a.technicianName || 'Auto System',
+            'Date Détection': a.detectedAt ? new Date(a.detectedAt).toLocaleString('fr-FR') : '—',
             'Statut': a.statut === 'traitee' ? 'Traitée' : a.statut === 'en_traitement' ? 'En traitement' : 'Détectée',
             'Description': a.description || 'Anomalie détectée par IA',
         }));
@@ -50,7 +53,7 @@ const Anomalies = () => {
         // Ajuster la largeur des colonnes
         ws['!cols'] = [
             { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
-            { wch: 16 }, { wch: 14 }, { wch: 35 },
+            { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 35 },
         ];
         XLSX.writeFile(wb, `ICEM_Anomalies_${new Date().toISOString().split('T')[0]}.xlsx`);
     };
@@ -149,61 +152,79 @@ const Anomalies = () => {
                     </div>
                 ) : filteredAnomalies.length > 0 ? (
                     filteredAnomalies.map((anomaly) => (
-                        <div key={anomaly.id} className="card group hover:border-slate-300 transition-all">
-                            <div className="flex justify-between items-start mb-4">
-                                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500">
-                                    <AlertCircle size={22} />
-                                </div>
-                                <SeverityBadge severity={anomaly.severity} />
-                            </div>
-
-                            <h3 className="text-base font-semibold text-slate-800 mb-1 capitalize">{anomaly.type}</h3>
-                            <p className="text-sm text-slate-500 mb-4 line-clamp-2">{anomaly.description || 'Anomalie détectée par l\'IA'}</p>
-
-                            <div className="flex flex-col gap-2 py-3 border-y border-slate-100 mb-4">
-                                <div className="flex justify-between text-xs">
-                                    <span className="text-slate-400 font-medium">Câble</span>
-                                    <span className="text-slate-700 font-semibold">#{anomaly.cableId?.substring(0, 10) || '—'}</span>
-                                </div>
-                                <div className="flex justify-between text-xs text-slate-500 items-center">
-                                    <div className="flex items-center gap-1">
-                                        <Clock size={12} />
-                                        {anomaly.detectedAt ? new Date(anomaly.detectedAt).toLocaleDateString() : '—'}
-                                    </div>
-                                    <span className="font-semibold text-blue-600">{anomaly.confidence ? (anomaly.confidence * 100).toFixed(0) : 0}% confiance</span>
-                                </div>
-                                {anomaly.statut && (
-                                    <div className="flex justify-between text-xs items-center">
-                                        <span className="text-slate-400">Statut</span>
-                                        <span className={`px-2 py-0.5 rounded text-xs font-semibold ${
-                                            anomaly.statut === 'traitee' ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-700'
-                                        }`}>
-                                            {anomaly.statut === 'traitee' ? 'Traitée' : anomaly.statut === 'en_traitement' ? 'En traitement' : 'Détectée'}
-                                        </span>
+                        <div key={anomaly.id} className="card group hover:border-slate-300 transition-all flex flex-col h-full">
+                            {/* Photo de l'inspection */}
+                            <div className="relative h-48 -mx-1 -mt-1 mb-4 overflow-hidden rounded-t-2xl bg-slate-100 border-b border-slate-100">
+                                {anomaly.imageUrl ? (
+                                    <>
+                                        <img 
+                                            src={anomaly.imageUrl} 
+                                            alt={anomaly.type}
+                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-zoom-in"
+                                            onClick={() => setSelectedImage(anomaly.imageUrl)}
+                                        />
+                                        <div className="absolute top-3 left-3 bg-blue-600/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shadow-lg">
+                                            Vue IA
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                        <AlertCircle size={40} className="mb-2 opacity-20" />
+                                        <span className="text-xs font-medium">Pas de photo disponible</span>
                                     </div>
                                 )}
                             </div>
 
-                            <div className="flex gap-2">
+                            <div className="px-1 flex-1">
+                                <div className="flex justify-between items-start mb-3">
+                                    <h3 className="text-lg font-bold text-slate-900 capitalize leading-tight">{anomaly.type}</h3>
+                                    <SeverityBadge severity={anomaly.severity} />
+                                </div>
+                                
+                                <p className="text-base text-slate-600 mb-4 line-clamp-2">{anomaly.description || 'Anomalie détectée par l\'IA'}</p>
+
+                                <div className="flex flex-col gap-3 py-4 border-y border-slate-100 mb-4 bg-slate-50/50 px-3 rounded-xl">
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500 font-bold uppercase tracking-wider">Câble / OF</span>
+                                        <span className="text-slate-900 font-black text-base">#{anomaly.cableId?.substring(0, 10) || '—'}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm text-slate-600">
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={16} className="text-slate-400" />
+                                            <span className="font-medium">{anomaly.detectedAt ? new Date(anomaly.detectedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}</span>
+                                        </div>
+                                        <span className="font-bold text-blue-700 px-2 py-1 bg-blue-100 rounded-lg">
+                                            {anomaly.confidence ? (anomaly.confidence * 100).toFixed(0) : 0}% Confiance
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-slate-500 font-bold uppercase tracking-wider">Responsable</span>
+                                        <span className="text-slate-900 font-black text-base">{anomaly.technicianName || 'Système IA'}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 mt-auto">
                                 <button
-                                    onClick={() => navigate(`/inspections/${anomaly.inspectionId}`)}
-                                    className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors"
+                                    onClick={() => navigate(`/inspections/${anomaly.inspectionId || anomaly.cableId}`)}
+                                    className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-xl transition-all border border-slate-200 shadow-sm"
                                 >
-                                    <Eye size={14} />
+                                    <Eye size={18} />
                                     Détails
                                 </button>
                                 {anomaly.statut !== 'traitee' && (
                                     <button
                                         onClick={() => setTreatModal(anomaly)}
-                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 text-xs font-semibold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors"
+                                        className="flex-1 flex items-center justify-center gap-2 py-3 text-sm font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-xl transition-all border border-emerald-200 shadow-sm"
                                     >
-                                        <CheckCircle size={14} />
+                                        <CheckCircle size={18} />
                                         Traiter
                                     </button>
                                 )}
                             </div>
                         </div>
                     ))
+
                 ) : (
                     <div className="col-span-full card flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
                         <CheckCircle size={48} className="text-emerald-400" />
@@ -225,12 +246,12 @@ const Anomalies = () => {
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="p-4 bg-slate-50 rounded-xl space-y-2">
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Type</span>
-                                    <span className="font-semibold text-slate-800 capitalize">{treatModal.type}</span>
+                                <div className="flex justify-between text-base">
+                                    <span className="text-slate-500 font-medium">Type</span>
+                                    <span className="font-bold text-slate-900 capitalize">{treatModal.type}</span>
                                 </div>
-                                <div className="flex justify-between text-sm">
-                                    <span className="text-slate-500">Gravité</span>
+                                <div className="flex justify-between text-base">
+                                    <span className="text-slate-500 font-medium">Gravité</span>
                                     <SeverityBadge severity={treatModal.severity} />
                                 </div>
                             </div>
@@ -250,6 +271,27 @@ const Anomalies = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Lightbox Modal (Zoom Image) */}
+            {selectedImage && (
+                <div 
+                    className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 md:p-10"
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <button 
+                        className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <X size={24} />
+                    </button>
+                    <img 
+                        src={selectedImage} 
+                        alt="Zoom anomalie" 
+                        className="max-w-full max-h-full rounded-2xl shadow-2xl border border-white/20 object-contain"
+                        onClick={(e) => e.stopPropagation()}
+                    />
                 </div>
             )}
         </div>

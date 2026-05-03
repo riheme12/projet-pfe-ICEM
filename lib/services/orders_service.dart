@@ -131,17 +131,21 @@ class OrdersService {
     required String orderId,
     required String status,
     required String technicianId,
+    required String technicianName,
     int anomaliesCount = 0,
+    String? imageUrl, // Ajout de l'URL de l'image
     List<Map<String, dynamic>>? visualChecklistItems,
   }) async {
     try {
       final cableData = {
+        'reference': reference,
         'code': code,
         'orderId': orderId,
         'status': status,
         'inspectionDate': Timestamp.fromDate(DateTime.now()),
         'technicianId': technicianId,
-        'imageUrls': <String>[],
+        'technicianName': technicianName,
+        'imageUrls': imageUrl != null ? [imageUrl] : <String>[],
         'anomaliesCount': anomaliesCount,
         if (visualChecklistItems != null)
           'visualChecklist': visualChecklistItems,

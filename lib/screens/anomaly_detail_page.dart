@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:projeticem/models/anomaly.dart';
+import 'package:projeticem/services/anomaly_service.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/widgets/status_badge.dart';
 
@@ -15,6 +16,7 @@ class AnomalyDetailPage extends StatefulWidget {
 
 class _AnomalyDetailPageState extends State<AnomalyDetailPage> {
   bool _isProcessing = false;
+  final AnomalyService _anomalyService = AnomalyService();
 
   @override
   Widget build(BuildContext context) {
@@ -162,13 +164,22 @@ class _AnomalyDetailPageState extends State<AnomalyDetailPage> {
 
   Future<void> _processAnomaly() async {
     setState(() => _isProcessing = true);
-    // Simuler le traitement
-    await Future.delayed(const Duration(seconds: 2));
+    final success = await _anomalyService.markAsResolved(widget.anomaly.id);
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('L\'anomalie a été marquée comme résolue.')),
+        SnackBar(
+          content: Text(
+            success
+                ? 'L\'anomalie a été marquée comme résolue.'
+                : 'Impossible de mettre à jour cette anomalie.',
+          ),
+        ),
       );
-      Navigator.pop(context);
+      if (success) {
+        Navigator.pop(context);
+      } else {
+        setState(() => _isProcessing = false);
+      }
     }
   }
 }
