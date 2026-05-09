@@ -28,10 +28,16 @@ router.get('/stats/summary', async (req, res) => {
     }
 });
 
-// Get all production orders
+// Get all production orders (avec pagination basique)
 router.get('/', async (req, res) => {
     try {
-        const snapshot = await db.collection('manufacturingOrder').get();
+        const limit = parseInt(req.query.limit) || 100; // Limite par défaut pour éviter de tout charger
+        
+        const snapshot = await db.collection('manufacturingOrder')
+            .orderBy('createdAt', 'desc')
+            .limit(limit)
+            .get();
+            
         const orders = snapshot.docs.map(doc => {
             const order = ManufacturingOrder.fromJson({ id: doc.id, ...doc.data() });
             return order.toJson();
@@ -56,16 +62,31 @@ router.get('/:id', async (req, res) => {
     }
 });
 
-// Add a new production order
-router.post('/', async (req, res) => {
+const { body, validationResult } = require('express-validator');
+
+// Validation middleware for orders
+const validateOrder = [
+    body('orderNumber').trim().notEmpty().withMessage('Le numéro d\'ordre est requis').escape(),
+    body('cableId').trim().notEmpty().withMessage('L\'ID du câble est requis').escape(),
+    body('quantity').isInt({ min: 1 }).withMessage('La quantité doit être un entier positif'),
+    body('status').optional().trim().escape()
+];
+
+// Add a new production order (avec validation)
+router.post('/', validateOrder, async (req, res, next) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
         const order = ManufacturingOrder.fromJson(req.body);
         const data = order.toJson();
         delete data.id;
         const docRef = await db.collection('manufacturingOrder').add(data);
         res.status(201).json({ id: docRef.id, ...data });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        next(error);
     }
 });
 

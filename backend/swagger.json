@@ -1,0 +1,85 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "ICEM Quality Control API",
+    "description": "API REST pour le système de contrôle qualité ICEM",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5000/api",
+      "description": "Serveur de Développement"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/auth/me": {
+      "get": {
+        "summary": "Obtenir l'utilisateur connecté",
+        "tags": ["Authentification"],
+        "responses": {
+          "200": {
+            "description": "Informations de l'utilisateur"
+          },
+          "401": {
+            "description": "Non autorisé"
+          }
+        }
+      }
+    },
+    "/orders": {
+      "get": {
+        "summary": "Liste des ordres de fabrication",
+        "tags": ["Ordres"],
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "type": "integer"
+            },
+            "description": "Nombre maximum d'ordres à retourner"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Succès"
+          }
+        }
+      },
+      "post": {
+        "summary": "Créer un ordre de fabrication",
+        "tags": ["Ordres"],
+        "responses": {
+          "201": {
+            "description": "Ordre créé avec succès"
+          }
+        }
+      }
+    },
+    "/anomalies": {
+      "get": {
+        "summary": "Liste des anomalies",
+        "tags": ["Anomalies"],
+        "responses": {
+          "200": {
+            "description": "Succès"
+          }
+        }
+      }
+    }
+  }
+}

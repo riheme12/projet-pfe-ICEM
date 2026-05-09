@@ -2,13 +2,17 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
+/**
+ * Configuration Firebase chargée depuis les variables d'environnement
+ * Les valeurs sont définies dans le fichier .env (voir .env.example)
+ */
 const firebaseConfig = {
-    apiKey: 'AIzaSyBgtxAYFi2nPvLfyqXemw5R9kjflvnjWyg',
-    authDomain: 'testflutter-de1f5.firebaseapp.com',
-    projectId: 'testflutter-de1f5',
-    storageBucket: 'testflutter-de1f5.firebasestorage.app',
-    messagingSenderId: '82085295710',
-    appId: '1:82085295710:web:38ad6ffd7fa7b7545666cf',
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const app = initializeApp(firebaseConfig);

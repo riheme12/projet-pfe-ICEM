@@ -4,10 +4,10 @@ const { db, bucket } = require('../firebase');
 const { Anomaly } = require('../models');
 const emailService = require('../services/emailService');
 
-// Get all anomalies
+// Get all anomalies (avec pagination)
 router.get('/', async (req, res) => {
     try {
-        const { inspectionId, cableId } = req.query;
+        const { inspectionId, cableId, limit: queryLimit } = req.query;
         let query = db.collection('anomaly');
 
         if (inspectionId) {
@@ -15,6 +15,13 @@ router.get('/', async (req, res) => {
         }
         if (cableId) {
             query = query.where('cableId', '==', cableId);
+        }
+        
+        // Appliquer la limite seulement si on ne filtre pas par un ID précis
+        if (!inspectionId && !cableId) {
+            const limit = parseInt(queryLimit) || 100;
+            // On ordonne par date de détection pour avoir les plus récentes
+            query = query.orderBy('detectedAt', 'desc').limit(limit);
         }
 
         const snapshot = await query.get();

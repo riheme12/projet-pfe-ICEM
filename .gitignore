@@ -1,4 +1,15 @@
-# Miscellaneous
+# ============================================
+# ICEM Quality Control — .gitignore
+# ============================================
+
+# === SECRETS & CREDENTIALS (CRITIQUE) ===
+**/.env
+**/serviceAccountKey.json
+**/firebase_options.dart
+**/*.key
+**/*.pem
+
+# === Miscellaneous ===
 *.class
 *.log
 *.pyc
@@ -12,18 +23,26 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
+# === IDE ===
 *.iml
 *.ipr
 *.iws
 .idea/
+.vscode/
+.cursor/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# === Node.js ===
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
 
-# Flutter/Dart/Pub related
+# === Flutter/Dart/Pub ===
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -33,13 +52,24 @@ migrate_working_dir/
 /build/
 /coverage/
 
-# Symbolication related
+# === Symbolication ===
 app.*.symbols
 
-# Obfuscation related
+# === Obfuscation ===
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# === Android Studio ===
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# === Frontend build ===
+frontend-web/dist/
+frontend-web/dist-ssr/
+
+# === Temporary files ===
+~$*
+*.tmp
+*.temp
+analysis_errors*.txt
+analysis_results*.txt

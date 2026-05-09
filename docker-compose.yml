@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=production
+      - PORT=5000
+    env_file:
+      - ./backend/.env
+    restart: unless-stopped
+
+  # Note: En production, le frontend React/Vite serait généralement 
+  # buildé en amont et servi via Nginx (ou similaire) au lieu du dev server.
+  frontend:
+    build:
+      context: ./frontend-web
+      dockerfile: Dockerfile.prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

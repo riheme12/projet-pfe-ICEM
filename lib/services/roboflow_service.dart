@@ -17,15 +17,27 @@ class RoboflowService {
   RoboflowService._internal();
 
   // ===== Configuration =====
-  static const String _apiKey = 'ZvSIGjRPcSk1jlr6EUvA'; 
-  static const String _modelId = 'wire-default-dtection-utdc7';
-  static const String _modelVersion = '2';
+  // Clé API chargée depuis --dart-define=ROBOFLOW_API_KEY=xxx ou variable d'env
+  static const String _apiKey = String.fromEnvironment(
+    'ROBOFLOW_API_KEY',
+    defaultValue: '',
+  );
+  static const String _modelId = String.fromEnvironment(
+    'ROBOFLOW_MODEL_ID',
+    defaultValue: 'wire-default-dtection-utdc7',
+  );
+  static const String _modelVersion = String.fromEnvironment(
+    'ROBOFLOW_MODEL_VERSION',
+    defaultValue: '2',
+  );
   static const double _confidenceThreshold = 0.25; 
   static const double _overlapThreshold = 0.30;
 
-  // Mode BACKEND (Utilisez l'URL Ngrok pour un accès garanti)
-  // Exemple: 'https://abcd-1234.ngrok-free.app'
-  static const String _backendBaseUrl = 'METTRE_TON_URL_NGROK_ICI'; 
+  // Mode BACKEND — URL de l'API backend (locale ou Ngrok)
+  static const String _backendBaseUrl = String.fromEnvironment(
+    'BACKEND_URL',
+    defaultValue: 'http://10.0.2.2:5000',
+  );
 
   /// Choisir le mode d'appel (false = Direct, plus simple)
   static const bool useBackend = false; 

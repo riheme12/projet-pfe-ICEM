@@ -6,14 +6,35 @@ const morgan = require('morgan');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Middleware de sécurité (Phase 3)
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+
+// Rate limiting de base
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // Limite chaque IP à 100 requêtes par fenêtre
+    message: { error: 'Trop de requêtes, veuillez réessayer plus tard.' }
+});
+
+app.use(helmet());
+app.use('/api/', limiter);
+
 // Middleware
-app.use(cors());
+// Configuration CORS sécurisée (Phase 3)
+const corsOptions = {
+    origin: process.env.CORS_ORIGIN || '*', // En prod, spécifier l'origine exacte
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+};
+app.use(cors(corsOptions));
 app.use(express.json({ limit: '50mb' }));          // Augmenté pour les images base64
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use(morgan('dev'));
 
 // Auth middleware
 const { authenticateToken } = require('./middleware/auth');
+const { errorHandler } = require('./middleware/errorHandler');
 
 // Routes
 const authRoutes = require('./routes/auth');
@@ -26,6 +47,15 @@ const cablesRoutes = require('./routes/cables');
 const statsRoutes = require('./routes/stats');
 const settingsRoutes = require('./routes/settings');
 const aiRoutes = require('./routes/ai');
+
+// Health Check Endpoint (Phase 3)
+app.get('/health', (req, res) => {
+    res.status(200).json({ 
+        status: 'UP', 
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV || 'development'
+    });
+});
 
 // Auth routes (public — no middleware)
 app.use('/api/auth', authRoutes);
@@ -46,7 +76,16 @@ app.get('/', (req, res) => {
     res.send('Backend ICEM Quality Control API is running');
 });
 
-// Start server
-app.listen(PORT, () => {
-    console.log(`Server is running on port ${PORT}`);
-});
+// Middleware global de gestion des erreurs (doit être le dernier)
+app.use(errorHandler);
+
+const logger = require('./utils/logger');
+
+// Start server (Seulement si le fichier est exécuté directement, pas lors des tests)
+if (require.main === module) {
+    app.listen(PORT, () => {
+        logger.info(`Server is running on port ${PORT} in ${process.env.NODE_ENV || 'development'} mode`);
+    });
+}
+
+module.exports = app; // Exporté pour les tests d'intégration

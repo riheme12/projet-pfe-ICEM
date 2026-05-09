@@ -36,8 +36,8 @@ router.post('/', async (req, res) => {
     try {
         const { email, fullName, role, username } = req.body;
 
-        // 1. Create account in Firebase Auth
-        const password = 'Icem2026!'; // Simple default password
+        // 1. Créer le compte dans Firebase Auth
+        const password = process.env.DEFAULT_USER_PASSWORD || 'ChangeMeOnFirstLogin!';
         const authUser = await admin.auth().createUser({
             email,
             password,
