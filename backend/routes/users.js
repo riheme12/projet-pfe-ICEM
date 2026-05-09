@@ -31,9 +31,24 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+const { body, validationResult } = require('express-validator');
+
+// Middlewares de validation
+const validateUser = [
+    body('email').isEmail().withMessage('Une adresse email valide est requise').normalizeEmail(),
+    body('fullName').trim().notEmpty().withMessage('Le nom complet est requis').isLength({ min: 3 }).withMessage('Le nom doit contenir au moins 3 caractères').escape(),
+    body('username').trim().notEmpty().withMessage('Le nom d\'utilisateur est requis').escape(),
+    body('roles').isArray().withMessage('Les rôles doivent être une liste de chaînes de caractères')
+];
+
 // Create a new user with automatic Firebase Auth account
-router.post('/', async (req, res) => {
+router.post('/', validateUser, async (req, res, next) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
         const { email, fullName, role, username } = req.body;
 
         // 1. Créer le compte dans Firebase Auth

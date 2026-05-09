@@ -72,6 +72,17 @@ const Cables = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        // Validation logique métier
+        if (form.code && form.code.length < 3) {
+            alert("Erreur logique : Le code QR / code-barres doit contenir au moins 3 caractères.");
+            return;
+        }
+        if (!form.orderId) {
+            alert("Erreur logique : Le câble doit obligatoirement être associé à un ordre de fabrication.");
+            return;
+        }
+
         try {
             if (editCable) {
                 await CableService.update(editCable.id, form);
@@ -81,7 +92,12 @@ const Cables = () => {
             setIsModalOpen(false);
             fetchData();
         } catch (error) {
-            alert("Erreur lors de l'enregistrement du câble");
+            if (error.response?.data?.errors) {
+                const errorMessages = error.response.data.errors.map(err => `• ${err.msg}`).join('\n');
+                alert(`Erreur de validation :\n${errorMessages}`);
+            } else {
+                alert("Erreur lors de l'enregistrement du câble : " + (error.response?.data?.error || error.message));
+            }
         }
     };
 

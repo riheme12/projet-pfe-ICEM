@@ -105,7 +105,12 @@ const Users = () => {
                 alert(`Utilisateur créé avec succès !\nMot de passe par défaut : ${password}`);
             }
         } catch (error) {
-            alert("Erreur : " + (error.response?.data?.error || error.message));
+            if (error.response?.data?.errors) {
+                const errorMessages = error.response.data.errors.map(err => `• ${err.msg}`).join('\n');
+                alert(`Erreur de validation :\n${errorMessages}`);
+            } else {
+                alert("Erreur : " + (error.response?.data?.error || error.message));
+            }
         }
     };
 
@@ -273,7 +278,7 @@ const Users = () => {
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Nom d'utilisateur</label>
                                 <input
-                                    type="text" required
+                                    type="text" required minLength={3}
                                     className="input-field"
                                     placeholder="Identifiant unique"
                                     value={form.username}
@@ -293,9 +298,11 @@ const Users = () => {
                             <div>
                                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">Téléphone</label>
                                 <input
-                                    type="text"
+                                    type="tel"
+                                    pattern="^[0-9\s+]{8,15}$"
+                                    title="Le numéro de téléphone doit contenir entre 8 et 15 chiffres ou caractères +, espace"
                                     className="input-field"
-                                    placeholder="+216 XX XXX XXX"
+                                    placeholder="+216 22 123 456"
                                     value={form.phone}
                                     onChange={(e) => setForm({ ...form, phone: e.target.value })}
                                 />

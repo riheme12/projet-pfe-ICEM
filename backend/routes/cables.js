@@ -64,16 +64,30 @@ router.get('/:id', async (req, res) => {
     }
 });
 
+const { body, validationResult } = require('express-validator');
+
+const validateCable = [
+    body('reference').trim().notEmpty().withMessage('La référence du câble est requise').escape(),
+    body('orderId').trim().notEmpty().withMessage('L\'ID de l\'ordre est requis').escape(),
+    body('type').trim().notEmpty().withMessage('Le type de câble est requis').escape(),
+    body('status').optional().trim().isIn(['En attente', 'Conforme', 'Non conforme']).withMessage('Statut de câble invalide')
+];
+
 // Create a new cable
-router.post('/', async (req, res) => {
+router.post('/', validateCable, async (req, res, next) => {
     try {
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ success: false, errors: errors.array() });
+        }
+
         const cable = Cable.fromJson(req.body);
         const data = cable.toJson();
         delete data.id;
         const docRef = await db.collection('cable').add(data);
         res.status(201).json({ id: docRef.id, ...data });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        next(error);
     }
 });
 

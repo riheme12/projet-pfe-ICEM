@@ -101,11 +101,26 @@ const Orders = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
+        // Validation stricte
+        const qty = parseInt(form.quantity, 10);
+        if (isNaN(qty) || qty <= 0) {
+            alert("La quantité doit être un nombre strictement supérieur à 0.");
+            return;
+        }
+
+        if (form.dateFin && form.dateDebut) {
+            if (new Date(form.dateFin) < new Date(form.dateDebut)) {
+                alert("Erreur logique : La date de fin ne peut pas être antérieure à la date de début.");
+                return;
+            }
+        }
+
         try {
             const data = {
                 reference: form.reference,
                 client: form.client,
-                quantity: parseInt(form.quantity, 10),
+                quantity: qty,
                 status: form.status,
                 productionDate: form.dateDebut || new Date().toISOString(),
                 endDate: form.dateFin || null,
