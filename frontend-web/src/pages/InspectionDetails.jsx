@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Calendar, User, Package, Image as ImageIcon } from 'lucide-react';
 import { InspectionService, AnomalyService, OrderService } from '../services/api';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const InspectionDetails = () => {
     const { id } = useParams();
@@ -11,6 +11,7 @@ const InspectionDetails = () => {
     const [inspection, setInspection] = useState(null);
     const [anomalies, setAnomalies] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [selectedImage, setSelectedImage] = useState(null);
 
     useEffect(() => {
         const fetchDetails = async () => {
@@ -83,7 +84,7 @@ const InspectionDetails = () => {
                     a.location || 'Non précisée'
                 ]);
                 
-                doc.autoTable({
+                autoTable(doc, {
                     startY: 95,
                     head: [['Type', 'Gravité', 'Confiance IA', 'Localisation']],
                     body: tableData,
@@ -128,7 +129,7 @@ const InspectionDetails = () => {
                         </span>
                     </div>
                     <p className="text-slate-600 text-lg font-medium flex items-center gap-2">
-                        <Package size={24} /> Rapport d'inspection pour l'ordre <span className="text-blue-600 font-bold underline cursor-pointer">{inspection?.orderId}</span>
+                        <Package size={24} /> Rapport d'inspection pour l'ordre <span className="text-indigo-600 font-bold underline cursor-pointer">{inspection?.orderId}</span>
                     </p>
                 </div>
                 <div className="flex gap-3">
@@ -149,8 +150,8 @@ const InspectionDetails = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="card flex flex-col gap-2 p-6 bg-blue-50/40 border border-blue-100">
-                    <p className="text-sm font-bold text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                <div className="card flex flex-col gap-2 p-6 bg-indigo-50/40 border border-indigo-100">
+                    <p className="text-sm font-bold text-indigo-500 uppercase tracking-widest flex items-center gap-2">
                         <User size={20} /> Technicien
                     </p>
                     <p className="text-2xl font-black text-slate-900">{inspection?.technicianName || inspection?.technicianId || 'IA System'}</p>
@@ -181,18 +182,29 @@ const InspectionDetails = () => {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {anomalies.length > 0 ? anomalies.map((anomaly, index) => (
                     <div key={index} className="card !p-0 overflow-hidden flex flex-col md:flex-row border-slate-200 hover:border-accent group transition-all">
-                        <div
-                            className="w-full md:w-64 h-64 bg-slate-100 relative overflow-hidden bg-center bg-cover"
-                            style={{ backgroundImage: `url(${anomaly.imageUrl || 'https://images.unsplash.com/photo-1621905235277-226871630ed6?q=80&w=500'})` }}
-                        >
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
-                            <div className="absolute bottom-4 left-4 text-white">
-                                <p className="text-[10px] font-bold uppercase opacity-80 mb-1">Capture Caméra #{index + 1}</p>
-                                <p className="text-sm font-black flex items-center gap-1">
-                                    <ImageIcon size={14} /> Voir l'original
-                                </p>
+                        {anomaly.imageUrl ? (
+                            <div
+                                className="w-full md:w-64 h-64 bg-slate-100 relative overflow-hidden bg-center bg-cover cursor-pointer"
+                                style={{ backgroundImage: `url("${anomaly.imageUrl}")` }}
+                                onClick={() => setSelectedImage(anomaly.imageUrl)}
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
+                                <div className="absolute top-3 left-3 bg-indigo-600/90 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider">
+                                    Vue IA
+                                </div>
+                                <div className="absolute bottom-4 left-4 text-white">
+                                    <p className="text-[10px] font-bold uppercase opacity-80 mb-1">Capture Caméra #{index + 1}</p>
+                                    <p className="text-sm font-black flex items-center gap-1">
+                                        <ImageIcon size={14} /> Cliquer pour agrandir
+                                    </p>
+                                </div>
                             </div>
-                        </div>
+                        ) : (
+                            <div className="w-full md:w-64 h-64 bg-slate-100 flex flex-col items-center justify-center text-slate-300">
+                                <ImageIcon size={40} className="mb-2 opacity-30" />
+                                <span className="text-xs font-medium">Pas de photo</span>
+                            </div>
+                        )}
                         <div className="flex-1 p-6 flex flex-col justify-between">
                             <div>
                                 <div className="flex justify-between items-center mb-4">
@@ -212,11 +224,11 @@ const InspectionDetails = () => {
                             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                 <div>
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Confiance IA</p>
-                                    <p className="text-xl font-black text-accent">{(anomaly.confidence * 100).toFixed(1)}%</p>
+                                    <p className="text-xl font-black text-indigo-600">{(anomaly.confidence * 100).toFixed(1)}%</p>
                                 </div>
                                 <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                                     <div
-                                        className="h-full bg-accent transition-all duration-1000"
+                                        className="h-full bg-indigo-500 transition-all duration-1000"
                                         style={{ width: `${anomaly.confidence * 100}%` }}
                                     ></div>
                                 </div>
@@ -230,6 +242,24 @@ const InspectionDetails = () => {
                     </div>
                 )}
             </div>
+
+            {/* Lightbox Modal */}
+            {selectedImage && (
+                <div className="fixed inset-0 bg-slate-900/90 backdrop-blur-sm flex items-center justify-center p-4 z-[999]" onClick={() => setSelectedImage(null)}>
+                    <button 
+                        className="absolute top-6 right-6 text-white hover:text-red-400 bg-white/10 hover:bg-white/20 rounded-full p-2 transition-all"
+                        onClick={() => setSelectedImage(null)}
+                    >
+                        <span className="font-bold text-xl">✕</span>
+                    </button>
+                    <img 
+                        src={selectedImage} 
+                        alt="Vue IA agrandie" 
+                        className="max-w-full max-h-[90vh] object-contain rounded-lg shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                </div>
+            )}
         </div>
     );
 };

@@ -1,0 +1,175 @@
+<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word'>
+<head>
+<meta charset="UTF-8">
+<style>
+  @page { size: A4; margin: 2.5cm; }
+  body { font-family: 'Calibri', sans-serif; font-size: 12pt; color: #1a1a2e; line-height: 1.6; }
+  h1 { font-size: 22pt; color: #1a3a7a; text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 10px; margin-top: 40px; }
+  h2 { font-size: 16pt; color: #2563eb; margin-top: 28px; border-left: 4px solid #2563eb; padding-left: 12px; }
+  h3 { font-size: 13pt; color: #1a3a7a; margin-top: 18px; }
+  p { text-align: justify; margin: 8px 0; }
+  table { border-collapse: collapse; width: 100%; margin: 15px 0; }
+  th { background: #2563eb; color: white; padding: 10px 14px; text-align: left; font-size: 11pt; }
+  td { border: 1px solid #d0d5dd; padding: 9px 14px; font-size: 11pt; }
+  tr:nth-child(even) td { background: #f0f4ff; }
+  .header-block { text-align: center; margin-bottom: 50px; padding: 30px; background: #f0f4ff; border-radius: 8px; }
+  .header-block h1 { border: none; margin-top: 0; font-size: 26pt; }
+  .subtitle { font-size: 14pt; color: #475569; margin: 5px 0; }
+  .badge { display: inline-block; background: #2563eb; color: white; padding: 4px 16px; border-radius: 20px; font-size: 10pt; font-weight: bold; }
+  .step-box { background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #2563eb; padding: 12px 16px; margin: 10px 0; }
+  .step-num { display: inline-block; background: #2563eb; color: white; width: 28px; height: 28px; text-align: center; line-height: 28px; border-radius: 50%; font-weight: bold; font-size: 11pt; margin-right: 8px; }
+  .highlight { background: #fef3c7; padding: 2px 6px; font-weight: bold; }
+  ul { margin: 8px 0 8px 20px; }
+  li { margin: 5px 0; }
+  .footer { text-align: center; color: #94a3b8; font-size: 10pt; margin-top: 50px; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+</style>
+</head>
+<body>
+
+<div class="header-block">
+  <p class="badge">CONFIDENTIEL — PROJET PFE 2025/2026</p>
+  <h1>Proposition d'Intégration IoT</h1>
+  <p style="font-size:18pt; color:#1a3a7a; font-weight:bold; margin:10px 0;">Système d'Alerte Physique Intelligent pour Atelier</p>
+  <p class="subtitle">Smart Factory Alert System — Module complémentaire IoT</p>
+  <br/>
+  <table style="width:60%; margin:auto; border:none;">
+    <tr style="background:transparent;">
+      <td style="border:none; text-align:right; color:#64748b; font-weight:bold;">Projet :</td>
+      <td style="border:none;">ICEM Quality Control System</td>
+    </tr>
+    <tr style="background:transparent;">
+      <td style="border:none; text-align:right; color:#64748b; font-weight:bold;">Entreprise :</td>
+      <td style="border:none;">ICEM Industrial Solutions — Sfax</td>
+    </tr>
+    <tr style="background:transparent;">
+      <td style="border:none; text-align:right; color:#64748b; font-weight:bold;">Date :</td>
+      <td style="border:none;">09 Mai 2026</td>
+    </tr>
+  </table>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>1. Contexte et Problématique</h2>
+
+<p>Le système ICEM Quality Control repose actuellement sur trois piliers technologiques :</p>
+<ul>
+  <li>Une <b>application mobile Flutter</b> utilisée par les techniciens pour réaliser les inspections de câbles (checklists électriques et visuelles).</li>
+  <li>Un module d'<b>Intelligence Artificielle (Roboflow)</b> intégré à l'application mobile pour la détection automatique de défauts visuels sur les câbles.</li>
+  <li>Un <b>tableau de bord Web (React.js)</b> permettant aux administrateurs et directeurs de suivre en temps réel les anomalies, rapports et tendances de production.</li>
+</ul>
+
+<h3>Le problème identifié</h3>
+<p>Dans un environnement industriel tel que l'usine ICEM, les responsables d'atelier et les superviseurs de production ne sont pas toujours devant un écran d'ordinateur. L'usine est un espace bruyant, en mouvement constant. Lorsqu'une anomalie critique est détectée par l'IA sur l'application mobile, l'information remonte immédiatement dans la base de données (Firebase Firestore) et s'affiche sur le Dashboard Web.</p>
+
+<p>Cependant, <b>si aucun administrateur ne consulte le dashboard à ce moment précis, l'anomalie peut passer inaperçue pendant plusieurs minutes</b>, entraînant potentiellement la production de centaines de mètres de câbles défectueux avant intervention.</p>
+
+<p><b>Il manque donc un mécanisme d'alerte physique et immédiate, perceptible dans l'atelier même sans accès à un écran.</b></p>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>2. Solution Proposée</h2>
+
+<p>Nous proposons d'ajouter un <b>module IoT (Internet des Objets)</b> au système existant : une <b>station d'alerte physique</b> placée dans l'atelier de production. Ce module est composé d'un microcontrôleur ESP32 connecté au réseau Wi-Fi de l'usine, relié à des indicateurs visuels (LEDs) et sonores (Buzzer).</p>
+
+<p>Ce dispositif transforme une donnée numérique (une anomalie dans la base de données) en une <b>alerte physique et immédiate</b> (lumière rouge clignotante + alarme sonore), visible et audible par tous les opérateurs de l'atelier.</p>
+
+<h3>Principe de fonctionnement</h3>
+<table>
+  <tr><th>État du système</th><th>Indicateur Visuel</th><th>Indicateur Sonore</th><th>Signification</th></tr>
+  <tr><td>Aucune anomalie active</td><td>🟢 LED Verte allumée (fixe)</td><td>Silence</td><td>Production normale</td></tr>
+  <tr><td>Anomalie(s) détectée(s)</td><td>🔴 LED Rouge clignotante</td><td>Buzzer actif (bip intermittent)</td><td>Défaut détecté — Intervention requise</td></tr>
+  <tr><td>Anomalie traitée par l'admin</td><td>🟢 Retour LED Verte</td><td>Silence</td><td>Problème résolu</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>3. Architecture Technique</h2>
+
+<p>Le module IoT s'intègre à l'architecture existante du projet ICEM <b>sans aucune modification</b> de l'application mobile Flutter ni du Dashboard React. Il constitue un <b>nouveau point de sortie</b> (output) du système.</p>
+
+<h3>Flux de données complet</h3>
+
+<div class="step-box">
+  <p><span class="step-num">1</span><b>Détection (Mobile + IA)</b></p>
+  <p>Le technicien scanne un câble avec l'application Flutter. Le modèle Roboflow détecte un défaut visuel. L'application crée une anomalie avec le statut <i>"En attente"</i> dans Firebase Firestore via le backend Node.js/Express.</p>
+</div>
+
+<div class="step-box">
+  <p><span class="step-num">2</span><b>Stockage Cloud (Firebase Firestore)</b></p>
+  <p>L'anomalie est persistée dans la collection <code>anomalies</code> de Firestore avec ses métadonnées (type de défaut, sévérité, photo, technicien responsable, horodatage).</p>
+</div>
+
+<div class="step-box">
+  <p><span class="step-num">3</span><b>Écoute IoT (ESP32)</b></p>
+  <p>Le microcontrôleur ESP32, connecté au Wi-Fi de l'usine, interroge périodiquement (toutes les 5 secondes) le backend Node.js via une route API REST dédiée : <code>GET /api/iot/alert-status</code>. Cette route retourne le nombre d'anomalies actives (non traitées).</p>
+</div>
+
+<div class="step-box">
+  <p><span class="step-num">4</span><b>Action Physique (LED + Buzzer)</b></p>
+  <p>Si le nombre d'anomalies actives est supérieur à 0, l'ESP32 active la LED rouge en mode clignotant et déclenche le buzzer. Sinon, la LED verte reste allumée.</p>
+</div>
+
+<div class="step-box">
+  <p><span class="step-num">5</span><b>Résolution (Dashboard Web)</b></p>
+  <p>L'administrateur traite l'anomalie depuis le tableau de bord React (changement de statut à <i>"Traitée"</i>). Lors de la prochaine interrogation, l'ESP32 détecte le changement et éteint l'alarme.</p>
+</div>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>4. Matériel Requis</h2>
+
+<table>
+  <tr><th>Composant</th><th>Rôle</th><th>Coût Estimé (TND)</th></tr>
+  <tr><td>Carte ESP32 (NodeMCU)</td><td>Microcontrôleur avec Wi-Fi intégré</td><td>25 – 35</td></tr>
+  <tr><td>LED Verte (5mm)</td><td>Indicateur « Production normale »</td><td>0.5</td></tr>
+  <tr><td>LED Rouge (5mm)</td><td>Indicateur « Anomalie détectée »</td><td>0.5</td></tr>
+  <tr><td>Buzzer Actif 5V</td><td>Alarme sonore</td><td>2 – 3</td></tr>
+  <tr><td>Résistances 220Ω (x2)</td><td>Protection des LEDs</td><td>0.5</td></tr>
+  <tr><td>Breadboard + Câbles Dupont</td><td>Câblage du prototype</td><td>5 – 8</td></tr>
+  <tr><td>Câble Micro-USB</td><td>Alimentation et programmation</td><td>3 – 5</td></tr>
+  <tr><td colspan="2" style="text-align:right; font-weight:bold;">Coût Total Estimé</td><td style="font-weight:bold; color:#2563eb;">35 – 50 TND</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>5. Technologies Utilisées</h2>
+
+<table>
+  <tr><th>Couche</th><th>Technologie</th><th>Rôle</th></tr>
+  <tr><td>Microcontrôleur</td><td>ESP32 / Arduino IDE (C++)</td><td>Lecture API + Contrôle LEDs/Buzzer</td></tr>
+  <tr><td>Communication</td><td>Wi-Fi + HTTP REST API</td><td>Interrogation du serveur backend</td></tr>
+  <tr><td>Backend</td><td>Node.js / Express.js</td><td>Route API dédiée IoT</td></tr>
+  <tr><td>Base de données</td><td>Firebase Firestore</td><td>Source de vérité des anomalies</td></tr>
+  <tr><td>Application Mobile</td><td>Flutter + Roboflow AI</td><td>Détection et signalement des défauts</td></tr>
+  <tr><td>Dashboard Web</td><td>React.js + Vite</td><td>Traitement et résolution des anomalies</td></tr>
+</table>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>6. Valeur Ajoutée</h2>
+
+<ul>
+  <li><b>Industrie 4.0 :</b> Le projet ICEM passe d'un simple système logiciel à un véritable système <i>Cyber-Physique</i>, combinant IA, Cloud et IoT.</li>
+  <li><b>Réactivité Améliorée :</b> Le temps de réaction face à une anomalie passe de plusieurs minutes (consultation manuelle du dashboard) à quelques secondes (alerte automatique dans l'atelier).</li>
+  <li><b>Zéro Impact sur l'existant :</b> Aucune modification n'est nécessaire sur l'application mobile ou le dashboard web. Le module IoT est un ajout indépendant et non intrusif.</li>
+  <li><b>Coût Minimal :</b> L'investissement matériel est inférieur à 50 TND, ce qui est négligeable par rapport à la valeur ajoutée en termes de traçabilité et de prévention des pertes.</li>
+  <li><b>Évolutivité :</b> Ce prototype peut évoluer vers une vraie colonne lumineuse industrielle (Stack Light) ou un écran LCD affichant les détails de l'anomalie en temps réel.</li>
+</ul>
+
+<!-- ═══════════════════════════════════════ -->
+<h2>7. Planning d'Implémentation</h2>
+
+<table>
+  <tr><th>Semaine</th><th>Tâches</th><th>Durée</th></tr>
+  <tr><td>Semaine 1</td><td>Achat du matériel + câblage du prototype sur breadboard</td><td>1 jour</td></tr>
+  <tr><td>Semaine 1</td><td>Création de la route API <code>/api/iot/alert-status</code> dans le backend Node.js</td><td>1 heure</td></tr>
+  <tr><td>Semaine 1</td><td>Programmation du code Arduino (ESP32) + tests Wi-Fi</td><td>1 jour</td></tr>
+  <tr><td>Semaine 2</td><td>Test d'intégration complet (Mobile → Cloud → ESP32)</td><td>1 jour</td></tr>
+  <tr><td>Semaine 2-3</td><td>Documentation + préparation de la démonstration pour la soutenance</td><td>2 jours</td></tr>
+</table>
+
+<p style="text-align:center; margin-top:20px;"><b>Durée totale estimée : 4 à 5 jours de travail effectif.</b></p>
+
+<!-- ═══════════════════════════════════════ -->
+<div class="footer">
+  <p>ICEM Quality Control System — Projet de Fin d'Études 2025/2026</p>
+  <p>Document confidentiel — Proposition d'amélioration IoT</p>
+</div>
+
+</body>
+</html>

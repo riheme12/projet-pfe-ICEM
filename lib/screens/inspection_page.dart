@@ -10,6 +10,7 @@ import 'package:projeticem/services/anomaly_service.dart';
 import 'dart:async';
 import 'dart:math';
 import 'dart:io';
+import 'dart:convert';
 import 'package:provider/provider.dart';
 import 'package:projeticem/providers/auth_provider.dart';
 import 'package:projeticem/services/roboflow_service.dart';
@@ -140,9 +141,11 @@ class _InspectionPageState extends State<InspectionPage> {
         final xFile = await _controller!.takePicture();
         debugPrint('Photo capturée: ${xFile.path}');
 
-        // 1. Uploader l'image sur Firebase Storage d'abord (Indispensable pour la preuve)
-        final String? imageUrl = await _uploadImage(xFile.path);
-        debugPrint('Image URL obtenue: $imageUrl');
+        // ALTERNATIVE METHODE: Convertir l'image en Base64 au lieu de Firebase Storage
+        // Cela garantit que l'image est enregistrée directement dans le document Firestore
+        final bytes = await File(xFile.path).readAsBytes();
+        final String base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        debugPrint('Image convertie en Base64 avec succès');
         
         // 2. Envoyer à Roboflow pour analyse
         result = await _roboflowService.analyzeImage(
@@ -152,11 +155,11 @@ class _InspectionPageState extends State<InspectionPage> {
 
         // 3. Sauvegarder dans Firestore si NOK (Anomalie immédiate pour le Dashboard Web)
         if (result['status'] == 'NOK') {
-          await _saveAnomalyToFirestore(result, imageUrl: imageUrl);
+          await _saveAnomalyToFirestore(result, imageUrl: base64Image);
         }
 
         // Garder l'URL pour la checklist finale
-        result['imageUrl'] = imageUrl; 
+        result['imageUrl'] = base64Image; 
 
         debugPrint('Roboflow result: status=${result['status']}, label=${result['label']}');
 
@@ -205,7 +208,7 @@ class _InspectionPageState extends State<InspectionPage> {
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final technician = authProvider.currentUser;
-
+   
     // Extraire les codes pour la traçabilité (ex: P, V, M)
     final List<dynamic> anomaliesList = result['anomalies'] ?? [];
     final String firstCode = anomaliesList.isNotEmpty ? anomaliesList.first['code'] : 'Z';

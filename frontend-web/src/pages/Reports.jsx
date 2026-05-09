@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, FilePieChart, Calendar, Clock, FileSpreadsheet } from 'lucide-react';
+import { FileText, Download, FilePieChart, Calendar, Clock, FileSpreadsheet, Search } from 'lucide-react';
 import { ReportService, OrderService, AnomalyService, CableService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 
@@ -11,6 +11,10 @@ const Reports = () => {
     const [reports, setReports] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isGenerating, setIsGenerating] = useState(false);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
+    const [dateStart, setDateStart] = useState('');
+    const [dateEnd, setDateEnd] = useState('');
     const { canGenerateReport, canExport } = useAuth();
 
     const fetchReports = async () => {
@@ -107,7 +111,7 @@ const Reports = () => {
             const totalAnomalies = anomaliesData.length;
             const critiques = anomaliesData.filter(a => a.severity?.toLowerCase() === 'critique').length;
 
-            doc.autoTable({
+            autoTable(doc, {
                 startY: kpiY,
                 head: [['Indicateur', 'Valeur']],
                 body: [
@@ -129,12 +133,12 @@ const Reports = () => {
 
             // Tableau des anomalies récentes
             if (anomaliesData.length > 0) {
-                const lastTableY = doc.lastAutoTable.finalY + 15;
+                const lastTableY = (doc.lastAutoTable?.finalY ?? 150) + 15;
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
                 doc.text('Anomalies Récentes', 14, lastTableY);
 
-                doc.autoTable({
+                autoTable(doc, {
                     startY: lastTableY + 8,
                     head: [['Type', 'Gravité', 'Technicien', 'Confiance IA', 'Date', 'Statut']],
                     body: anomaliesData.slice(0, 15).map(a => [
@@ -254,14 +258,49 @@ const Reports = () => {
     };
 
     const sortedReports = [...reports].sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
+    const filteredReports = sortedReports.filter(report => {
+        const search = searchTerm.toLowerCase();
+        const dateStr = new Date(report.generatedAt).toLocaleDateString().toLowerCase();
+        const ident = new Date(report.generatedAt).getTime().toString().slice(-6);
+        const matchSearch = (report.type || '').toLowerCase().includes(search) || 
+               (report.technicianName || '').toLowerCase().includes(search) ||
+               dateStr.includes(search) ||
+               ident.includes(search);
+               
+        const matchType = typeFilter ? report.type === typeFilter : true;
+        
+        let matchDate = true;
+        if (dateStart || dateEnd) {
+            const reportDate = new Date(report.generatedAt);
+            if (dateStart) {
+                const start = new Date(dateStart);
+                start.setHours(0, 0, 0, 0);
+                if (reportDate < start) matchDate = false;
+            }
+            if (dateEnd) {
+                const end = new Date(dateEnd);
+                end.setHours(23, 59, 59, 999);
+                if (reportDate > end) matchDate = false;
+            }
+        }
+
+        return matchSearch && matchType && matchDate;
+    });
+    
+    const uniqueTypes = [...new Set(reports.map(r => r.type).filter(Boolean))];
     const lastReportDate = sortedReports.length > 0 ? new Date(sortedReports[0].generatedAt).toLocaleDateString() : 'Aucun';
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Rapports Qualité</h1>
-                    <p className="text-sm text-slate-500 mt-1">Consultez et exportez l'historique de production et d'inspection</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100">
+                        <FileText size={18} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-800">Rapports Qualité</h1>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">Consultez et exportez l'historique de production et d'inspection</p>
+                    </div>
                 </div>
                 {canGenerateReport && (
                     <button
@@ -294,70 +333,118 @@ const Reports = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="card flex items-center gap-4">
-                    <div className="w-11 h-11 bg-blue-50 rounded-xl flex items-center justify-center text-blue-600">
-                        <FileText size={20} />
+                    <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600">
+                        <FileText size={18} />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Rapports Archivés</p>
-                        <p className="text-2xl font-bold text-slate-800">{reports.length}</p>
+                        <p className="text-sm font-semibold text-slate-500">Rapports Archivés</p>
+                        <p className="text-2xl font-extrabold text-slate-800">{reports.length}</p>
                     </div>
                 </div>
                 <div className="card flex items-center gap-4">
-                    <div className="w-11 h-11 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
-                        <Download size={20} />
+                    <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600">
+                        <Download size={18} />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Téléchargements</p>
-                        <p className="text-2xl font-bold text-slate-800">{reports.length * 3}</p>
+                        <p className="text-sm font-semibold text-slate-500">Téléchargements</p>
+                        <p className="text-2xl font-extrabold text-slate-800">{reports.length * 3}</p>
                     </div>
                 </div>
                 <div className="card flex items-center gap-4">
-                    <div className="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
-                        <Calendar size={20} />
+                    <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
+                        <Calendar size={18} />
                     </div>
                     <div>
-                        <p className="text-sm text-slate-500">Dernier Rapport</p>
-                        <p className="text-base font-bold text-slate-800">{lastReportDate}</p>
+                        <p className="text-sm font-semibold text-slate-500">Dernier Rapport</p>
+                        <p className="text-lg font-extrabold text-slate-800">{lastReportDate}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Search Bar & Filters */}
+            <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center gap-3">
+                <div className="relative flex-1 w-full md:max-w-md">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par nom, identifiant ou date..."
+                        className="input-field pl-9 text-sm w-full"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+                <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+                    <select 
+                        className="input-field w-full md:w-auto min-w-[150px]" 
+                        value={typeFilter} 
+                        onChange={(e) => setTypeFilter(e.target.value)}
+                    >
+                        <option value="">Tous les types</option>
+                        {uniqueTypes.map((type, idx) => (
+                            <option key={idx} value={type}>{type}</option>
+                        ))}
+                    </select>
+                    <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1 flex-1 md:flex-none">
+                        <span className="text-sm font-medium text-slate-500">Du</span>
+                        <input 
+                            type="date" 
+                            className="bg-transparent border-none outline-none text-sm text-slate-700 w-full md:w-auto" 
+                            value={dateStart} 
+                            onChange={(e) => setDateStart(e.target.value)}
+                        />
+                        <span className="text-sm font-medium text-slate-500">Au</span>
+                        <input 
+                            type="date" 
+                            className="bg-transparent border-none outline-none text-sm text-slate-700 w-full md:w-auto" 
+                            value={dateEnd} 
+                            onChange={(e) => setDateEnd(e.target.value)}
+                        />
                     </div>
                 </div>
             </div>
 
             {/* Reports Table */}
-            <div className="card overflow-hidden !p-0">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-slate-50/80 border-b border-slate-200">
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Type de Rapport</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider">Source</th>
-                                <th className="px-6 py-4 text-xs font-semibold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                            <tr className="border-b border-slate-100">
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Date</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Identifiant</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Type de Rapport</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Source</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading && !isGenerating ? (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-12 text-center text-slate-500">
-                                        <div className="w-6 h-6 border-2 border-slate-200 border-t-accent rounded-full animate-spin mx-auto mb-3"></div>
-                                        Récupération de l'historique...
+                                    <td colSpan="5" className="px-5 py-12 text-center text-slate-400">
+                                        <div className="w-5 h-5 border-2 border-slate-100 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3"></div>
+                                        <p className="text-sm">Récupération de l'historique...</p>
                                     </td>
                                 </tr>
-                            ) : sortedReports.length > 0 ? (
-                                sortedReports.map(report => (
-                                    <tr key={report.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-4">
+                            ) : filteredReports.length > 0 ? (
+                                filteredReports.map(report => (
+                                    <tr key={report.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0 group">
+                                        <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2 text-sm">
                                                 <Clock size={14} className="text-slate-400" />
                                                 <span className="font-medium text-slate-700">
-                                                    {new Date(report.generatedAt).toLocaleString()}
+                                                    {new Date(report.generatedAt).toLocaleString('fr-FR')}
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
+                                        <td className="px-5 py-3.5">
+                                            <span className="px-2 py-1 bg-slate-50 text-slate-500 rounded text-[11px] font-mono font-bold border border-slate-200">
+                                                RPT-{new Date(report.generatedAt).getTime().toString().slice(-6)}
+                                            </span>
+                                        </td>
+                                        <td className="px-5 py-3.5">
                                             <div className="flex items-center gap-2">
-                                                <div className="p-1.5 bg-red-50 text-red-500 rounded-lg">
+                                                <div className="p-1 bg-indigo-50 text-indigo-500 rounded">
                                                     <FileText size={14} />
                                                 </div>
                                                 <span className="text-sm font-semibold text-slate-800">
@@ -365,22 +452,22 @@ const Reports = () => {
                                                 </span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-sm text-slate-500">
+                                        <td className="px-5 py-3.5 text-sm text-slate-500">
                                             {report.orderId && report.orderId !== 'global'
                                                 ? `Ordre #${report.orderId.substring(0, 8)}`
                                                 : 'Données Globales'}
-                                            <div className="text-xs text-slate-400 mt-0.5">
+                                            <div className="text-[11px] text-slate-400 mt-0.5">
                                                 {report.technicianName || report.technicianId || 'Système'}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-5 py-3.5 text-right">
                                             {canExport && (
                                                 <button
                                                     onClick={() => handleExportPDF(report)}
-                                                    className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-semibold bg-slate-100 hover:bg-blue-600 hover:text-white text-slate-600 rounded-lg transition-all"
+                                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-bold bg-slate-50 hover:bg-indigo-500 hover:text-white text-slate-600 rounded border border-slate-200 transition-all"
                                                 >
-                                                    <Download size={14} />
-                                                    EXPORT PDF
+                                                    <Download size={13} />
+                                                    PDF
                                                 </button>
                                             )}
                                         </td>
@@ -388,8 +475,8 @@ const Reports = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="4" className="px-6 py-16 text-center">
-                                        <FileText className="mx-auto text-slate-200 mb-3" size={44} />
+                                    <td colSpan="5" className="px-5 py-16 text-center">
+                                        <FileText className="mx-auto text-slate-200 mb-3" size={36} />
                                         <p className="text-slate-500 font-medium">Aucun rapport trouvé</p>
                                         <p className="text-sm text-slate-400 mt-1">Cliquez sur "Générer Rapport Global" pour créer votre premier rapport</p>
                                     </td>

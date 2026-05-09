@@ -84,6 +84,17 @@ router.patch('/:id', async (req, res) => {
         const data = user.toJson();
         delete data.id;
         await db.collection('users').doc(req.params.id).update(data);
+
+        // If roles changed, send email
+        if (req.body.roles || req.body.role) {
+            const emailService = require('../services/emailService');
+            await emailService.sendRoleUpdate({
+                email: user.email,
+                username: user.username || user.fullName,
+                roles: user.roles
+            });
+        }
+
         res.status(200).json({ id: req.params.id, ...data });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -102,7 +113,17 @@ router.post('/:id/reset-password', async (req, res) => {
         if (newPassword) {
             // Reset with a specific new password
             await admin.auth().updateUser(req.params.id, { password: newPassword });
-            res.status(200).json({ message: 'Mot de passe réinitialisé avec succès' });
+            
+            // Send email
+            const userData = doc.data();
+            const emailService = require('../services/emailService');
+            await emailService.sendPasswordReset({
+                email: userData.email,
+                username: userData.username || userData.fullName,
+                newPassword: newPassword
+            });
+
+            res.status(200).json({ message: 'Mot de passe réinitialisé avec succès et email envoyé' });
         } else {
             // Generate a reset link via email
             const userData = doc.data();

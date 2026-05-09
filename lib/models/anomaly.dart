@@ -14,6 +14,10 @@ class Anomaly {
   final String? technicianId;       // ID du technicien ayant détecté
   final String? technicianName;     // Nom du technicien
   final DateTime detectedAt;        // Date de détection
+  final String? imageUrl;           // URL de l'image capturée dans Firebase Storage
+  final String statut;              // 'detectee', 'en_traitement', 'traitee'
+  final String? orderId;            // ID de l'ordre de fabrication
+  final String? mesureCorrective;   // Mesure corrective appliquée
 
   Anomaly({
     required this.id,
@@ -25,6 +29,10 @@ class Anomaly {
     required this.detectedAt,
     this.technicianId,
     this.technicianName,
+    this.imageUrl,
+    this.statut = 'detectee',
+    this.orderId,
+    this.mesureCorrective,
   });
 
   /// Obtenir la couleur associée à la gravité
@@ -44,6 +52,9 @@ class Anomaly {
 
   /// Vérifier si l'anomalie est critique
   bool get isCritical => severity == 'Critique';
+
+  /// Vérifier si l'anomalie est résolue
+  bool get isResolved => statut == 'traitee';
 
   /// Créer depuis Firestore
   factory Anomaly.fromFirestore(DocumentSnapshot doc) {
@@ -69,6 +80,10 @@ class Anomaly {
           : DateTime.now(),
       technicianId: data['technicianId'] as String?,
       technicianName: data['technicianName'] as String?,
+      imageUrl: data['imageUrl'] as String?,
+      statut: data['statut'] as String? ?? 'detectee',
+      orderId: data['orderId'] as String?,
+      mesureCorrective: data['mesureCorrective'] as String?,
     );
   }
 
@@ -83,6 +98,10 @@ class Anomaly {
       'detectedAt': Timestamp.fromDate(detectedAt),
       'technicianId': technicianId,
       'technicianName': technicianName,
+      'imageUrl': imageUrl,
+      'statut': statut,
+      'orderId': orderId,
+      'mesureCorrective': mesureCorrective,
     };
   }
 
@@ -106,6 +125,10 @@ class Anomaly {
               : DateTime.now()),
       technicianId: json['technicianId']?.toString(),
       technicianName: json['technicianName']?.toString() ?? json['technicianFullName']?.toString(),
+      imageUrl: json['imageUrl']?.toString(),
+      statut: json['statut']?.toString() ?? 'detectee',
+      orderId: json['orderId']?.toString(),
+      mesureCorrective: json['mesureCorrective']?.toString(),
     );
   }
 
@@ -121,6 +144,43 @@ class Anomaly {
       'detectedAt': detectedAt.toIso8601String(),
       'technicianId': technicianId,
       'technicianName': technicianName,
+      'imageUrl': imageUrl,
+      'statut': statut,
+      'orderId': orderId,
+      'mesureCorrective': mesureCorrective,
     };
+  }
+
+  /// Créer une copie avec modifications
+  Anomaly copyWith({
+    String? id,
+    String? type,
+    String? severity,
+    double? confidence,
+    String? location,
+    String? cableId,
+    DateTime? detectedAt,
+    String? technicianId,
+    String? technicianName,
+    String? imageUrl,
+    String? statut,
+    String? orderId,
+    String? mesureCorrective,
+  }) {
+    return Anomaly(
+      id: id ?? this.id,
+      type: type ?? this.type,
+      severity: severity ?? this.severity,
+      confidence: confidence ?? this.confidence,
+      location: location ?? this.location,
+      cableId: cableId ?? this.cableId,
+      detectedAt: detectedAt ?? this.detectedAt,
+      technicianId: technicianId ?? this.technicianId,
+      technicianName: technicianName ?? this.technicianName,
+      imageUrl: imageUrl ?? this.imageUrl,
+      statut: statut ?? this.statut,
+      orderId: orderId ?? this.orderId,
+      mesureCorrective: mesureCorrective ?? this.mesureCorrective,
+    );
   }
 }

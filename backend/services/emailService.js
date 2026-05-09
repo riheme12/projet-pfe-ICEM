@@ -128,6 +128,93 @@ class EmailService {
             return false;
         }
     }
+    /**
+     * Envoyer un email de réinitialisation de mot de passe
+     */
+    async sendPasswordReset({ email, username, newPassword }) {
+        if (!email) return;
+
+        const subject = `🔐 ICEM — Nouveau mot de passe`;
+
+        const html = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px; border-radius: 16px 16px 0 0;">
+                    <h1 style="color: #fff; margin: 0; font-size: 20px;">🔐 ICEM Quality Control</h1>
+                    <p style="color: #94a3b8; margin: 8px 0 0; font-size: 13px;">Réinitialisation de mot de passe</p>
+                </div>
+                <div style="background: #fff; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Bonjour ${username || email},</p>
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Votre mot de passe a été réinitialisé par un administrateur. Voici vos nouveaux identifiants :</p>
+                    <div style="margin-top: 20px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <p style="color: #1e293b; font-size: 14px; margin: 0 0 8px 0;"><strong>Email :</strong> ${email}</p>
+                        <p style="color: #1e293b; font-size: 14px; margin: 0;"><strong>Nouveau Mot de Passe :</strong> <span style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace;">${newPassword}</span></p>
+                    </div>
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-top: 20px;">Veuillez vous connecter avec ce mot de passe et le changer dès que possible dans les paramètres de votre compte.</p>
+                </div>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
+                    <p style="color: #94a3b8; font-size: 11px; margin: 0;">ICEM Quality Control System — Notification automatique</p>
+                </div>
+            </div>
+        `;
+
+        try {
+            await this.transporter.sendMail({
+                from: `"ICEM Quality Control" <${this.fromAddress}>`,
+                to: email,
+                subject,
+                html,
+            });
+            console.log(`✉️  Password reset email sent to: ${email}`);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send password reset email:', error.message);
+            return false;
+        }
+    }
+
+    /**
+     * Envoyer une notification de mise à jour de rôle
+     */
+    async sendRoleUpdate({ email, username, roles }) {
+        if (!email) return;
+
+        const subject = `🛡️ ICEM — Mise à jour de vos permissions`;
+        const rolesDisplay = Array.isArray(roles) ? roles.join(', ') : roles;
+
+        const html = `
+            <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px; border-radius: 16px 16px 0 0;">
+                    <h1 style="color: #fff; margin: 0; font-size: 20px;">🛡️ ICEM Quality Control</h1>
+                    <p style="color: #94a3b8; margin: 8px 0 0; font-size: 13px;">Mise à jour de votre compte</p>
+                </div>
+                <div style="background: #fff; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Bonjour ${username || email},</p>
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6;">Un administrateur a mis à jour les rôles associés à votre compte.</p>
+                    <div style="margin-top: 20px; padding: 12px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
+                        <p style="color: #1e293b; font-size: 14px; margin: 0;"><strong>Vos rôles actuels :</strong> <span style="font-weight: bold; color: #047857;">${rolesDisplay}</span></p>
+                    </div>
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-top: 20px;">Ces nouvelles permissions sont effectives immédiatement. Veuillez vous reconnecter si vous rencontrez des problèmes d'accès.</p>
+                </div>
+                <div style="background: #f8fafc; padding: 16px; border-radius: 0 0 16px 16px; border: 1px solid #e2e8f0; border-top: none; text-align: center;">
+                    <p style="color: #94a3b8; font-size: 11px; margin: 0;">ICEM Quality Control System — Notification automatique</p>
+                </div>
+            </div>
+        `;
+
+        try {
+            await this.transporter.sendMail({
+                from: `"ICEM Quality Control" <${this.fromAddress}>`,
+                to: email,
+                subject,
+                html,
+            });
+            console.log(`✉️  Role update email sent to: ${email}`);
+            return true;
+        } catch (error) {
+            console.error('❌ Failed to send role update email:', error.message);
+            return false;
+        }
+    }
 }
 
 module.exports = new EmailService();

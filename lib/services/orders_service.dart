@@ -19,23 +19,20 @@ class OrdersService {
     _cablesCollection = _db.collection('cable');
   }
 
-  /// Récupérer tous les ordres de fabrication
+  /// Récupérer tous les ordres de fabrication avec des statistiques dynamiques
   Future<List<ManufacturingOrder>> getAllOrders() async {
     try {
       final querySnapshot = await _ordersCollection
           .orderBy('DateLiv', descending: true)
           .get();
-      return querySnapshot.docs
-          .map((doc) => ManufacturingOrder.fromFirestore(doc))
-          .toList();
+      
+      return await _processOrdersWithDynamicStats(querySnapshot.docs);
     } catch (e) {
       debugPrint('Error fetching orders (with orderBy): $e');
       // Fallback: essayer sans orderBy (si l'index Firestore n'existe pas encore)
       try {
         final snapshot = await _ordersCollection.get();
-        return snapshot.docs
-            .map((doc) => ManufacturingOrder.fromFirestore(doc))
-            .toList();
+        return await _processOrdersWithDynamicStats(snapshot.docs);
       } catch (e2) {
         debugPrint('Error fetching orders (fallback): $e2');
         return [];
@@ -43,12 +40,63 @@ class OrdersService {
     }
   }
 
+  Future<List<ManufacturingOrder>> _processOrdersWithDynamicStats(List<QueryDocumentSnapshot> docs) async {
+    final List<ManufacturingOrder> orders = [];
+    
+    // Process in parallel to reduce load time
+    await Future.wait(docs.map((doc) async {
+      var order = ManufacturingOrder.fromFirestore(doc);
+      
+      try {
+        final cablesSnapshot = await _cablesCollection.where('orderId', isEqualTo: order.numeroOF).get();
+        int inspected = 0;
+        int conform = 0;
+        int nonConform = 0;
+        
+        for (var cDoc in cablesSnapshot.docs) {
+           final status = (cDoc.data() as Map<String, dynamic>)['status']?.toString().toLowerCase() ?? '';
+           if (status == 'conforme') {
+             conform++;
+             inspected++;
+           } else if (status == 'non conforme') {
+             nonConform++;
+             inspected++;
+           }
+        }
+        
+        orders.add(ManufacturingOrder(
+          id: order.id,
+          reference: order.reference,
+          status: order.status,
+          inspectedCount: inspected,
+          conformCount: conform,
+          nonConformCount: nonConform,
+          numeroOF: order.numeroOF,
+          gipros: order.gipros,
+          ligne: order.ligne,
+          client: order.client,
+          numComd: order.numComd,
+          qta: order.qta,
+          dateLiv: order.dateLiv,
+        ));
+      } catch (e) {
+        orders.add(order); // Fallback to static data on error
+      }
+    }));
+    
+    // Re-sort because Future.wait might return out of order
+    orders.sort((a, b) => b.dateLiv.compareTo(a.dateLiv));
+    return orders;
+  }
+
   /// Récupérer un ordre par son ID
   Future<ManufacturingOrder?> getOrderById(String id) async {
     try {
       final doc = await _ordersCollection.doc(id).get();
       if (!doc.exists) return null;
-      return ManufacturingOrder.fromFirestore(doc);
+      
+      final orders = await _processOrdersWithDynamicStats([doc as QueryDocumentSnapshot]);
+      return orders.isNotEmpty ? orders.first : null;
     } catch (e) {
       debugPrint('Error fetching order $id: $e');
       return null;
@@ -61,9 +109,7 @@ class OrdersService {
 
     try {
       final snapshot = await _ordersCollection.get();
-      final allOrders = snapshot.docs
-          .map((doc) => ManufacturingOrder.fromFirestore(doc))
-          .toList();
+      final allOrders = await _processOrdersWithDynamicStats(snapshot.docs);
 
       final lowerQuery = query.toLowerCase();
       return allOrders.where((order) {

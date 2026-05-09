@@ -9,31 +9,33 @@ import { QRCodeCanvas } from 'qrcode.react';
 const StatusBadge = ({ status }) => {
     const s = status?.toLowerCase() || 'en attente';
     const styles = {
-        'en cours': 'bg-blue-50 text-blue-700 border-blue-200',
-        'terminé': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        'termine': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        'en attente': 'bg-amber-50 text-amber-700 border-amber-200',
-        'annulé': 'bg-red-50 text-red-700 border-red-200',
-        'suspendu': 'bg-slate-100 text-slate-600 border-slate-200',
+        'en cours':  'bg-blue-50 text-blue-600 border border-blue-100',
+        'terminé':   'bg-emerald-50 text-emerald-600 border border-emerald-100',
+        'termine':   'bg-emerald-50 text-emerald-600 border border-emerald-100',
+        'en attente':'bg-amber-50 text-amber-600 border border-amber-100',
+        'annulé':    'bg-red-50 text-red-500 border border-red-100',
+        'suspendu':  'bg-gray-100 text-gray-500 border border-gray-200',
     };
-    const icons = {
-        'en cours': <Clock size={13} className="mr-1" />,
-        'terminé': <CheckCircle2 size={13} className="mr-1" />,
-        'termine': <CheckCircle2 size={13} className="mr-1" />,
-        'en attente': <AlertCircle size={13} className="mr-1" />,
+    const dots = {
+        'en cours':  'bg-blue-500',
+        'terminé':   'bg-emerald-500',
+        'termine':   'bg-emerald-500',
+        'en attente':'bg-amber-500',
+        'annulé':    'bg-red-500',
+        'suspendu':  'bg-gray-400',
     };
     const labels = {
         'en cours': 'En Cours', 'terminé': 'Terminé', 'termine': 'Terminé',
         'en attente': 'En Attente', 'annulé': 'Annulé', 'suspendu': 'Suspendu',
     };
-
     return (
-        <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border flex items-center w-fit ${styles[s] || styles['en attente']}`}>
-            {icons[s]}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${styles[s] || styles['en attente']}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${dots[s] || 'bg-gray-400'}`}></span>
             {labels[s] || status}
         </span>
     );
 };
+
 
 const Orders = () => {
     const [orders, setOrders] = useState([]);
@@ -178,33 +180,38 @@ const Orders = () => {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Ordres de Fabrication</h1>
-                    <p className="text-sm text-slate-500 mt-1">Gestion et suivi des ordres de production</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100">
+                        <Package size={18} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-800">Ordres de Fabrication</h1>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">Gestion et suivi des ordres de production</p>
+                    </div>
                 </div>
                 {canCreate('orders') && (
                     <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-                        <Plus size={18} />
+                        <Plus size={16} />
                         Nouvel Ordre
                     </button>
                 )}
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-4 rounded-2xl border border-slate-200/80" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.04)' }}>
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                     <input
                         type="text"
                         placeholder="Rechercher par référence ou client..."
-                        className="input-field pl-10 text-base"
+                        className="input-field pl-9 text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
                 <select
-                    className="input-field w-full md:w-44"
+                    className="input-field w-full md:w-44 text-sm"
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                 >
@@ -218,66 +225,66 @@ const Orders = () => {
             </div>
 
             {/* Table */}
-            <div className="card overflow-hidden !p-0">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-blue-50/60 border-b border-blue-100">
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Référence</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Client</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Quantité</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Statut</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Date</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider text-right">Actions</th>
+                            <tr className="border-b border-slate-100">
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Référence</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Client</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Quantité</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Statut</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Date</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
-                                        <div className="w-6 h-6 border-2 border-slate-200 border-t-accent rounded-full animate-spin mx-auto mb-3"></div>
-                                        Chargement des ordres...
+                                    <td colSpan="6" className="px-5 py-12 text-center text-slate-400">
+                                        <div className="w-5 h-5 border-2 border-slate-100 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3"></div>
+                                        <p className="text-sm">Chargement des ordres...</p>
                                     </td>
                                 </tr>
                             ) : filteredOrders.length > 0 ? (
                                 filteredOrders.map((order) => (
                                     <tr key={order.id} 
                                         onClick={() => openDetails(order)}
-                                        className="hover:bg-blue-50/40 transition-colors cursor-pointer border-b border-slate-50">
-                                        <td className="px-6 py-5 font-bold text-slate-900 text-base">{order.reference}</td>
-                                        <td className="px-6 py-5 text-slate-700 text-base font-medium">{order.client || order.cableType}</td>
-                                        <td className="px-6 py-5 text-slate-700 text-base font-medium">
-                                            <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg">{order.quantity} unités</span>
+                                        className="hover:bg-slate-50/80 transition-colors cursor-pointer border-b border-slate-50 last:border-0 group">
+                                        <td className="px-5 py-3.5 font-bold text-slate-800 text-sm">{order.reference}</td>
+                                        <td className="px-5 py-3.5 text-slate-600 text-sm font-medium">{order.client || order.cableType}</td>
+                                        <td className="px-5 py-3.5 text-sm">
+                                            <span className="bg-slate-100 text-slate-600 px-2.5 py-1 rounded-lg text-xs font-semibold">{order.quantity} unités</span>
                                         </td>
-                                        <td className="px-6 py-5"><StatusBadge status={order.status} /></td>
-                                        <td className="px-6 py-5 text-base font-medium text-slate-600">
-                                            {order.productionDate ? new Date(order.productionDate).toLocaleDateString() : '—'}
+                                        <td className="px-5 py-3.5"><StatusBadge status={order.status} /></td>
+                                        <td className="px-5 py-3.5 text-sm font-medium text-slate-500">
+                                            {order.productionDate ? new Date(order.productionDate).toLocaleDateString('fr-FR') : '—'}
                                         </td>
-                                        <td className="px-6 py-5" onClick={(e) => e.stopPropagation()}>
-                                            <div className="flex justify-end gap-2">
+                                        <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                                            <div className="flex justify-end gap-1.5">
                                                 <button
                                                     onClick={() => navigate('/cables', { state: { search: order.reference } })}
-                                                    className="p-2.5 bg-blue-50 hover:bg-blue-100 rounded-xl text-blue-600 transition-colors shadow-sm"
+                                                    className="p-2 bg-indigo-50 hover:bg-indigo-100 rounded-lg text-indigo-600 transition-colors"
                                                     title="Voir les câbles/inspections"
                                                 >
-                                                    <Eye size={20} />
+                                                    <Eye size={15} />
                                                 </button>
-                                                {canEdit('orders') && (
+                                                {canEdit('orders') && !['terminé', 'termine'].includes((order.status || '').toLowerCase()) && (
                                                     <button
                                                         onClick={() => openEdit(order)}
-                                                        className="p-2.5 bg-amber-50 hover:bg-amber-100 rounded-xl text-amber-600 transition-colors shadow-sm"
+                                                        className="p-2 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-600 transition-colors"
                                                         title="Modifier"
                                                     >
-                                                        <Pencil size={20} />
+                                                        <Pencil size={15} />
                                                     </button>
                                                 )}
-                                                {canDelete('orders') && (
+                                                {canDelete('orders') && (order.status || '').toLowerCase() === 'en attente' && (
                                                     <button
                                                         onClick={() => setDeleteConfirm(order)}
-                                                        className="p-2.5 bg-red-50 hover:bg-red-100 rounded-xl text-red-600 transition-colors shadow-sm"
+                                                        className="p-2 bg-red-50 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
                                                         title="Supprimer"
                                                     >
-                                                        <Trash2 size={20} />
+                                                        <Trash2 size={15} />
                                                     </button>
                                                 )}
                                             </div>
@@ -286,10 +293,10 @@ const Orders = () => {
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-16 text-center">
-                                        <Package size={44} className="mx-auto text-slate-200 mb-3" />
-                                        <p className="text-slate-500 font-medium">Aucun ordre de fabrication trouvé</p>
-                                        <p className="text-sm text-slate-400 mt-1">Créez un nouvel ordre ou modifiez vos filtres</p>
+                                    <td colSpan="6" className="px-5 py-16 text-center">
+                                        <Package size={36} className="mx-auto text-slate-200 mb-3" />
+                                        <p className="text-sm text-slate-500 font-medium">Aucun ordre de fabrication trouvé</p>
+                                        <p className="text-xs text-slate-400 mt-1">Créez un nouvel ordre ou modifiez vos filtres</p>
                                     </td>
                                 </tr>
                             )}

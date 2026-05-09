@@ -1,20 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Users as UsersIcon, Shield, Mail, Phone, UserPlus, Pencil, X, KeyRound, Loader2 } from 'lucide-react';
+import { Users as UsersIcon, Shield, Mail, Phone, UserPlus, Pencil, X, KeyRound, Loader2, Search } from 'lucide-react';
 import { UserService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 
 const RoleBadge = ({ role }) => {
     const config = {
-        'Administrateur': 'bg-purple-50 text-purple-700 border-purple-200',
-        'admin': 'bg-purple-50 text-purple-700 border-purple-200',
-        'Responsable': 'bg-blue-50 text-blue-700 border-blue-200',
-        'manager': 'bg-blue-50 text-blue-700 border-blue-200',
-        'responsable_qualite': 'bg-blue-50 text-blue-700 border-blue-200',
-        'Technicien': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        'technician': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        'technicien_qualite': 'bg-emerald-50 text-emerald-700 border-emerald-200',
-        'Direction': 'bg-amber-50 text-amber-700 border-amber-200',
-        'direction': 'bg-amber-50 text-amber-700 border-amber-200',
+        'Administrateur': 'bg-indigo-50 text-indigo-600',
+        'admin': 'bg-indigo-50 text-indigo-600',
+        'Responsable': 'bg-blue-50 text-blue-600',
+        'manager': 'bg-blue-50 text-blue-600',
+        'responsable_qualite': 'bg-blue-50 text-blue-600',
+        'Technicien': 'bg-emerald-50 text-emerald-600',
+        'technician': 'bg-emerald-50 text-emerald-600',
+        'technicien_qualite': 'bg-emerald-50 text-emerald-600',
+        'Direction': 'bg-amber-50 text-amber-600',
+        'direction': 'bg-amber-50 text-amber-600',
     };
 
     const roleLabels = {
@@ -27,7 +27,7 @@ const RoleBadge = ({ role }) => {
     };
 
     return (
-        <span className={`px-2.5 py-1 rounded-lg text-xs font-semibold border capitalize ${config[role] || 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+        <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold ${config[role] || 'bg-slate-100 text-slate-600'}`}>
             {roleLabels[role] || role}
         </span>
     );
@@ -42,9 +42,16 @@ const Users = () => {
     const [newPassword, setNewPassword] = useState('');
     const [resetting, setResetting] = useState(false);
     const [form, setForm] = useState({
-        fullName: '', username: '', email: '', role: 'technician', phone: '', isActive: true
+        fullName: '', username: '', email: '', roles: ['technician'], phone: '', isActive: true
     });
     const { canResetPassword } = useAuth();
+    
+    const AVAILABLE_ROLES = [
+        { value: 'admin', label: 'Administrateur' },
+        { value: 'manager', label: 'Responsable Qualité' },
+        { value: 'technician', label: 'Technicien Qualité' },
+        { value: 'direction', label: 'Direction' },
+    ];
 
     const fetchUsers = async () => {
         try {
@@ -62,7 +69,7 @@ const Users = () => {
 
     const openCreate = () => {
         setEditUser(null);
-        setForm({ fullName: '', username: '', email: '', role: 'technician', phone: '', isActive: true });
+        setForm({ fullName: '', username: '', email: '', roles: ['technician'], phone: '', isActive: true });
         setIsModalOpen(true);
     };
 
@@ -72,7 +79,7 @@ const Users = () => {
             fullName: user.fullName || '',
             username: user.username || '',
             email: user.email || '',
-            role: user.role || 'technician',
+            roles: user.roles || (user.role ? [user.role] : ['technician']),
             phone: user.phone || '',
             isActive: user.isActive !== false,
         });
@@ -126,99 +133,114 @@ const Users = () => {
         }
     };
 
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const filteredUsers = users.filter(user => 
+        (user.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (user.role || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Gestion des Utilisateurs</h1>
-                    <p className="text-sm text-slate-500 mt-1">Contrôlez les accès et les rôles de l'équipe</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100">
+                        <UsersIcon size={18} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-800">Gestion des Utilisateurs</h1>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">Contrôlez les accès et les rôles de l'équipe</p>
+                    </div>
                 </div>
                 <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-                    <UserPlus size={18} />
+                    <UserPlus size={16} />
                     Ajouter Utilisateur
                 </button>
             </div>
 
-            {/* User Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+            {/* Search Bar */}
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                    <input
+                        type="text"
+                        placeholder="Rechercher par nom, email ou rôle..."
+                        className="input-field pl-9 text-sm"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+            </div>
+
+            {/* User List */}
+            <div className="flex flex-col gap-3">
                 {loading ? (
-                    <div className="col-span-full py-20 text-center">
+                    <div className="card py-20 text-center">
                         <div className="w-8 h-8 border-3 border-slate-200 border-t-accent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-slate-500 font-medium">Chargement de l'équipe...</p>
                     </div>
-                ) : users.length > 0 ? (
-                    users.map(user => (
-                        <div key={user.id} className={`card relative transition-all border-l-4 ${user.isActive ? 'border-l-emerald-400' : 'border-l-red-400 opacity-70'}`}>
-                            <div className="flex items-center gap-4 mb-5">
-                                <div className="w-14 h-14 rounded-2xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0">
-                                    <img
-                                        src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || 'U')}&background=e2e8f0&color=475569&bold=true&size=56`}
-                                        alt={user.fullName}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                                <div className="min-w-0 flex-1">
-                                    <h3 className="font-black text-slate-900 text-lg truncate mb-1">{user.fullName}</h3>
-                                    <RoleBadge role={user.role} />
-                                </div>
-                                <button
-                                    onClick={() => openEdit(user)}
-                                    className="p-3 hover:bg-slate-100 rounded-xl text-slate-400 hover:text-accent transition-colors flex-shrink-0 shadow-sm"
-                                    title="Modifier"
-                                >
-                                    <Pencil size={20} />
-                                </button>
+                ) : filteredUsers.length > 0 ? (
+                    filteredUsers.map(user => (
+                        <div key={user.id} className={`card flex flex-col md:flex-row md:items-center gap-4 !p-4 transition-all border-l-4 ${user.isActive ? 'border-l-emerald-400 hover:border-l-emerald-500' : 'border-l-red-400 opacity-75'} shadow-sm hover:bg-slate-50`}>
+                                <div className="w-10 h-10 rounded-full bg-indigo-50 border-2 border-white ring-2 ring-slate-100 overflow-hidden flex-shrink-0 shadow-sm">
+                                <img
+                                    src={user.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || 'U')}&background=6366f1&color=ffffff&bold=true&size=88`}
+                                    alt={user.fullName}
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
-
-                            <div className="space-y-3 mb-6 p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
-                                <div className="flex items-center gap-3 text-slate-700 text-base font-medium">
-                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
-                                        <Mail size={18} className="text-slate-400" />
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-3 mb-1">
+                                    <h3 className="font-bold text-slate-900 text-base">{user.fullName}</h3>
+                                    <div className="flex flex-wrap gap-1">
+                                        {(user.roles || (user.role ? [user.role] : [])).map(r => (
+                                            <RoleBadge key={r} role={r} />
+                                        ))}
                                     </div>
-                                    <span className="truncate">{user.email}</span>
                                 </div>
-                                {user.phone && (
-                                    <div className="flex items-center gap-3 text-slate-700 text-base font-medium">
-                                        <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
-                                            <Phone size={18} className="text-slate-400" />
-                                        </div>
-                                        <span>{user.phone}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-3 text-slate-700 text-base font-medium">
-                                    <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 flex items-center justify-center shadow-sm">
-                                        <Shield size={18} className={user.isActive ? 'text-emerald-500' : 'text-red-500'} />
-                                    </div>
-                                    <span>Accès {user.isActive ? 'autorisé' : 'suspendu'}</span>
+                                <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
+                                    <span className="flex items-center gap-1"><Mail size={14} /> {user.email}</span>
+                                    {user.phone && <span className="flex items-center gap-1"><Phone size={14} /> {user.phone}</span>}
+                                    <span className={`flex items-center gap-1 font-medium ${user.isActive ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        <Shield size={14} /> {user.isActive ? 'Actif' : 'Suspendu'}
+                                    </span>
                                 </div>
                             </div>
-
-                            <div className="flex gap-3">
+                            
+                            <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => toggleUserStatus(user)}
-                                    className={`flex-1 py-3 text-sm font-bold rounded-xl transition-all shadow-sm ${
+                                    className={`px-3 py-2 text-sm font-bold rounded-lg transition-colors border ${
                                         user.isActive
-                                            ? 'text-red-600 bg-red-50 hover:bg-red-100 border border-red-200'
-                                            : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200'
+                                            ? 'text-red-600 bg-red-50 hover:bg-red-100 border-red-200'
+                                            : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-200'
                                     }`}
+                                    title={user.isActive ? "Désactiver" : "Activer"}
                                 >
                                     {user.isActive ? 'Désactiver' : 'Activer'}
                                 </button>
                                 {canResetPassword && (
                                     <button
                                         onClick={() => { setResetModal(user); setNewPassword(''); }}
-                                        className="flex items-center gap-2 px-4 py-3 text-sm font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-xl transition-all shadow-sm"
+                                        className="p-2 text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
                                         title="Réinitialiser le mot de passe"
                                     >
-                                        <KeyRound size={18} />
-                                        MDP
+                                        <KeyRound size={15} />
                                     </button>
                                 )}
+                                <button
+                                    onClick={() => openEdit(user)}
+                                    className="p-2 text-amber-600 bg-amber-50 hover:bg-amber-100 rounded-lg transition-colors"
+                                    title="Modifier"
+                                >
+                                    <Pencil size={15} />
+                                </button>
                             </div>
                         </div>
                     ))
                 ) : (
-                    <div className="col-span-full card py-20 text-center text-slate-400">
+                    <div className="card py-20 text-center text-slate-400">
                         <UsersIcon size={48} className="mx-auto mb-4 opacity-20" />
                         <p className="font-medium text-slate-600">Aucun utilisateur trouvé</p>
                     </div>
@@ -279,17 +301,26 @@ const Users = () => {
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Rôle</label>
-                                <select
-                                    className="input-field"
-                                    value={form.role}
-                                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                                >
-                                    <option value="admin">Administrateur</option>
-                                    <option value="manager">Responsable Qualité</option>
-                                    <option value="technician">Technicien Qualité</option>
-                                    <option value="direction">Direction</option>
-                                </select>
+                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Rôles</label>
+                                <div className="space-y-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
+                                    {AVAILABLE_ROLES.map(r => (
+                                        <label key={r.value} className="flex items-center gap-3 cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
+                                                checked={form.roles.includes(r.value)}
+                                                onChange={(e) => {
+                                                    let newRoles = e.target.checked 
+                                                        ? [...form.roles, r.value] 
+                                                        : form.roles.filter(x => x !== r.value);
+                                                    if(newRoles.length === 0) newRoles = ['technician'];
+                                                    setForm({...form, roles: newRoles});
+                                                }}
+                                            />
+                                            <span className="text-sm font-medium text-slate-700">{r.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                             <div className="flex gap-3 pt-3">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 btn-secondary">

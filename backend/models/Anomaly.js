@@ -6,7 +6,7 @@
  * Elle a un type, une gravité et un score de confiance
  */
 class Anomaly {
-    constructor({ id, type, severity, confidence, location = null, cableId, detectedAt, technicianId = null, technicianName = null }) {
+    constructor({ id, type, severity, confidence, location = null, cableId, detectedAt, technicianId = null, technicianName = null, imageUrl = null, statut = 'detectee', orderId = null, mesureCorrective = null, resolvedBy = null, resolvedByRole = null }) {
         this.id = id;
         this.type = type;                // 'Rayure', 'Déformation', 'Défaut de surface', etc.
         this.severity = severity;        // 'Mineur', 'Majeur', 'Critique'
@@ -16,6 +16,12 @@ class Anomaly {
         this.detectedAt = detectedAt instanceof Date ? detectedAt : new Date(detectedAt || Date.now());
         this.technicianId = technicianId;
         this.technicianName = technicianName;
+        this.imageUrl = imageUrl;
+        this.statut = statut;
+        this.orderId = orderId;
+        this.mesureCorrective = mesureCorrective;
+        this.resolvedBy = resolvedBy;
+        this.resolvedByRole = resolvedByRole;
     }
 
     /**
@@ -62,6 +68,12 @@ class Anomaly {
             detectedAt: detectedAt,
             technicianId: json.technicianId || null,
             technicianName: json.technicianName || json.technicianFullName || 'Inconnu',
+            imageUrl: json.imageUrl || null,
+            statut: json.statut || 'detectee',
+            orderId: json.orderId || null,
+            mesureCorrective: json.mesureCorrective || null,
+            resolvedBy: json.resolvedBy || null,
+            resolvedByRole: json.resolvedByRole || null,
         });
     }
 
@@ -79,6 +91,12 @@ class Anomaly {
             detectedAt: this.detectedAt.toISOString(),
             technicianId: this.technicianId,
             technicianName: this.technicianName,
+            imageUrl: this.imageUrl,
+            statut: this.statut,
+            orderId: this.orderId,
+            mesureCorrective: this.mesureCorrective,
+            resolvedBy: this.resolvedBy,
+            resolvedByRole: this.resolvedByRole,
         };
     }
 }

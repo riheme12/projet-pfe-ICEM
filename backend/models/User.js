@@ -74,12 +74,13 @@ class UserStats {
  * Modèle User
  */
 class User {
-    constructor({ id, username, fullName, email, role, photoUrl = null, phone = null, createdAt, stats, isActive = true }) {
+    constructor({ id, username, fullName, email, role, roles, photoUrl = null, phone = null, createdAt, stats, isActive = true }) {
         this.id = id || '';
         this.username = username || '';
         this.fullName = fullName || '';
         this.email = email || '';
-        this.role = role || UserRole.OPERATOR;
+        this.roles = Array.isArray(roles) ? roles : (role ? [role] : [UserRole.OPERATOR]);
+        this.role = this.roles[0]; // Compatibility field
         this.photoUrl = photoUrl;
         this.phone = phone;
         this.createdAt = createdAt instanceof Date ? createdAt : new Date(createdAt || Date.now());
@@ -93,7 +94,7 @@ class User {
             username: json.username || '',
             fullName: json.fullName || '',
             email: json.email || '',
-            role: parseUserRole(json.role || 'operator'),
+            roles: json.roles ? json.roles.map(parseUserRole) : (json.role ? [parseUserRole(json.role)] : [UserRole.OPERATOR]),
             photoUrl: json.photoUrl || null,
             phone: json.phone || null,
             createdAt: json.createdAt ? new Date(json.createdAt) : new Date(),
@@ -108,7 +109,8 @@ class User {
             username: this.username,
             fullName: this.fullName,
             email: this.email,
-            role: this.role, // Use logical name (technician, operator, etc.) for storage
+            role: this.roles[0] || UserRole.OPERATOR, // Backward compatibility
+            roles: this.roles,
             photoUrl: this.photoUrl,
             phone: this.phone,
             createdAt: this.createdAt.toISOString(),

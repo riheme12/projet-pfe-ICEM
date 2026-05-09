@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { db } = require('../firebase');
+const { db, bucket } = require('../firebase');
 const { Anomaly } = require('../models');
 const emailService = require('../services/emailService');
 
@@ -40,6 +40,38 @@ router.get('/cable/:cableId', async (req, res) => {
         });
         res.status(200).json(anomalies);
     } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Upload image via Backend to Firebase Storage
+router.post('/upload-image', async (req, res) => {
+    try {
+        const { imageBase64 } = req.body;
+        if (!imageBase64) {
+            return res.status(400).json({ error: 'Aucune image base64 fournie' });
+        }
+
+        // Nettoyer la chaîne base64 (enlever le préfixe data:image/jpeg;base64, si présent)
+        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        const fileName = `inspections/insp_backend_${Date.now()}_${Math.floor(Math.random() * 1000)}.jpg`;
+        const file = bucket.file(fileName);
+
+        await file.save(buffer, {
+            metadata: {
+                contentType: 'image/jpeg',
+            },
+            public: true // Rendre public pour affichage dans l'app
+        });
+
+        // Générer l'URL publique
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        
+        res.status(200).json({ imageUrl: publicUrl });
+    } catch (error) {
+        console.error('Erreur lors du téléversement backend de l\'image:', error);
         res.status(500).json({ error: error.message });
     }
 });
@@ -152,11 +184,58 @@ router.patch('/:id', async (req, res) => {
                     statut: 'unread',
                     createdAt: new Date().toISOString(),
                 });
+
+                // Mettre à jour le câble associé → retour à "Conforme"
+                const cableRef = existingData.cableId;
+                if (cableRef) {
+                    try {
+                        // Chercher le câble par référence ou code
+                        let cableSnap = await db.collection('cable')
+                            .where('reference', '==', cableRef).get();
+                        if (cableSnap.empty) {
+                            cableSnap = await db.collection('cable')
+                                .where('code', '==', cableRef).get();
+                        }
+                        for (const cableDoc of cableSnap.docs) {
+                            await db.collection('cable').doc(cableDoc.id).update({
+                                status: 'Conforme',
+                                anomaliesCount: 0,
+                            });
+                        }
+
+                        // Ajuster les compteurs de l'ordre de fabrication
+                        const orderId = existingData.orderId;
+                        if (orderId) {
+                            const orderDoc = await db.collection('manufacturingOrder').doc(orderId).get();
+                            if (orderDoc.exists) {
+                                const orderData = orderDoc.data();
+                                const conformCount = parseInt(orderData.conformCount || 0);
+                                const nonConformCount = parseInt(orderData.nonConformCount || 0);
+                                if (nonConformCount > 0) {
+                                    await db.collection('manufacturingOrder').doc(orderId).update({
+                                        conformCount: conformCount + 1,
+                                        nonConformCount: nonConformCount - 1,
+                                    });
+                                }
+                            }
+                        }
+                    } catch (cableErr) {
+                        console.error('Error updating cable on resolve:', cableErr);
+                    }
+                }
             }
         }
-        delete data.id;
-        await db.collection('anomaly').doc(req.params.id).update(data);
-        res.status(200).json({ id: req.params.id, ...data });
+        const updatePayload = {
+            ...req.body,
+            updatedAt: new Date().toISOString()
+        };
+        
+        if (req.body.statut === 'traitee') {
+            updatePayload.resolvedAt = new Date().toISOString();
+        }
+
+        await db.collection('anomaly').doc(req.params.id).update(updatePayload);
+        res.status(200).json({ id: req.params.id, ...existingData, ...updatePayload });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

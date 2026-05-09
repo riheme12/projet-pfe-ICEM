@@ -193,7 +193,7 @@ class _ChecklistPageState extends State<ChecklistPage> {
         technicianName: _nomCtrl.text.trim(),
         cableRef: widget.cableReference ?? 'N/A',
         orderRef: widget.orderReference ?? 'N/A',
-        checklistItems: validRows.map((r) => {
+        checklistItems: validRows.map((r) => <String, dynamic>{
           'numeroSerie': r.nsCtrl.text.trim(),
           'codeDefaut': r.defCtrl.text.trim(),
           'derivation': r.derCtrl.text.trim(),

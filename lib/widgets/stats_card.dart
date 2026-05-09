@@ -67,12 +67,12 @@ class StatsCard extends StatelessWidget {
                       ),
                       child: Icon(icon, color: color, size: 22),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 8),
                     // Value
                     Text(
                       value,
                       style: GoogleFonts.inter(
-                        fontSize: 26,
+                        fontSize: 22,
                         fontWeight: FontWeight.w800,
                         color: const Color(0xFF1A2138),
                         letterSpacing: -0.5,

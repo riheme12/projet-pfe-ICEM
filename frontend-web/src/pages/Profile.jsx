@@ -1,114 +1,162 @@
 import React from 'react';
-import { User, Mail, Shield, Calendar, Clock, MapPin, Phone, Building } from 'lucide-react';
+import { User, Mail, Shield, Calendar, MapPin, Phone, Edit, Instagram, Facebook, Twitter, Linkedin, Send, CreditCard, CheckCircle, ArrowDown, Search } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 
 const Profile = () => {
     const { user, roleLabel } = useAuth();
     
-    const stats = [
-        { label: 'Dernière connexion', value: new Date().toLocaleDateString(), icon: <Clock size={16} /> },
-        { label: 'Rôle Système', value: roleLabel, icon: <Shield size={16} /> },
-        { label: 'Localisation', value: 'Usine ICEM — Sfax', icon: <MapPin size={16} /> },
-    ];
-
     return (
-        <div className="flex flex-col gap-8">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Mon Profil</h1>
-                    <p className="text-sm text-slate-500 mt-1">Gérez vos informations personnelles et vos préférences</p>
+        <div className="flex flex-col gap-6 max-w-[1200px] mx-auto pb-10">
+            {/* Top Profile Card */}
+            <div className="bg-white rounded-[32px] p-8 shadow-sm border border-slate-100 relative flex flex-col md:flex-row gap-8 items-center md:items-start">
+                <button className="absolute top-6 right-6 text-slate-400 hover:text-blue-500 transition-colors">
+                    <Edit size={20} />
+                </button>
+                
+                {/* Avatar */}
+                <div className="w-40 h-40 rounded-full bg-blue-600 flex-shrink-0 flex items-center justify-center overflow-hidden shadow-xl"
+                     style={{ border: '8px solid #f3f4f8' }}>
+                    <img 
+                        src={user?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=2563eb&color=ffffff&bold=true&size=200`}
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                    />
+                </div>
+                
+                {/* Info */}
+                <div className="flex-1 flex flex-col pt-2">
+                    <h2 className="text-2xl font-bold text-slate-800 mb-4">{user?.fullName || 'Utilisateur ICEM'}</h2>
+                    
+                    <div className="grid grid-cols-1 gap-2.5 text-sm text-slate-500 font-medium mb-6">
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-400 w-36">Date d'inscription:</span>
+                            <span className="text-slate-700">24 Novembre 2022</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-400 w-36">Ville, Pays:</span>
+                            <span className="text-slate-700">Sfax, Tunisie</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-400 w-36">Rôle:</span>
+                            <span className="text-slate-700">{roleLabel || 'Technicien'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-400 w-36">E-mail:</span>
+                            <span className="text-slate-700">{user?.email || 'user@icem.tn'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="text-slate-400 w-36">Téléphone:</span>
+                            <span className="text-slate-700">+216 25 123 456</span>
+                        </div>
+                    </div>
+                    
+                    {/* Socials */}
+                    <div className="flex gap-3">
+                        <a href="#" className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors"><Instagram size={14} /></a>
+                        <a href="#" className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors"><Facebook size={14} /></a>
+                        <a href="#" className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors"><Twitter size={14} /></a>
+                        <a href="#" className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors"><Linkedin size={14} /></a>
+                        <a href="#" className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center hover:bg-blue-600 transition-colors"><Send size={14} /></a>
+                    </div>
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                {/* Profile Card */}
-                <div className="card lg:col-span-1 flex flex-col items-center text-center p-10 relative overflow-hidden">
-                    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-br from-blue-600 to-indigo-700"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Left Column - Activities / Timeline */}
+                <div className="lg:col-span-2 bg-white rounded-[32px] p-8 shadow-sm border border-slate-100">
+                    <h3 className="text-xl font-bold text-slate-800 mb-8">Mes Activités Récentes</h3>
                     
-                    <div className="relative mt-8">
-                        <div className="w-32 h-32 rounded-[40px] bg-white p-1.5 shadow-2xl relative z-10">
-                            <div className="w-full h-full rounded-[35px] bg-slate-100 flex items-center justify-center text-blue-600 overflow-hidden border-4 border-slate-50">
-                                <User size={64} strokeWidth={1.5} />
-                            </div>
-                        </div>
-                        <div className="absolute -bottom-2 -right-2 w-10 h-10 bg-emerald-500 border-4 border-white rounded-full flex items-center justify-center text-white shadow-lg z-20">
-                            <Shield size={16} />
-                        </div>
-                    </div>
-
-                    <div className="mt-8 relative z-10 w-full">
-                        <h2 className="text-2xl font-black text-slate-800 mb-1">{user?.fullName || 'Administrateur'}</h2>
-                        <span className="px-4 py-1.5 bg-blue-50 text-blue-600 rounded-full text-xs font-black uppercase tracking-widest border border-blue-100 italic">
-                            {roleLabel}
-                        </span>
+                    <div className="relative pl-4 space-y-6">
+                        {/* Timeline Line */}
+                        <div className="absolute left-[23px] top-4 bottom-4 w-0.5 bg-blue-100"></div>
                         
-                        <div className="mt-10 space-y-4">
-                            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
-                                    <Mail size={18} />
+                        {/* Item 1 */}
+                        <div className="relative pl-10">
+                            <div className="absolute left-0 top-3 w-4 h-4 rounded-full border-4 border-blue-500 bg-white"></div>
+                            <div className="bg-blue-50/50 rounded-2xl p-5 border border-blue-100/50 relative">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-bold text-slate-800">Inspection Câble — Validée</h4>
+                                    <span className="px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-lg">Terminé</span>
                                 </div>
-                                <div className="text-left">
-                                    <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Contact</p>
-                                    <p className="text-sm font-bold text-slate-700">{user?.email || 'admin@icem.tn'}</p>
-                                </div>
+                                <p className="text-sm text-slate-500 mb-3">Vérification électrique, tolérance, intégrité...</p>
+                                <p className="text-xs text-slate-400 font-medium">12 éléments inspectés</p>
+                                <button className="absolute right-5 bottom-5 w-8 h-8 bg-blue-100 text-blue-500 rounded-full flex items-center justify-center hover:bg-blue-200 transition-colors"><ArrowDown size={16} /></button>
                             </div>
-                            <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                                <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-slate-400 shadow-sm">
-                                    <Building size={18} />
+                        </div>
+
+                        {/* Item 2 */}
+                        <div className="relative pl-10">
+                            <div className="absolute left-0 top-3 w-4 h-4 rounded-full border-4 border-blue-500 bg-white"></div>
+                            <div className="bg-fuchsia-50/50 rounded-2xl p-5 border border-fuchsia-100/50 relative">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-bold text-slate-800">Anomalie — Résolue</h4>
+                                    <span className="px-3 py-1 bg-emerald-500 text-white text-xs font-bold rounded-lg">Terminé</span>
                                 </div>
-                                <div className="text-left">
-                                    <p className="text-[0.65rem] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Département</p>
-                                    <p className="text-sm font-bold text-slate-700">Contrôle Qualité IA</p>
+                                <p className="text-sm text-slate-500 mb-3">Défaut mineur d'isolation réparé sur ligne A.</p>
+                                <p className="text-xs text-slate-400 font-medium">1 rapport généré</p>
+                                <button className="absolute right-5 bottom-5 w-8 h-8 bg-fuchsia-100 text-fuchsia-500 rounded-full flex items-center justify-center hover:bg-fuchsia-200 transition-colors"><ArrowDown size={16} /></button>
+                            </div>
+                        </div>
+
+                        {/* Item 3 */}
+                        <div className="relative pl-10">
+                            <div className="absolute left-0 top-3 w-4 h-4 rounded-full border-2 border-blue-300 bg-white"></div>
+                            <div className="bg-rose-50/50 rounded-2xl p-5 border border-rose-100/50 relative">
+                                <div className="flex justify-between items-start mb-2">
+                                    <h4 className="font-bold text-slate-800">Formation — Sécurité IA</h4>
+                                    <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-lg">Début: 13.06.2026</span>
                                 </div>
+                                <p className="text-sm text-slate-500 mb-3">Nouveaux modèles de détection par ordinateur...</p>
+                                <p className="text-xs text-slate-400 font-medium">2 modules restants</p>
+                                <button className="absolute right-5 bottom-5 w-8 h-8 bg-rose-100 text-rose-500 rounded-full flex items-center justify-center hover:bg-rose-200 transition-colors"><ArrowDown size={16} /></button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Account Details & Settings */}
-                <div className="lg:col-span-2 space-y-8">
-                    <div className="card">
-                        <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                             Détails du compte
-                        </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            {stats.map((stat, i) => (
-                                <div key={i} className="p-5 bg-slate-50/50 rounded-2xl border border-slate-100 group hover:border-blue-200 transition-colors">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="text-blue-500 group-hover:scale-110 transition-transform">
-                                            {stat.icon}
-                                        </div>
-                                        <span className="text-[0.7rem] font-bold text-slate-400 uppercase tracking-widest">{stat.label}</span>
-                                    </div>
-                                    <p className="text-lg font-black text-slate-700 ml-7">{stat.value}</p>
-                                </div>
-                            ))}
+                {/* Right Column - System Cards */}
+                <div className="lg:col-span-1 space-y-6 flex flex-col">
+                    {/* Bank / System info Card */}
+                    <div className="bg-white rounded-[32px] p-6 shadow-sm border border-slate-100">
+                        <h3 className="text-lg font-bold text-slate-800 mb-4">Données Système</h3>
+                        <p className="text-sm text-slate-500 mb-2">Identifiant Badge:</p>
+                        <div className="bg-slate-100/50 rounded-xl px-4 py-3 font-mono text-slate-600 text-sm mb-6 flex justify-between tracking-widest">
+                            <span>236</span><span>***</span><span>***</span><span>265</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="h-10 border border-slate-200 rounded-xl flex items-center justify-center bg-white font-bold text-xs text-slate-600 shadow-sm">NFC Ready</div>
+                            <div className="h-10 border border-slate-200 rounded-xl flex items-center justify-center bg-white font-bold text-xs text-slate-600 shadow-sm">RFID Active</div>
+                            <div className="h-10 border border-slate-200 rounded-xl flex items-center justify-center bg-white font-bold text-xs text-slate-600 shadow-sm">Zone A</div>
+                            <div className="h-10 border border-slate-200 rounded-xl flex items-center justify-center bg-white font-bold text-xs text-slate-600 shadow-sm">Zone B</div>
                         </div>
                     </div>
 
-                    <div className="card">
-                         <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                             Sécurité & Accès
-                        </h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between p-4 bg-amber-50 rounded-2xl border border-amber-100">
-                                <div className="flex items-center gap-4">
-                                    <div className="p-3 bg-white rounded-xl text-amber-600 shadow-sm">
-                                        <Shield size={20} />
-                                    </div>
-                                    <div>
-                                        <p className="text-sm font-bold text-slate-800">Accès Privilégié</p>
-                                        <p className="text-xs text-slate-500">Votre compte dispose des droits d'administration complets.</p>
-                                    </div>
-                                </div>
-                                <span className="px-3 py-1 bg-white text-amber-600 text-[0.6rem] font-black uppercase tracking-widest rounded-lg border border-amber-200">Actif</span>
-                            </div>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <button className="btn-secondary h-12 text-sm justify-center">Changer le mot de passe</button>
-                                <button className="btn-secondary h-12 text-sm justify-center border-red-100 text-red-500 hover:bg-red-50 hover:text-red-600">Désactiver le compte</button>
-                            </div>
-                        </div>
+                    {/* Premium / Sub Card */}
+                    <div className="bg-blue-600 rounded-[32px] p-8 text-white flex-1 flex flex-col shadow-lg shadow-blue-600/20">
+                        <h3 className="text-xl font-bold mb-6 leading-tight">Accès Individuel<br/>ICEM Premium</h3>
+                        
+                        <ul className="space-y-4 mb-8 flex-1">
+                            <li className="flex items-start gap-3 text-sm text-blue-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white mt-1.5 flex-shrink-0"></div>
+                                <span>1 mois Premium gratuit pour accès illimité.</span>
+                            </li>
+                            <li className="flex items-start gap-3 text-sm text-blue-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white mt-1.5 flex-shrink-0"></div>
+                                <span>2 mois pour les nouveaux techniciens.</span>
+                            </li>
+                            <li className="flex items-start gap-3 text-sm text-blue-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white mt-1.5 flex-shrink-0"></div>
+                                <span>Annulation possible à tout moment.</span>
+                            </li>
+                            <li className="flex items-start gap-3 text-sm text-blue-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-white mt-1.5 flex-shrink-0"></div>
+                                <span>Meilleures alertes en temps réel.</span>
+                            </li>
+                        </ul>
+                        
+                        <button className="w-full bg-white text-blue-600 font-bold py-3.5 rounded-2xl hover:bg-blue-50 transition-colors shadow-sm">
+                            S'abonner
+                        </button>
                     </div>
                 </div>
             </div>

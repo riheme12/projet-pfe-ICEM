@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle, ShieldAlert } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Loader2, ArrowLeft, CheckCircle, AlertCircle } from 'lucide-react';
 import { auth, signInWithEmailAndPassword, sendPasswordResetEmail } from '../services/firebase';
 import { AuthService } from '../services/api';
 import logo from '../assets/logo.png';
@@ -22,7 +22,6 @@ const Login = () => {
         e.preventDefault();
         setLoading(true);
         setError('');
-
         try {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const idToken = await userCredential.user.getIdToken();
@@ -31,199 +30,203 @@ const Login = () => {
             localStorage.setItem('currentUser', JSON.stringify(response.data));
             navigate('/');
         } catch (err) {
-            console.error('Login error:', err);
             const code = err.code || '';
-            if (code === 'auth/user-not-found' || code === 'auth/wrong-password' || code === 'auth/invalid-credential') {
+            if (code.includes('user-not-found') || code.includes('wrong-password') || code.includes('invalid-credential')) {
                 setError('Identifiants incorrects. Veuillez réessayer.');
-            } else if (code === 'auth/too-many-requests') {
-                setError('Trop de tentatives. Veuillez réessayer plus tard.');
-            } else if (code === 'auth/invalid-email') {
+            } else if (code.includes('too-many-requests')) {
+                setError('Trop de tentatives. Réessayez plus tard.');
+            } else if (code.includes('invalid-email')) {
                 setError('Adresse email invalide.');
             } else {
-                setError('Erreur de connexion. Veuillez réessayer.');
+                setError('Erreur de connexion. Vérifiez vos identifiants.');
             }
-        } finally {
-            setLoading(false);
-        }
+        } finally { setLoading(false); }
     };
 
     const handleForgotPassword = async (e) => {
         e.preventDefault();
-        if (!resetEmail) {
-            setResetError('Veuillez entrer votre adresse email.');
-            return;
-        }
-        setResetLoading(true);
-        setResetError('');
+        if (!resetEmail) { setResetError('Veuillez entrer votre email.'); return; }
+        setResetLoading(true); setResetError('');
         try {
             await sendPasswordResetEmail(auth, resetEmail);
             setResetSent(true);
         } catch (err) {
             const code = err.code || '';
-            if (code === 'auth/user-not-found') {
-                setResetError('Aucun compte trouvé avec cet email.');
-            } else if (code === 'auth/invalid-email') {
-                setResetError('Adresse email invalide.');
-            } else {
-                setResetError('Erreur lors de l\'envoi. Veuillez réessayer.');
-            }
-        } finally {
-            setResetLoading(false);
-        }
+            if (code.includes('user-not-found')) setResetError('Aucun compte avec cet email.');
+            else if (code.includes('invalid-email')) setResetError('Email invalide.');
+            else setResetError('Erreur lors de l\'envoi. Réessayez.');
+        } finally { setResetLoading(false); }
     };
 
     return (
-        <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-            <div className="w-full max-w-md">
-                {/* Logo & Intro */}
-                <div className="flex flex-col items-center mb-8">
-                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 mb-6">
-                        <img src={logo} alt="ICEM Logo" className="w-20 h-20 object-contain" />
+        <div className="min-h-screen flex bg-gray-50">
+            {/* Left — Purple Hero Panel */}
+            <div className="hidden lg:flex lg:w-5/12 flex-col justify-between p-10 relative overflow-hidden"
+                style={{ background: 'linear-gradient(160deg, #4f46e5 0%, #6366f1 50%, #818cf8 100%)' }}>
+                {/* Decorative circles */}
+                <div className="absolute -top-20 -left-20 w-80 h-80 rounded-full bg-white/5"></div>
+                <div className="absolute -bottom-16 -right-16 w-64 h-64 rounded-full bg-white/8"></div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-white/3"></div>
+
+                {/* Logo */}
+                <div className="relative z-10 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center border border-white/10">
+                        <img src={logo} alt="ICEM" className="w-6 h-6 object-contain" />
                     </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">
-                        ICEM Quality Control
-                    </h1>
-                    <p className="text-slate-500 mt-2 font-medium">Portail de Supervision Qualité</p>
+                    <div>
+                        <p className="text-white font-bold text-base leading-tight">ICEM Quality</p>
+                        <p className="text-indigo-200 text-xs">Control System</p>
+                    </div>
                 </div>
 
-                {/* Main Card */}
-                <div className="bg-white rounded-3xl shadow-xl shadow-slate-200/60 border border-slate-200 p-8">
+                {/* Main Text */}
+                <div className="relative z-10">
+                    <h1 className="text-3xl font-extrabold text-white leading-tight mb-4">
+                        Gérez la qualité<br />industrielle avec<br />précision.
+                    </h1>
+                    <p className="text-indigo-200 text-sm leading-relaxed mb-8">
+                        Plateforme de contrôle qualité avec détection d'anomalies par IA et traçabilité complète de la production.
+                    </p>
+
+                    {/* Stats Pills */}
+                    <div className="flex gap-3">
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 text-center">
+                            <p className="text-xl font-extrabold text-white">99.2%</p>
+                            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold mt-0.5">Conformité</p>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 text-center">
+                            <p className="text-xl font-extrabold text-white">24/7</p>
+                            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold mt-0.5">Surveillance</p>
+                        </div>
+                        <div className="bg-white/10 backdrop-blur-sm border border-white/10 rounded-2xl px-4 py-3 text-center">
+                            <p className="text-xl font-extrabold text-white">IA</p>
+                            <p className="text-[10px] text-indigo-200 uppercase tracking-wider font-semibold mt-0.5">Détection</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Footer */}
+                <p className="relative z-10 text-indigo-300 text-[11px]">© 2026 ICEM Industrial Solutions</p>
+            </div>
+
+            {/* Right — Login Form */}
+            <div className="flex-1 flex items-center justify-center p-6 lg:p-12">
+                <div className="w-full max-w-sm">
+                    {/* Mobile Logo */}
+                    <div className="flex lg:hidden items-center gap-2.5 mb-8">
+                        <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center">
+                            <img src={logo} alt="ICEM" className="w-5 h-5 object-contain" />
+                        </div>
+                        <div>
+                            <p className="text-sm font-bold text-gray-800">ICEM Quality</p>
+                            <p className="text-[10px] text-gray-400">Control System</p>
+                        </div>
+                    </div>
+
+                    <h2 className="text-2xl font-extrabold text-gray-800 mb-1">Connexion</h2>
+                    <p className="text-sm text-gray-400 mb-7">Accédez à votre espace de supervision</p>
+
                     {error && (
-                        <div className="bg-red-50 border border-red-100 text-red-600 text-sm p-4 rounded-xl mb-6 flex items-center gap-3">
-                            <ShieldAlert size={18} />
+                        <div className="flex items-center gap-2.5 bg-red-50 border border-red-100 text-red-600 text-xs font-medium p-3.5 rounded-xl mb-5">
+                            <AlertCircle size={15} className="flex-shrink-0" />
                             {error}
                         </div>
                     )}
 
-                    <form onSubmit={handleLogin} className="space-y-6">
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 ml-1">Adresse Email</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                    <form onSubmit={handleLogin} className="flex flex-col gap-4">
+                        {/* Email */}
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wide">Email</label>
+                            <div className="relative">
+                                <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
                                 <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5 transition-all placeholder:text-slate-400 font-medium"
-                                    placeholder="Identifiant ICEM"
+                                    type="email" required value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="input-field pl-10"
+                                    placeholder="votre.email@icem.tn"
                                 />
                             </div>
                         </div>
 
-                        <div className="space-y-2">
-                            <label className="text-sm font-bold text-slate-700 ml-1 flex justify-between">
-                                Mot de passe
-                                <button
-                                    type="button"
-                                    onClick={() => { setShowForgotPassword(true); setResetSent(false); setResetError(''); setResetEmail(''); }}
-                                    className="text-blue-600 text-xs hover:underline font-bold"
-                                >Oublié ?</button>
-                            </label>
-                            <div className="relative group">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
+                        {/* Password */}
+                        <div>
+                            <div className="flex justify-between items-center mb-1.5">
+                                <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Mot de passe</label>
+                                <button type="button" onClick={() => { setShowForgotPassword(true); setResetSent(false); setResetEmail(''); setResetError(''); }}
+                                    className="text-xs font-semibold text-indigo-500 hover:text-indigo-600 transition-colors">
+                                    Oublié ?
+                                </button>
+                            </div>
+                            <div className="relative">
+                                <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
                                 <input
-                                    type={showPassword ? "text" : "password"}
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-11 pr-12 py-3.5 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5 transition-all placeholder:text-slate-400 font-medium"
+                                    type={showPassword ? 'text' : 'password'} required value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    className="input-field pl-10 pr-10"
                                     placeholder="••••••••"
                                 />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                <button type="button" onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors">
+                                    {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
                                 </button>
                             </div>
                         </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold py-4 rounded-xl shadow-lg transition-all active:scale-[0.98] mt-4 flex items-center justify-center gap-2"
-                        >
-                            {loading ? (
-                                <>
-                                    <Loader2 className="animate-spin" size={20} />
-                                    Authentification...
-                                </>
-                            ) : (
-                                "SE CONNECTER"
-                            )}
+                        <button type="submit" disabled={loading}
+                            className="btn-primary w-full justify-center py-3 text-sm mt-1 disabled:opacity-60 disabled:cursor-not-allowed">
+                            {loading ? <><Loader2 size={16} className="animate-spin" />Authentification...</> : 'SE CONNECTER'}
                         </button>
                     </form>
-                </div>
 
-                <p className="text-center mt-10 text-slate-400 text-sm font-medium">
-                    © 2026 ICEM Industrial Solutions • Version 1.1.0
-                </p>
+                    <p className="text-center text-[11px] text-gray-300 mt-8">v1.2.0 • ICEM Industrial Solutions</p>
+                </div>
             </div>
 
-            {/* Modal Mot de passe oublié */}
+            {/* Forgot Password Modal */}
             {showForgotPassword && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="w-full max-w-md bg-white rounded-3xl shadow-2xl p-8 animate-in zoom-in duration-200">
-                        <button
-                            onClick={() => setShowForgotPassword(false)}
-                            className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-bold transition-colors mb-6"
-                        >
-                            <ArrowLeft size={16} /> Retour à la connexion
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                    style={{ background: 'rgba(15, 20, 50, 0.4)', backdropFilter: 'blur(4px)' }}>
+                    <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl p-7"
+                        style={{ animation: 'modal-in 0.22s cubic-bezier(0.16, 1, 0.3, 1)' }}>
+                        <button onClick={() => setShowForgotPassword(false)}
+                            className="flex items-center gap-1.5 text-gray-400 hover:text-gray-600 text-xs font-semibold mb-5 transition-colors">
+                            <ArrowLeft size={13} /> Retour
                         </button>
 
                         {resetSent ? (
-                            <div className="flex flex-col items-center text-center py-4">
-                                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mb-6">
-                                    <CheckCircle className="text-emerald-500" size={30} />
+                            <div className="text-center py-3">
+                                <div className="w-14 h-14 rounded-2xl bg-emerald-50 flex items-center justify-center mx-auto mb-4">
+                                    <CheckCircle size={24} className="text-emerald-500" />
                                 </div>
-                                <h2 className="text-xl font-bold text-slate-900 mb-2">Email envoyé !</h2>
-                                <p className="text-slate-500 text-sm leading-relaxed">
-                                    Un lien de réinitialisation a été envoyé à <strong className="text-slate-900">{resetEmail}</strong>.
+                                <h3 className="text-lg font-bold text-gray-800 mb-2">Email envoyé !</h3>
+                                <p className="text-sm text-gray-400 mb-6">
+                                    Lien de réinitialisation envoyé à <strong className="text-gray-700">{resetEmail}</strong>
                                 </p>
-                                <button
-                                    onClick={() => setShowForgotPassword(false)}
-                                    className="mt-8 w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-3.5 rounded-xl transition-all"
-                                >
-                                    RETOUR
+                                <button onClick={() => setShowForgotPassword(false)}
+                                    className="btn-primary w-full justify-center py-3">
+                                    RETOUR À LA CONNEXION
                                 </button>
                             </div>
                         ) : (
                             <>
-                                <div className="flex flex-col items-center mb-6 text-center">
-                                    <h2 className="text-2xl font-bold text-slate-900">Mot de passe oublié ?</h2>
-                                    <p className="text-slate-500 mt-2">Entrez votre email pour recevoir les instructions</p>
-                                </div>
-
+                                <h3 className="text-lg font-bold text-gray-800 mb-1">Mot de passe oublié</h3>
+                                <p className="text-sm text-gray-400 mb-5">Entrez votre email pour recevoir un lien</p>
                                 {resetError && (
-                                    <div className="bg-red-50 border border-red-100 text-red-600 text-sm p-3 rounded-xl mb-4 flex items-center gap-2">
-                                        <ShieldAlert size={16} />{resetError}
+                                    <div className="flex items-center gap-2 bg-red-50 border border-red-100 text-red-600 text-xs p-3 rounded-xl mb-4">
+                                        <AlertCircle size={13} />{resetError}
                                     </div>
                                 )}
-
-                                <form onSubmit={handleForgotPassword} className="space-y-4">
-                                    <div className="relative group">
-                                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-600 transition-colors" size={18} />
-                                        <input
-                                            type="email"
-                                            required
-                                            value={resetEmail}
-                                            onChange={(e) => setResetEmail(e.target.value)}
-                                            className="w-full bg-slate-50 border border-slate-200 text-slate-900 pl-11 pr-4 py-3.5 rounded-xl focus:outline-none focus:border-blue-600 focus:ring-4 focus:ring-blue-600/5 transition-all font-medium"
-                                            placeholder="votre-email@icem.tn"
-                                        />
+                                <form onSubmit={handleForgotPassword} className="flex flex-col gap-3">
+                                    <div className="relative">
+                                        <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
+                                        <input type="email" required value={resetEmail}
+                                            onChange={e => setResetEmail(e.target.value)}
+                                            className="input-field pl-10"
+                                            placeholder="votre.email@icem.tn" />
                                     </div>
-                                    <button
-                                        type="submit"
-                                        disabled={resetLoading}
-                                        className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 text-white font-bold py-3.5 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
-                                    >
-                                        {resetLoading ? (
-                                            <><Loader2 className="animate-spin" size={18} /> Envoi...</>
-                                        ) : (
-                                            'ENVOYER LE LIEN'
-                                        )}
+                                    <button type="submit" disabled={resetLoading}
+                                        className="btn-primary w-full justify-center py-3 disabled:opacity-60">
+                                        {resetLoading ? <><Loader2 size={15} className="animate-spin" />Envoi...</> : 'ENVOYER LE LIEN'}
                                     </button>
                                 </form>
                             </>

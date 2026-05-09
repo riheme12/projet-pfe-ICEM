@@ -6,14 +6,15 @@ import { CableService, OrderService } from '../services/api';
 const StatusBadge = ({ status }) => {
     const s = status?.toLowerCase() || 'en attente';
     const config = {
-        'conforme': { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: <CheckCircle size={13} /> },
-        'non conforme': { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: <AlertCircle size={13} /> },
-        'en attente': { bg: 'bg-slate-100', text: 'text-slate-600', border: 'border-slate-200', icon: <Clock size={13} /> },
+        'conforme': { bg: 'bg-emerald-50', text: 'text-emerald-600', dot: 'bg-emerald-500' },
+        'non conforme': { bg: 'bg-red-50', text: 'text-red-500', dot: 'bg-red-500' },
+        'en attente': { bg: 'bg-amber-50', text: 'text-amber-600', dot: 'bg-amber-500' },
     };
     const c = config[s] || config['en attente'];
     return (
-        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold border ${c.bg} ${c.text} ${c.border}`}>
-            {c.icon} {status}
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${c.bg} ${c.text}`}>
+            <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`}></span>
+            {status}
         </span>
     );
 };
@@ -107,25 +108,30 @@ const Cables = () => {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-slate-800">Gestion des Câbles</h1>
-                    <p className="text-sm text-slate-500 mt-1">Suivi et traçabilité des câbles par référence et QR code</p>
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100">
+                        <CableIcon size={18} />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-800">Gestion des Câbles</h1>
+                        <p className="text-xs text-slate-400 font-medium mt-0.5">Suivi et traçabilité des câbles par référence et QR code</p>
+                    </div>
                 </div>
                 <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-                    <Plus size={18} />
+                    <Plus size={16} />
                     Nouveau Câble
                 </button>
             </div>
 
             {/* Search */}
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-4 rounded-2xl border border-slate-200/80" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.04)' }}>
+            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
                 <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
                     <input
                         type="text"
                         placeholder="Rechercher par référence ou code QR..."
-                        className="input-field pl-10"
+                        className="input-field pl-9 text-sm"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -133,59 +139,57 @@ const Cables = () => {
             </div>
 
             {/* Table */}
-            <div className="card overflow-hidden !p-0">
+            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead>
-                            <tr className="bg-blue-50/60 border-b border-blue-100">
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Référence</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Code QR</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Ordre</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Statut</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider">Date Contrôle</th>
-                                <th className="px-6 py-4 text-sm font-bold text-blue-900 uppercase tracking-wider text-right">Actions</th>
+                            <tr className="border-b border-slate-100">
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Référence</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code QR</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ordre</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Statut</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Date Contrôle</th>
+                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {loading ? (
                                 <tr>
-                                    <td colSpan="6" className="px-6 py-12 text-center text-slate-500">
-                                        <div className="w-6 h-6 border-2 border-slate-200 border-t-accent rounded-full animate-spin mx-auto mb-3"></div>
-                                        Chargement des câbles...
+                                    <td colSpan="6" className="px-5 py-12 text-center text-slate-400">
+                                        <div className="w-5 h-5 border-2 border-slate-100 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3"></div>
+                                        <p className="text-sm">Chargement des câbles...</p>
                                     </td>
                                 </tr>
                             ) : filteredCables.length > 0 ? (
                                 filteredCables.map((cable) => (
-                                    <tr key={cable.id} className="hover:bg-slate-50/50 transition-colors">
-                                        <td className="px-6 py-5">
-                                            <span className="font-bold text-slate-900 text-base">{cable.reference}</span>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center gap-2 text-base text-slate-700 font-medium">
-                                                <QrCode size={18} className="text-slate-400" />
+                                    <tr key={cable.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0 group">
+                                        <td className="px-5 py-3.5 font-bold text-slate-800 text-sm">{cable.reference}</td>
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex items-center gap-1.5 text-sm text-slate-600 font-medium">
+                                                <QrCode size={15} className="text-slate-400" />
                                                 {cable.code || '—'}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-5 text-base text-slate-700 font-medium">{getOrderRef(cable.orderId)}</td>
-                                        <td className="px-6 py-5"><StatusBadge status={cable.status} /></td>
-                                        <td className="px-6 py-5 text-base font-medium text-slate-600">
-                                            {cable.inspectionDate ? new Date(cable.inspectionDate).toLocaleDateString() : '—'}
+                                        <td className="px-5 py-3.5 text-sm text-slate-600 font-medium">{getOrderRef(cable.orderId)}</td>
+                                        <td className="px-5 py-3.5"><StatusBadge status={cable.status} /></td>
+                                        <td className="px-5 py-3.5 text-sm font-medium text-slate-500">
+                                            {cable.inspectionDate ? new Date(cable.inspectionDate).toLocaleDateString('fr-FR') : '—'}
                                         </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex justify-end gap-2">
+                                        <td className="px-5 py-3.5">
+                                            <div className="flex justify-end gap-1.5">
                                                 <button
                                                     onClick={() => openEdit(cable)}
-                                                    className="p-2.5 bg-amber-50 hover:bg-amber-100 rounded-xl text-amber-600 transition-colors shadow-sm"
+                                                    className="p-2 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-600 transition-colors"
                                                     title="Modifier"
                                                 >
-                                                    <Pencil size={20} />
+                                                    <Pencil size={15} />
                                                 </button>
                                                 <button
                                                     onClick={() => setDeleteConfirm(cable)}
-                                                    className="p-2.5 bg-red-50 hover:bg-red-100 rounded-xl text-red-600 transition-colors shadow-sm"
+                                                    className="p-2 bg-red-50 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
                                                     title="Supprimer"
                                                 >
-                                                    <Trash2 size={20} />
+                                                    <Trash2 size={15} />
                                                 </button>
                                             </div>
                                         </td>

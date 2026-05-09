@@ -64,8 +64,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 children: [
                   _buildProfileHeader(),
                   const SizedBox(height: 24),
-                  _buildStatsSection(),
-                  const SizedBox(height: 24),
+
                   _buildInfoSection(),
                   const SizedBox(height: 24),
                   _buildSettingsSection(),
@@ -175,52 +174,7 @@ class _ProfilePageState extends State<ProfilePage> {
     );
   }
 
-  Widget _buildStatsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Mes statistiques'),
-          GridView.count(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            crossAxisCount: 2,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.3,
-            children: [
-              StatsCard(
-                value: _user!.stats.inspectionsCount.toString(),
-                label: 'Inspections',
-                icon: Icons.assignment_turned_in_rounded,
-                color: AppTheme.accentBlue,
-              ),
-              StatsCard(
-                value: _user!.stats.anomaliesDetected.toString(),
-                label: 'Anomalies détectées',
-                icon: Icons.warning_amber_rounded,
-                color: AppTheme.warningAmber,
-              ),
-              StatsCard(
-                value:
-                    '${_user!.stats.conformityRate.toStringAsFixed(1)}%',
-                label: 'Taux conformité',
-                icon: Icons.check_circle_rounded,
-                color: AppTheme.successGreen,
-              ),
-              StatsCard(
-                value: _user!.stats.cablesProcessed.toString(),
-                label: 'Câbles traités',
-                icon: Icons.cable_rounded,
-                color: AppTheme.secondaryOrange,
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+
 
   Widget _buildInfoSection() {
     return Padding(
@@ -331,29 +285,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     onChanged: (value) {},
                     activeThumbColor: AppTheme.primaryBlue,
                   ),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.language_outlined,
-                        color: AppTheme.accentBlue, size: 20),
-                  ),
-                  title: Text('Langue',
-                      style: GoogleFonts.inter(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                  subtitle: Text('Français',
-                      style: GoogleFonts.inter(
-                          fontSize: 13, color: AppTheme.textGrey)),
-                  trailing: const Icon(Icons.chevron_right,
-                      color: AppTheme.textLight),
-                  onTap: () {},
                 ),
                 const Divider(height: 1, indent: 56),
                 ListTile(

@@ -42,8 +42,9 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
   Future<void> _loadAnomalies() async {
     setState(() => _isLoading = true);
     final anomalies = await _reportsService.getRecentAnomalies(limit: 50);
+    // Filtrer : ne montrer que les anomalies actives (non résolues)
     setState(() {
-      _anomalies = anomalies;
+      _anomalies = anomalies.where((a) => a.statut != 'traitee').toList();
       _isLoading = false;
     });
   }
@@ -232,22 +233,22 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
                   children: [
                     Text(
                       anomaly.type,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Câble: ${anomaly.cableId}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.primaryBlue),
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.primaryBlue, fontSize: 15),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       'Zone: ${anomaly.location ?? "Inconnue"}',
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textGrey),
+                      style: const TextStyle(fontSize: 14, color: AppTheme.textGrey),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Détecté le ${anomaly.detectedAt.day}/${anomaly.detectedAt.month}/${anomaly.detectedAt.year} à ${anomaly.detectedAt.hour}h${anomaly.detectedAt.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 11, color: AppTheme.textLight),
+                      style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
                     ),
                   ],
                 ),
@@ -294,7 +295,7 @@ class _AnomaliesListPageState extends State<AnomaliesListPage> {
         children: [
           const Icon(Icons.check_circle_outline, size: 64, color: AppTheme.successGreen),
           const SizedBox(height: 16),
-          const Text('Aucune anomalie à traiter !', style: TextStyle(fontSize: 18, color: AppTheme.textGrey)),
+          const Text('Aucune anomalie à traiter !', style: TextStyle(fontSize: 20, color: AppTheme.textGrey)),
         ],
       ),
     );

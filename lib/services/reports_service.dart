@@ -95,7 +95,7 @@ class ReportsService {
 
         return ConformityTrend(
           date: date,
-          conformityRate: total > 0 ? (conform / total) * 100 : 100.0,
+          conformityRate: total > 0 ? (conform / total) * 100 : 0.0,
           inspectionsCount: total,
         );
       });
@@ -105,10 +105,31 @@ class ReportsService {
     }
   }
 
-  /// Récupérer la répartition des anomalies par type
-  Future<Map<String, int>> getAnomaliesByType() async {
+  /// Récupérer la répartition des anomalies par type avec filtrage par période
+  Future<Map<String, int>> getAnomaliesByType({String period = 'Ce mois'}) async {
     try {
-      final snapshot = await _anomalyCollection.get();
+      final now = DateTime.now();
+      DateTime startDate;
+
+      switch (period) {
+        case 'Aujourd\'hui':
+          startDate = DateTime(now.year, now.month, now.day);
+          break;
+        case 'Cette semaine':
+          startDate = now.subtract(Duration(days: now.weekday - 1));
+          startDate = DateTime(startDate.year, startDate.month, startDate.day);
+          break;
+        case 'Ce mois':
+          startDate = DateTime(now.year, now.month, 1);
+          break;
+        default:
+          startDate = DateTime(now.year, now.month, 1);
+      }
+
+      final snapshot = await _anomalyCollection
+          .where('detectedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+          .get();
+          
       final Map<String, int> result = {};
 
       for (var doc in snapshot.docs) {
@@ -124,11 +145,30 @@ class ReportsService {
     }
   }
 
-  /// Récupérer les rapports récents
-  Future<List<Report>> getRecentReports({int limit = 20}) async {
+  /// Récupérer les rapports récents avec filtrage par période
+  Future<List<Report>> getRecentReports({int limit = 20, String period = 'Ce mois'}) async {
     try {
+      final now = DateTime.now();
+      DateTime startDate;
+
+      switch (period) {
+        case 'Aujourd\'hui':
+          startDate = DateTime(now.year, now.month, now.day);
+          break;
+        case 'Cette semaine':
+          startDate = now.subtract(Duration(days: now.weekday - 1));
+          startDate = DateTime(startDate.year, startDate.month, startDate.day);
+          break;
+        case 'Ce mois':
+          startDate = DateTime(now.year, now.month, 1);
+          break;
+        default:
+          startDate = DateTime(now.year, now.month, 1);
+      }
+
       final snapshot = await _db
           .collection('report')
+          .where('generatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
           .orderBy('generatedAt', descending: true)
           .limit(limit)
           .get();

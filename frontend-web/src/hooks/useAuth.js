@@ -7,9 +7,9 @@
 const ROLE_PERMISSIONS = {
     admin: {
         label: 'Administrateur',
-        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'settings'],
+        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'trends'],
         canCreate: ['orders', 'cables', 'users'],
-        canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts', 'settings'],
+        canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts'],
         canDelete: ['orders', 'cables', 'users'],
         canExport: true,
         canResetPassword: true,
@@ -17,7 +17,7 @@ const ROLE_PERMISSIONS = {
     },
     manager: {
         label: 'Responsable Qualité',
-        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports'],
+        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'trends'],
         canCreate: [],
         canEdit: ['anomalies', 'alerts'],
         canDelete: [],
@@ -27,7 +27,7 @@ const ROLE_PERMISSIONS = {
     },
     direction: {
         label: 'Direction',
-        pages: ['dashboard', 'reports'],
+        pages: ['dashboard', 'reports', 'trends'],
         canCreate: [],
         canEdit: [],
         canDelete: [],
@@ -56,7 +56,7 @@ const PATH_TO_PAGE = {
     '/alerts': 'alerts',
     '/reports': 'reports',
     '/users': 'users',
-    '/settings': 'settings',
+    '/trends': 'trends'
 };
 
 /**
@@ -79,12 +79,35 @@ export function getCurrentUser() {
  */
 export function useAuth() {
     const user = getCurrentUser();
-    const role = user?.role || 'technician';
-    const permissions = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.technician;
+    const roles = user?.roles || (user?.role ? [user.role] : ['technician']);
+    
+    // Combine permissions
+    const permissions = {
+        label: roles.map(r => ROLE_PERMISSIONS[r]?.label || r).join(', '),
+        pages: [],
+        canCreate: [],
+        canEdit: [],
+        canDelete: [],
+        canExport: false,
+        canResetPassword: false,
+        canGenerateReport: false,
+    };
+
+    roles.forEach(role => {
+        const p = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.technician;
+        permissions.pages = [...new Set([...permissions.pages, ...p.pages])];
+        permissions.canCreate = [...new Set([...permissions.canCreate, ...p.canCreate])];
+        permissions.canEdit = [...new Set([...permissions.canEdit, ...p.canEdit])];
+        permissions.canDelete = [...new Set([...permissions.canDelete, ...p.canDelete])];
+        permissions.canExport = permissions.canExport || p.canExport;
+        permissions.canResetPassword = permissions.canResetPassword || p.canResetPassword;
+        permissions.canGenerateReport = permissions.canGenerateReport || p.canGenerateReport;
+    });
 
     return {
         user,
-        role,
+        roles,
+        role: roles[0],
         roleLabel: permissions.label,
         
         /** Vérifie si l'utilisateur a accès à une page */

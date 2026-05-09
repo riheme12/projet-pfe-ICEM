@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
@@ -13,6 +13,11 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+
+// Configurer la persistance de la session
+setPersistence(auth, browserLocalPersistence)
+    .catch((error) => console.error("Erreur persistance session:", error));
+
 const db = getFirestore(app);
 
 export { auth, db, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail };

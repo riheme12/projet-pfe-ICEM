@@ -23,6 +23,7 @@ class _ReportsPageState extends State<ReportsPage> {
   GlobalStats? _globalStats;
   List<Report> _recentReports = [];
   Map<String, int> _anomaliesByType = {};
+  List<ConformityTrend> _trendData = [];
   bool _isLoading = true;
   String _selectedPeriod = 'Ce mois';
 
@@ -35,14 +36,21 @@ class _ReportsPageState extends State<ReportsPage> {
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     
-    final stats = await _reportsService.getGlobalStats();
-    final reports = await _reportsService.getRecentReports(limit: 10);
-    final anomalies = await _reportsService.getAnomaliesByType();
+    final periodStats = await _reportsService.getStatsByPeriod(_selectedPeriod);
+    final reports = await _reportsService.getRecentReports(limit: 10, period: _selectedPeriod);
+    final anomalies = await _reportsService.getAnomaliesByType(period: _selectedPeriod);
+    final trends = await _reportsService.getConformityTrend();
     
     setState(() {
-      _globalStats = stats;
+      _globalStats = GlobalStats(
+        totalInspections: periodStats.inspections,
+        conformityRate: periodStats.conformityRate,
+        totalAnomalies: periodStats.anomalies,
+        reportsGenerated: periodStats.inspections,
+      );
       _recentReports = reports;
       _anomaliesByType = anomalies;
+      _trendData = trends;
       _isLoading = false;
     });
   }
@@ -120,7 +128,7 @@ class _ReportsPageState extends State<ReportsPage> {
           return Padding(
             padding: const EdgeInsets.only(right: 8),
             child: ChoiceChip(
-              label: Text(period),
+              label: Text(period, style: GoogleFonts.inter(fontSize: 14)),
               selected: isSelected,
               onSelected: (selected) {
                 if (selected) {
@@ -150,7 +158,7 @@ class _ReportsPageState extends State<ReportsPage> {
       children: [
         Text(
           'Vue d\'ensemble',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 16),
         GridView.count(
@@ -159,7 +167,7 @@ class _ReportsPageState extends State<ReportsPage> {
           crossAxisCount: 2,
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.2,
+          childAspectRatio: 0.9,
           children: [
             StatsCard(
               value: _globalStats!.totalInspections.toString(),
@@ -198,18 +206,15 @@ class _ReportsPageState extends State<ReportsPage> {
       children: [
         Text(
           'Analyses',
-          style: Theme.of(context).textTheme.titleLarge,
+          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 16),
         
-        // Graphique 1 : Tendance de conformité
+        // Graphique 1 : Tendance de conformité (données réelles)
         ChartCard(
           title: 'Évolution de la conformité',
           subtitle: '7 derniers jours',
-          child: const ChartPlaceholder(
-            message: 'Graphique de tendance\n(À venir)',
-            icon: Icons.show_chart,
-          ),
+          child: _buildConformityTrend(),
         ),
         const SizedBox(height: 16),
         
@@ -220,6 +225,78 @@ class _ReportsPageState extends State<ReportsPage> {
           child: _buildAnomaliesChart(),
         ),
       ],
+    );
+  }
+
+  /// Graphique de tendance de conformité (données réelles depuis Firestore)
+  Widget _buildConformityTrend() {
+    if (_trendData.isEmpty) {
+      return const ChartPlaceholder(
+        message: 'Aucune donnée d\'inspection disponible',
+        icon: Icons.show_chart,
+      );
+    }
+
+    // Trouver la valeur max pour normaliser les barres
+    final maxInspections = _trendData.fold<int>(0, (max, t) => t.inspectionsCount > max ? t.inspectionsCount : max);
+
+    return SizedBox(
+      height: 200,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: _trendData.map((trend) {
+          final days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+          final dayLabel = trend.date.weekday <= 7 ? days[trend.date.weekday - 1] : '';
+          final barHeight = maxInspections > 0 ? (trend.inspectionsCount / maxInspections) * 140 : 0.0;
+          final rate = trend.conformityRate;
+          
+          Color barColor;
+          if (rate >= 90) {
+            barColor = AppTheme.successGreen;
+          } else if (rate >= 70) {
+            barColor = AppTheme.warningAmber;
+          } else {
+            barColor = AppTheme.errorRed;
+          }
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 3),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    '${rate.toStringAsFixed(0)}%',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: barColor,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    height: barHeight.clamp(4, 140),
+                    width: 14,
+                    decoration: BoxDecoration(
+                      color: barColor.withValues(alpha: 0.8),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    dayLabel,
+                    style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textGrey),
+                  ),
+                  Text(
+                    '${trend.inspectionsCount}',
+                    style: GoogleFonts.inter(fontSize: 9, color: AppTheme.textLight),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -241,55 +318,59 @@ class _ReportsPageState extends State<ReportsPage> {
       AppTheme.successGreen,
     ];
 
-    return ListView.builder(
-      itemCount: _anomaliesByType.length,
-      itemBuilder: (context, index) {
-        final entry = _anomaliesByType.entries.elementAt(index);
-        final percentage = (entry.value / total * 100).toStringAsFixed(1);
-        final color = colors[index % colors.length];
+    return SizedBox(
+      height: _anomaliesByType.length * 52.0, // Give it a fixed height instead of ListView
+      child: ListView.builder(
+        physics: const NeverScrollableScrollPhysics(), // Prevent nested scroll issues
+        itemCount: _anomaliesByType.length,
+        itemBuilder: (context, index) {
+          final entry = _anomaliesByType.entries.elementAt(index);
+          final percentage = (entry.value / total * 100).toStringAsFixed(1);
+          final color = colors[index % colors.length];
 
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 12,
+                          height: 12,
+                          decoration: BoxDecoration(
+                            color: color,
+                            shape: BoxShape.circle,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(entry.key),
-                    ],
-                  ),
-                  Text(
-                    '${entry.value} ($percentage%)',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(4),
-                child: LinearProgressIndicator(
-                  value: entry.value / total,
-                  backgroundColor: AppTheme.dividerGrey,
-                  valueColor: AlwaysStoppedAnimation<Color>(color),
-                  minHeight: 8,
+                        const SizedBox(width: 8),
+                        Text(entry.key, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
+                      ],
+                    ),
+                    Text(
+                      '${entry.value} ($percentage%)',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: entry.value / total,
+                    backgroundColor: AppTheme.dividerGrey,
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
+                    minHeight: 8,
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -298,30 +379,26 @@ class _ReportsPageState extends State<ReportsPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Rapports récents',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            TextButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Voir tous - À venir')),
-                );
-              },
-              child: const Text('Voir tous'),
-            ),
-          ],
+        Text(
+          'Rapports récents',
+          style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700),
         ),
         const SizedBox(height: 16),
         
         if (_recentReports.isEmpty)
-          const Center(
+          Center(
             child: Padding(
-              padding: EdgeInsets.all(32),
-              child: Text('Aucun rapport disponible'),
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                children: [
+                  Icon(Icons.description_outlined, size: 48, color: AppTheme.textLight),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Aucun rapport disponible',
+                    style: GoogleFonts.inter(fontSize: 16, color: AppTheme.textGrey),
+                  ),
+                ],
+              ),
             ),
           )
         else
@@ -341,10 +418,11 @@ class _ReportsPageState extends State<ReportsPage> {
   /// Item de rapport
   Widget _buildReportItem(Report report) {
     final date = report.generatedAt;
-    final dateStr = '${date.day}/${date.month}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    final dateStr = '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year} ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
 
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         leading: CircleAvatar(
           backgroundColor: report.isConform
@@ -355,24 +433,19 @@ class _ReportsPageState extends State<ReportsPage> {
             color: report.isConform ? AppTheme.successGreen : AppTheme.errorRed,
           ),
         ),
-        title: Text('Câble ${report.cableId}'),
-        subtitle: Text(dateStr),
+        title: Text('Câble ${report.cableId}', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15)),
+        subtitle: Text(dateStr, style: GoogleFonts.inter(fontSize: 13)),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             StatusBadge(status: report.conformityStatus, isSmall: true),
             const SizedBox(width: 8),
             IconButton(
-              icon: const Icon(Icons.picture_as_pdf, size: 20),
+              icon: const Icon(Icons.picture_as_pdf, size: 22),
               onPressed: () => PdfExportService.exportInspectionReport(report),
             ),
           ],
         ),
-        onTap: () {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Détails rapport ${report.id}')),
-          );
-        },
       ),
     );
   }

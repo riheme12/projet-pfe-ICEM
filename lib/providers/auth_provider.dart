@@ -140,6 +140,19 @@ class AuthProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Refresh current user data (including stats)
+  Future<void> refreshCurrentUser() async {
+    try {
+      final user = await _authService.getCurrentUser();
+      if (user != null) {
+        _currentUser = user;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Refresh user error: $e');
+    }
+  }
+
   /// Check if user has specific role
   bool hasRole(UserRole role) {
     return _currentUser?.role == role;

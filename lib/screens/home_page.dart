@@ -38,33 +38,18 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadStats() async {
+    // Les statistiques sont maintenant gérées directement via le profil utilisateur
+    // On s'assure simplement que les données utilisateur sont à jour
     try {
-      final orders = await _ordersService.getAllOrders();
-      final globalStats = await _reportsService.getGlobalStats();
-      
-      int enCours = 0;
-      int totalInspected = 0;
-      int totalConform = 0;
-
-      for (var order in orders) {
-        if (order.status.toLowerCase() == 'en cours') enCours++;
-        totalInspected += order.inspectedCount;
-        totalConform += order.conformCount;
-      }
-
+      final auth = Provider.of<AuthProvider>(context, listen: false);
+      await auth.refreshCurrentUser(); // Nouvelle méthode à ajouter si nécessaire
       if (mounted) {
         setState(() {
-          _ordresEnCours = enCours;
-          _controlesEffectues = totalInspected;
-          _anomaliesDetectees = globalStats.totalAnomalies;
-          _tauxConformite = totalInspected > 0 
-              ? (totalConform / totalInspected) * 100 
-              : 0.0;
           _statsLoading = false;
         });
       }
     } catch (e) {
-      print('Error loading home stats: $e');
+      print('Error refreshing user stats: $e');
       if (mounted) {
         setState(() => _statsLoading = false);
       }
@@ -372,6 +357,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildStatsSection(BuildContext context) {
+    final auth = Provider.of<AuthProvider>(context);
+    final user = auth.currentUser;
+    final stats = user?.stats;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -379,27 +368,19 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Vue d\'ensemble',
+              'Mes Performances',
               style: GoogleFonts.inter(
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
                 color: AppTheme.textDark,
               ),
             ),
-            TextButton(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (c) => const ReportsPage()),
-                );
-              },
-              child: Text(
-                'Voir tout',
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                  color: AppTheme.accentBlue,
-                ),
+            Text(
+              'Aujourd\'hui',
+              style: GoogleFonts.inter(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.accentBlue,
               ),
             ),
           ],
@@ -418,29 +399,29 @@ class _HomePageState extends State<HomePage> {
                 crossAxisCount: 2,
                 mainAxisSpacing: 12,
                 crossAxisSpacing: 12,
-                childAspectRatio: 1.25,
+                childAspectRatio: 0.9,
                 children: [
                   StatsCard(
-                    value: '$_ordresEnCours',
-                    label: 'Ordres en cours',
-                    icon: Icons.assignment_rounded,
+                    value: '${stats?.inspectionsCount ?? 0}',
+                    label: 'Mes Inspections',
+                    icon: Icons.assignment_turned_in_rounded,
                     color: AppTheme.accentBlue,
                   ),
                   StatsCard(
-                    value: '$_controlesEffectues',
-                    label: 'Contrôles effectués',
-                    icon: Icons.check_circle_rounded,
-                    color: AppTheme.successGreen,
+                    value: '${stats?.cablesProcessed ?? 0}',
+                    label: 'Câbles Traités',
+                    icon: Icons.cable_rounded,
+                    color: AppTheme.secondaryOrange,
                   ),
                   StatsCard(
-                    value: '$_anomaliesDetectees',
-                    label: 'Anomalies détectées',
-                    icon: Icons.warning_rounded,
+                    value: '${stats?.anomaliesDetected ?? 0}',
+                    label: 'Mes Anomalies',
+                    icon: Icons.warning_amber_rounded,
                     color: AppTheme.warningAmber,
                   ),
                   StatsCard(
-                    value: '${_tauxConformite.toStringAsFixed(0)}%',
-                    label: 'Taux de conformité',
+                    value: '${(stats?.conformityRate ?? 0.0).toStringAsFixed(0)}%',
+                    label: 'Mon Rendement',
                     icon: Icons.trending_up_rounded,
                     color: AppTheme.successGreen,
                   ),
