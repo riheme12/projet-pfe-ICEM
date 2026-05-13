@@ -8,8 +8,9 @@ router.get('/', async (req, res) => {
     try {
         const snapshot = await db.collection('users').get();
         const users = snapshot.docs.map(doc => {
-            const user = User.fromJson({ id: doc.id, ...doc.data() });
-            return user.toJson();
+            const user = User.fromJson({ id: doc.id, ...doc.data() }).toJson();
+            delete user.photoUrl; // Optimisation: ne pas charger les images lourdes dans la liste
+            return user;
         });
         res.status(200).json(users);
     } catch (error) {
@@ -74,11 +75,23 @@ router.post('/', validateUser, async (req, res, next) => {
         // 3. Create document in Firestore with custom ID
         await db.collection('users').doc(uid).set(data);
 
+        // 4. Send Welcome/Password Email
+        try {
+            const emailService = require('../services/emailService');
+            await emailService.sendPasswordReset({
+                email,
+                username: username || fullName,
+                newPassword: password
+            });
+        } catch (mailError) {
+            console.error('Email failed but user created:', mailError);
+        }
+
         res.status(201).json({
             id: uid,
             ...data,
             defaultPassword: password,
-            message: 'Utilisateur créé avec succès dans Auth et Firestore'
+            message: 'Utilisateur créé avec succès et email envoyé'
         });
     } catch (error) {
         console.error('Error creating user:', error);
@@ -100,14 +113,28 @@ router.patch('/:id', async (req, res) => {
         delete data.id;
         await db.collection('users').doc(req.params.id).update(data);
 
-        // If roles changed, send email
-        if (req.body.roles || req.body.role) {
-            const emailService = require('../services/emailService');
-            await emailService.sendRoleUpdate({
-                email: user.email,
-                username: user.username || user.fullName,
-                roles: user.roles
-            });
+        // Send notification for ANY change
+        const emailService = require('../services/emailService');
+        try {
+            if (req.body.roles || req.body.role) {
+                await emailService.sendRoleUpdate({
+                    email: user.email,
+                    username: user.username || user.fullName,
+                    roles: user.roles
+                });
+            } else {
+                // Generic update notification
+                await emailService.transporter.sendMail({
+                    from: `"ICEM Quality Control" <${emailService.fromAddress}>`,
+                    to: user.email,
+                    subject: '🛠️ ICEM — Mise à jour de votre compte',
+                    html: `<p>Bonjour ${user.fullName},</p><p>Vos informations de compte ont été mises à jour par un administrateur.</p><p>Veuillez vous connecter pour vérifier les changements.</p>`
+                });
+            }
+            console.log(`✉️ Email de notification envoyé avec succès à ${user.email}`);
+        } catch (mailErr) {
+            console.error('❌ Erreur critique lors de l\'envoi du mail backend:', mailErr.message);
+            console.error('Vérifiez que SMTP_USER et SMTP_PASS sont corrects dans le fichier .env');
         }
 
         res.status(200).json({ id: req.params.id, ...data });

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TrendingUp, BarChart2, Activity, Calendar, FileText } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, Legend } from 'recharts';
 import { StatsService } from '../services/api';
+import PageHeader from '../components/PageHeader';
 
 const Trends = () => {
     const [trendsData, setTrendsData] = useState([]);
@@ -43,17 +44,11 @@ const Trends = () => {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-3xl font-extrabold text-slate-800 flex items-center gap-3">
-                        <TrendingUp className="text-indigo-600" size={32} />
-                        Tendances & Analyses
-                    </h1>
-                    <p className="text-base text-slate-500 mt-1">
-                        Analyse approfondie de la qualité de production sur les 30 derniers jours
-                    </p>
-                </div>
-            </div>
+            <PageHeader 
+                title="Tendances & Analyses"
+                subtitle="Analyse approfondie de la performance industrielle et des indicateurs de qualité"
+                icon={<TrendingUp />}
+            />
 
             {loading ? (
                 <div className="card py-20 text-center">

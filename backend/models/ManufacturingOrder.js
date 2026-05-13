@@ -3,19 +3,26 @@
  * Synchronisé avec lib/models/manufacturing_order.dart (mobile)
  * 
  * Un ordre de fabrication contient :
- * - Les informations de production (référence, type, quantité)
+ * - Les informations de production (référence, client, commande, type, quantité)
  * - Le statut de l'ordre
  * - Les statistiques de conformité
  */
 class ManufacturingOrder {
-    constructor({ id, reference, cableType, quantity, productionDate, status, assignedTechnicianId = null, inspectedCount = 0, conformCount = 0, nonConformCount = 0 }) {
+    constructor({ 
+        id, reference, client, numComd, cableType, quantity, 
+        productionDate, dateLiv, status, ligne = null, 
+        inspectedCount = 0, conformCount = 0, nonConformCount = 0 
+    }) {
         this.id = id;
-        this.reference = reference;                      // Ex: "OF-2024-001"
-        this.cableType = cableType;                      // Ex: "Câble électrique 3x2.5mm²"
-        this.quantity = quantity;                         // Quantité totale à produire
+        this.reference = reference;                      // Ex: "OF-2024-001" (numeroOF)
+        this.client = client;                            // Client (client)
+        this.numComd = numComd;                          // Numéro de commande (NumComd)
+        this.cableType = cableType;                      // Type de câble (cableType)
+        this.quantity = quantity;                        // Quantité totale à produire (QTA)
         this.productionDate = productionDate instanceof Date ? productionDate : new Date(productionDate);
+        this.dateLiv = dateLiv instanceof Date ? dateLiv : (dateLiv ? new Date(dateLiv) : null);
         this.status = status;                            // 'En cours', 'Terminé', 'En attente'
-        this.assignedTechnicianId = assignedTechnicianId;
+        this.ligne = ligne;                              // Ligne de production (ligne)
         this.inspectedCount = inspectedCount;            // Nombre de câbles déjà inspectés
         this.conformCount = conformCount;                // Nombre de câbles conformes
         this.nonConformCount = nonConformCount;          // Nombre de câbles non conformes
@@ -38,25 +45,20 @@ class ManufacturingOrder {
     }
 
     /**
-     * Vérifier si l'ordre est terminé
-     */
-    get isCompleted() {
-        return this.inspectedCount >= this.quantity;
-    }
-
-    /**
      * Créer depuis JSON (Mapping Firestore)
      */
     static fromJson(json) {
+        // Date de production
         let productionDate = new Date();
-        const dateInput = json.productionDate || json.DateLiv;
+        if (json.productionDate) {
+            productionDate = json.productionDate.toDate ? json.productionDate.toDate() : new Date(json.productionDate);
+        }
 
-        if (dateInput) {
-            if (dateInput.toDate && typeof dateInput.toDate === 'function') {
-                productionDate = dateInput.toDate();
-            } else {
-                productionDate = new Date(dateInput);
-            }
+        // Date de livraison (DateLiv)
+        let dateLiv = null;
+        if (json.dateLiv || json.DateLiv) {
+            const d = json.dateLiv || json.DateLiv;
+            dateLiv = d.toDate ? d.toDate() : new Date(d);
         }
 
         const rawStatus = (json.status || 'En attente').toString();
@@ -65,16 +67,19 @@ class ManufacturingOrder {
         let normalizedStatus = 'En attente';
         if (statusLower === 'en cours') normalizedStatus = 'En cours';
         else if (statusLower === 'terminé' || statusLower === 'termine') normalizedStatus = 'Terminé';
-        else normalizedStatus = rawStatus; // Use original if it doesn't match known ones
+        else normalizedStatus = rawStatus;
 
         return new ManufacturingOrder({
             id: json.id,
             reference: json.reference || json.numeroOF,
-            cableType: json.cableType || json.NumComd || json.client || 'Inconnu',
+            client: json.client || 'Inconnu',
+            numComd: json.numComd || json.NumComd || '',
+            cableType: json.cableType || '',
             quantity: json.quantity || json.QTA || 0,
             productionDate: productionDate,
+            dateLiv: dateLiv,
             status: normalizedStatus,
-            assignedTechnicianId: json.assignedTechnicianId || json.ligne || null,
+            ligne: json.ligne || json.assignedTechnicianId || null,
             inspectedCount: json.inspectedCount || 0,
             conformCount: json.conformCount || 0,
             nonConformCount: json.nonConformCount || 0,
@@ -83,24 +88,25 @@ class ManufacturingOrder {
 
     /**
      * Convertir en JSON
-     * Retourne à la fois les noms d'usage (API/Front) et les noms Firestore (Persistance)
      */
     toJson() {
         return {
             id: this.id,
             reference: this.reference,
             numeroOF: this.reference,
+            client: this.client,
+            numComd: this.numComd,
+            NumComd: this.numComd,
             cableType: this.cableType,
-            NumComd: this.cableType,
-            client: this.cableType,
             quantity: this.quantity,
             QTA: this.quantity,
             productionDate: this.productionDate.toISOString(),
-            DateLiv: this.productionDate.toISOString(),
-            status: this.status.toLowerCase(), // Firestore format
-            statusDisplay: this.status,        // UI format
-            assignedTechnicianId: this.assignedTechnicianId,
-            ligne: this.assignedTechnicianId,
+            dateLiv: this.dateLiv ? this.dateLiv.toISOString() : null,
+            DateLiv: this.dateLiv ? this.dateLiv.toISOString() : null,
+            status: this.status.toLowerCase(),
+            statusDisplay: this.status,
+            ligne: this.ligne,
+            assignedTechnicianId: this.ligne,
             inspectedCount: this.inspectedCount,
             conformCount: this.conformCount,
             nonConformCount: this.nonConformCount,

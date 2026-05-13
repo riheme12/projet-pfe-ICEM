@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, Package, TrendingUp, Download, BarChart3, Shield, Zap, ArrowUpRight, ArrowDownRight, Activity, RefreshCw } from 'lucide-react';
+import { LayoutDashboard, AlertTriangle, CheckCircle, Package, TrendingUp, Download, BarChart3, Shield, Zap, ArrowUpRight, ArrowDownRight, Activity, RefreshCw } from 'lucide-react';
 import { OrderService, AnomalyService, StatsService, CableService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import jsPDF from 'jspdf';
@@ -10,6 +10,7 @@ import {
 } from 'recharts';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
+import PageHeader from '../components/PageHeader';
 import toast, { Toaster } from 'react-hot-toast';
 
 /* ─── Stat Card — two variants: filled (hero) and white ─── */
@@ -195,45 +196,20 @@ const Dashboard = () => {
         <div className="flex flex-col gap-5">
             <Toaster position="top-right" />
 
-            {/* Welcome Banner */}
-            <div className="flex gap-4">
-                {/* Hero welcome card */}
-                <div className="flex-1 rounded-2xl p-6 flex items-center justify-between overflow-hidden relative"
-                    style={{ background: 'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)', boxShadow: '0 8px 28px -4px rgba(99,102,241,0.35)' }}>
-                    <div className="absolute -right-8 -bottom-8 w-40 h-40 rounded-full bg-white/5"></div>
-                    <div className="absolute right-20 -top-6 w-24 h-24 rounded-full bg-white/5"></div>
-                    <div>
-                        <p className="text-indigo-200 text-sm font-medium">Bienvenue 👋</p>
-                        <h2 className="text-2xl font-extrabold text-white mt-0.5">
-                            {user?.fullName?.split(' ')[0] || 'Utilisateur'}
-                        </h2>
-                        <p className="text-indigo-200 text-sm mt-1">Voici l'état de la qualité en temps réel</p>
-                    </div>
-                    {canExport && (
+            <PageHeader 
+                title={`Bonjour, ${user?.fullName?.split(' ')[0] || 'Utilisateur'}`}
+                subtitle="Voici l'état global de la qualité de production en temps réel"
+                icon={<LayoutDashboard />}
+                actions={
+                    canExport && (
                         <button onClick={handleExportPDF}
-                            className="flex items-center gap-2 bg-white/15 hover:bg-white/20 text-white text-xs font-semibold px-4 py-2 rounded-xl transition-all border border-white/10 flex-shrink-0">
-                            <Download size={14} />
+                            className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/20">
+                            <Download size={18} />
                             Exporter PDF
                         </button>
-                    )}
-                </div>
-
-                {/* Quick mini stats */}
-                <div className="flex gap-3">
-                    <div className="card !p-4 flex flex-col justify-center items-center text-center min-w-[90px]">
-                        <p className="text-2xl font-extrabold text-gray-800">{stats.orders.total || 0}</p>
-                        <p className="stat-label mt-1">Ordres</p>
-                    </div>
-                    <div className="card !p-4 flex flex-col justify-center items-center text-center min-w-[90px]">
-                        <p className="text-2xl font-extrabold text-indigo-600">{conformityRate}%</p>
-                        <p className="stat-label mt-1">Conformité</p>
-                    </div>
-                    <div className="card !p-4 flex flex-col justify-center items-center text-center min-w-[90px]">
-                        <p className="text-2xl font-extrabold text-red-500">{stats.anomalies.critique || 0}</p>
-                        <p className="stat-label mt-1">Critiques</p>
-                    </div>
-                </div>
-            </div>
+                    )
+                }
+            />
 
             {/* KPI Row */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Cable as CableIcon, Plus, Search, QrCode, Eye, Pencil, Trash2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
 import { CableService, OrderService } from '../services/api';
+import PageHeader from '../components/PageHeader';
+import toast from 'react-hot-toast';
 
 const StatusBadge = ({ status }) => {
     const s = status?.toLowerCase() || 'en attente';
@@ -45,7 +47,7 @@ const Cables = () => {
             setCables(cablesRes.data || []);
             setOrders(ordersRes.data || []);
         } catch (error) {
-            console.error("Erreur chargement câbles", error);
+            toast.error("Erreur de chargement des câbles");
         } finally {
             setLoading(false);
         }
@@ -75,28 +77,30 @@ const Cables = () => {
 
         // Validation logique métier
         if (form.code && form.code.length < 3) {
-            alert("Erreur logique : Le code QR / code-barres doit contenir au moins 3 caractères.");
+            toast.error("Le code QR doit contenir au moins 3 caractères.");
             return;
         }
         if (!form.orderId) {
-            alert("Erreur logique : Le câble doit obligatoirement être associé à un ordre de fabrication.");
+            toast.error("Le câble doit être associé à un ordre de fabrication.");
             return;
         }
 
         try {
             if (editCable) {
                 await CableService.update(editCable.id, form);
+                toast.success('Câble mis à jour !');
             } else {
                 await CableService.create(form);
+                toast.success('Câble créé avec succès !');
             }
             setIsModalOpen(false);
             fetchData();
         } catch (error) {
             if (error.response?.data?.errors) {
                 const errorMessages = error.response.data.errors.map(err => `• ${err.msg}`).join('\n');
-                alert(`Erreur de validation :\n${errorMessages}`);
+                toast.error(`Erreur de validation :\n${errorMessages}`);
             } else {
-                alert("Erreur lors de l'enregistrement du câble : " + (error.response?.data?.error || error.message));
+                toast.error("Erreur d'enregistrement : " + (error.response?.data?.error || error.message));
             }
         }
     };
@@ -105,10 +109,11 @@ const Cables = () => {
         if (!deleteConfirm) return;
         try {
             await CableService.delete(deleteConfirm.id);
+            toast.success('Câble supprimé');
             setDeleteConfirm(null);
             fetchData();
         } catch (error) {
-            alert("Erreur lors de la suppression");
+            toast.error("Erreur lors de la suppression");
         }
     };
 
@@ -124,21 +129,17 @@ const Cables = () => {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 border border-indigo-100">
-                        <CableIcon size={18} />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-800">Gestion des Câbles</h1>
-                        <p className="text-xs text-slate-400 font-medium mt-0.5">Suivi et traçabilité des câbles par référence et QR code</p>
-                    </div>
-                </div>
-                <button onClick={openCreate} className="btn-primary flex items-center gap-2">
-                    <Plus size={16} />
-                    Nouveau Câble
-                </button>
-            </div>
+            <PageHeader 
+                title="Gestion des Câbles"
+                subtitle="Suivi unitaire et traçabilité des câbles par référence et QR code"
+                icon={<CableIcon />}
+                actions={
+                    <button onClick={openCreate} className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/20">
+                        <Plus size={18} />
+                        Nouveau Câble
+                    </button>
+                }
+            />
 
             {/* Search */}
             <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>

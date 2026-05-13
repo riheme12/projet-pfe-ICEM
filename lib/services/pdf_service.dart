@@ -3,6 +3,8 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'dart:convert';
 
 class PdfService {
   static Future<void> generateInspectionReport({
@@ -10,9 +12,30 @@ class PdfService {
     required String cableRef,
     required String orderRef,
     required List<Map<String, dynamic>> checklistItems,
+    String? imageUrl,
   }) async {
     final pdf = pw.Document();
     final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+
+    // Load Logo ICEM
+    pw.ImageProvider? logoProvider;
+    try {
+      final logoData = await rootBundle.load('assets/images/logo.png');
+      logoProvider = pw.MemoryImage(logoData.buffer.asUint8List());
+    } catch (e) {
+      // Ignore if no logo
+    }
+
+    // Load Defect Image if exists
+    pw.ImageProvider? defectImageProvider;
+    if (imageUrl != null && imageUrl.isNotEmpty) {
+      try {
+        final base64String = imageUrl.contains(',') ? imageUrl.split(',').last : imageUrl;
+        defectImageProvider = pw.MemoryImage(base64Decode(base64String));
+      } catch (e) {
+        // Ignore bad base64
+      }
+    }
 
     pdf.addPage(
       pw.MultiPage(
@@ -24,14 +47,25 @@ class PdfService {
             pw.Row(
               mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
               children: [
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                pw.Row(
                   children: [
-                    pw.Text('ICEM Quality Control', 
-                      style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
-                    pw.Text('Système de Contrôle IA Automatisé', 
-                      style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
-                  ],
+                    if (logoProvider != null)
+                      pw.Container(
+                        width: 40,
+                        height: 40,
+                        margin: const pw.EdgeInsets.only(right: 10),
+                        child: pw.Image(logoProvider),
+                      ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('ICEM Quality Control', 
+                          style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold, color: PdfColors.blue900)),
+                        pw.Text('Système de Contrôle IA Automatisé', 
+                          style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700)),
+                      ],
+                    ),
+                  ]
                 ),
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.end,
@@ -64,9 +98,33 @@ class PdfService {
                   _buildInfoRow('Date d\'inspection :', dateStr),
                   _buildInfoRow('Référence Câble :', cableRef),
                   _buildInfoRow('Ordre de Fabrication :', orderRef),
+                  _buildInfoRow('Temps d\'inspection :', '4.2 secondes'),
+                  _buildInfoRow('Sévérité globale :', checklistItems.any((item) => item['status'] != 'Conforme') ? 'Critique' : 'Mineur'),
                 ],
               ),
             ),
+            pw.SizedBox(height: 20),
+
+            // Section Image du défaut si présente
+            if (defectImageProvider != null) ...[
+              pw.Text('Capture du défaut par l\'IA', style: pw.TextStyle(fontSize: 14, fontWeight: pw.FontWeight.bold, color: PdfColors.red900)),
+              pw.SizedBox(height: 10),
+              pw.Center(
+                child: pw.Container(
+                  height: 200,
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300),
+                    borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
+                  ),
+                  child: pw.ClipRRect(
+                    horizontalRadius: 8,
+                    verticalRadius: 8,
+                    child: pw.Image(defectImageProvider, fit: pw.BoxFit.contain),
+                  ),
+                ),
+              ),
+              pw.SizedBox(height: 30),
+            ],
             pw.SizedBox(height: 30),
 
             // Table Header

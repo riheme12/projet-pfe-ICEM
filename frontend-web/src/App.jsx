@@ -3,7 +3,6 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Orders from './pages/Orders';
-import Cables from './pages/Cables';
 import Anomalies from './pages/Anomalies';
 import Alerts from './pages/Alerts';
 import Reports from './pages/Reports';
@@ -12,9 +11,11 @@ import Login from './pages/Login';
 import InspectionDetails from './pages/InspectionDetails';
 import Profile from './pages/Profile';
 import Trends from './pages/Trends';
+import Roles from './pages/Roles';
 import { useAuth } from './hooks/useAuth';
 import { auth, onAuthStateChanged } from './services/firebase';
 import { AuthService } from './services/api';
+import { Toaster } from 'react-hot-toast';
 
 // Composant pour protéger les routes (authentification)
 const ProtectedRoute = ({ children }) => {
@@ -68,6 +69,21 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          style: {
+            background: '#334155',
+            color: '#fff',
+            padding: '16px',
+            borderRadius: '12px',
+            fontSize: '14px',
+            fontWeight: '500',
+          },
+          success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' }, duration: 5000 },
+        }}
+      />
       <Routes>
         <Route path="/login" element={<Login />} />
         <Route
@@ -81,9 +97,6 @@ function App() {
           <Route index element={<Dashboard />} />
           <Route path="orders" element={
             <RoleRoute page="orders"><Orders /></RoleRoute>
-          } />
-          <Route path="cables" element={
-            <RoleRoute page="cables"><Cables /></RoleRoute>
           } />
           <Route path="anomalies" element={
             <RoleRoute page="anomalies"><Anomalies /></RoleRoute>
@@ -99,6 +112,9 @@ function App() {
           } />
           <Route path="trends" element={
             <RoleRoute page="trends"><Trends /></RoleRoute>
+          } />
+          <Route path="roles" element={
+            <RoleRoute page="roles"><Roles /></RoleRoute>
           } />
           <Route path="inspections/:id" element={<InspectionDetails />} />
           <Route path="profile" element={<Profile />} />

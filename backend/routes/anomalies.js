@@ -20,15 +20,19 @@ router.get('/', async (req, res) => {
         // Appliquer la limite seulement si on ne filtre pas par un ID précis
         if (!inspectionId && !cableId) {
             const limit = parseInt(queryLimit) || 100;
-            // On ordonne par date de détection pour avoir les plus récentes
-            query = query.orderBy('detectedAt', 'desc').limit(limit);
+            query = query.limit(limit);
         }
 
         const snapshot = await query.get();
         const anomalies = snapshot.docs.map(doc => {
-            const anomaly = Anomaly.fromJson({ id: doc.id, ...doc.data() });
-            return anomaly.toJson();
+            const anomaly = Anomaly.fromJson({ id: doc.id, ...doc.data() }).toJson();
+            delete anomaly.imageUrl; // Optimisation: ne pas envoyer la Base64 dans la liste
+            return anomaly;
         });
+        
+        // Sort in memory
+        anomalies.sort((a, b) => new Date(b.detectedAt) - new Date(a.detectedAt));
+        
         res.status(200).json(anomalies);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -42,8 +46,7 @@ router.get('/cable/:cableId', async (req, res) => {
             .where('cableId', '==', req.params.cableId)
             .get();
         const anomalies = snapshot.docs.map(doc => {
-            const anomaly = Anomaly.fromJson({ id: doc.id, ...doc.data() });
-            return anomaly.toJson();
+            return Anomaly.fromJson({ id: doc.id, ...doc.data() }).toJson();
         });
         res.status(200).json(anomalies);
     } catch (error) {
@@ -168,6 +171,20 @@ router.get('/stats/summary', async (req, res) => {
     }
 });
 
+// Get anomaly by ID
+router.get('/:id', async (req, res) => {
+    try {
+        const doc = await db.collection('anomaly').doc(req.params.id).get();
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'Anomaly not found' });
+        }
+        const anomaly = Anomaly.fromJson({ id: doc.id, ...doc.data() });
+        res.status(200).json(anomaly.toJson());
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Update anomaly (e.g., mark as treated)
 router.patch('/:id', async (req, res) => {
     try {
@@ -257,6 +274,19 @@ router.delete('/:id', async (req, res) => {
         }
         await db.collection('anomaly').doc(req.params.id).delete();
         res.status(200).json({ message: 'Anomaly deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get unread notifications count (Optimized)
+router.get('/notifications/unread/count', async (req, res) => {
+    try {
+        const snapshot = await db.collection('notifications')
+            .where('statut', '==', 'unread')
+            .count()
+            .get();
+        res.status(200).json({ count: snapshot.data().count });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

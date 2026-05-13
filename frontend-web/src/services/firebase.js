@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
 /**
@@ -24,5 +24,14 @@ setPersistence(auth, browserLocalPersistence)
 
 const db = getFirestore(app);
 
-export { auth, db, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail };
+export { 
+    auth, 
+    db, 
+    signInWithEmailAndPassword, 
+    signOut, 
+    onAuthStateChanged, 
+    sendPasswordResetEmail,
+    createUserWithEmailAndPassword,
+    updateProfile
+};
 export default app;

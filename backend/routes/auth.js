@@ -61,4 +61,47 @@ router.get('/me', async (req, res, next) => {
     }
 });
 
+// Signup — Create new user from public portal
+router.post('/signup', async (req, res) => {
+    try {
+        const { email, password, fullName, username, role = 'technician' } = req.body;
+
+        if (!email || !password || !fullName) {
+            return res.status(400).json({ error: 'Email, mot de passe et nom complet sont requis' });
+        }
+
+        // 1. Create Firebase Auth account
+        const authUser = await admin.auth().createUser({
+            email,
+            password,
+            displayName: fullName,
+        });
+
+        // 2. Create Firestore user document
+        const userData = {
+            email,
+            fullName,
+            username: username || email.split('@')[0],
+            role,
+            roles: [role],
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            photoUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=random`
+        };
+
+        await db.collection('users').doc(authUser.uid).set(userData);
+
+        res.status(201).json({
+            message: 'Compte créé avec succès',
+            user: { id: authUser.uid, ...userData }
+        });
+    } catch (error) {
+        console.error('Signup error:', error);
+        if (error.code === 'auth/email-already-exists') {
+            return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

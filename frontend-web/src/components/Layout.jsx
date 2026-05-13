@@ -1,81 +1,126 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
-import { Search, Bell, ChevronDown } from 'lucide-react';
+import { Bell, ChevronDown, Calendar, Clock, Globe, ShieldCheck } from 'lucide-react';
+import { AnomalyService } from '../services/api';
 
 const PAGE_TITLES = {
-    '/': 'Tableau de bord',
-    '/orders': 'Ordres de Fabrication',
-    '/cables': 'Câbles',
-    '/anomalies': 'Anomalies',
-    '/alerts': 'Alertes',
-    '/reports': 'Rapports',
-    '/trends': 'Tendances',
-    '/users': 'Utilisateurs',
-    '/profile': 'Mon Profil',
+    '/': 'Tableau de Bord',
+    '/orders': 'Suivi de Production',
+    '/anomalies': 'Contrôle Qualité',
+    '/alerts': 'Centre d\'Alertes',
+    '/reports': 'Rapports Analytiques',
+    '/trends': 'Tendances & Data',
+    '/users': 'Gestion d\'Équipe',
+    '/profile': 'Profil Utilisateur',
 };
 
 const Layout = () => {
     const { user, roleLabel } = useAuth();
+    const navigate = useNavigate();
     const location = useLocation();
+    const [activeAlertsCount, setActiveAlertsCount] = useState(0);
     const pageTitle = PAGE_TITLES[location.pathname] || 'ICEM Quality';
 
+    useEffect(() => {
+        let mounted = true;
+        const loadAlertCount = async () => {
+            try {
+                const response = await AnomalyService.getUnreadCount();
+                if (!mounted) return;
+                setActiveAlertsCount(response.data.count || 0);
+            } catch (_) {
+                if (mounted) setActiveAlertsCount(0);
+            }
+        };
+        loadAlertCount();
+        return () => { mounted = false; };
+    }, []);
+
     const userPhotoUrl = user?.photoUrl ||
-        `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=6366f1&color=ffffff&bold=true&size=80`;
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=1e1b4b&color=ffffff&bold=true&size=120`;
+
+    const currentDate = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
 
     return (
-        <div className="flex min-h-screen" style={{ background: '#f3f4f8' }}>
+        <div className="flex min-h-screen bg-[#f8fafc] font-['Inter']">
             <Sidebar />
 
-            <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-                {/* Top Header */}
-                <header className="bg-white border-b border-gray-100 px-8 py-5 flex items-center gap-6"
-                    style={{ boxShadow: '0 1px 6px rgba(99,102,241,0.04)' }}>
-
-                    {/* Search Bar */}
-                    <div className="search-input flex-1 max-w-lg p-2.5 px-4 text-base">
-                        <Search size={18} className="flex-shrink-0 text-slate-900 mr-2" />
-                        <input placeholder="Rechercher..." className="w-full bg-transparent outline-none text-slate-900 placeholder:text-slate-500" />
+            <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+                
+                {/* 🎨 Massive Creative Premium Header (Solid White for Performance) */}
+                <header className="sticky top-0 z-40 bg-white border-b border-slate-200 px-12 py-8 flex items-center justify-between shadow-sm">
+                    
+                    {/* Welcome Section - Massive Typography */}
+                    <div className="flex flex-col">
+                        <h2 className="text-4xl font-black text-[#1e1b4b] tracking-tighter leading-tight">
+                            {user?.fullName || 'Utilisateur'}
+                        </h2>
+                        <div className="flex items-center gap-4 mt-3">
+                            <div className="flex items-center gap-2 text-[11px] font-black text-blue-600 uppercase tracking-widest bg-blue-50/50 px-3 py-1 rounded-full border border-blue-100">
+                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></div>
+                                <span>Espace de Supervision</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+                                <Calendar size={12} className="text-slate-300" />
+                                <span>{currentDate}</span>
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="flex-1"></div>
+                    <div className="flex items-center gap-6">
+                        {/* Notifications - Fixed Link */}
+                        <button 
+                            onClick={() => navigate('/alerts')}
+                            className="relative w-16 h-16 rounded-[24px] bg-white border border-slate-200 hover:border-blue-500 hover:text-blue-600 flex items-center justify-center text-slate-600 transition-all duration-300 shadow-sm group"
+                        >
+                            <Bell size={28} className="group-hover:rotate-12 transition-transform" />
+                            {activeAlertsCount > 0 && (
+                                <span className="absolute top-4 right-4 w-4 h-4 bg-red-500 border-4 border-white rounded-full"></span>
+                            )}
+                        </button>
 
-                    {/* Notifications */}
-                    <button className="relative w-12 h-12 rounded-xl bg-gray-50 hover:bg-blue-50 flex items-center justify-center text-slate-900 hover:text-blue-600 transition-colors border border-gray-100">
-                        <Bell size={20} />
-                        <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white"></span>
-                    </button>
+                        <div className="w-px h-12 bg-slate-200 mx-2"></div>
 
-                    {/* Divider */}
-                    <div className="w-px h-6 bg-gray-100"></div>
-
-                    {/* User */}
-                    <Link to="/profile" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-                        <img
-                            src={userPhotoUrl}
-                            alt={user?.fullName || 'User'}
-                            className="w-10 h-10 rounded-full object-cover border-2 border-blue-100"
-                        />
-                        <div className="hidden sm:block text-left">
-                            <p className="text-sm font-bold text-black leading-tight">{user?.fullName || 'Utilisateur'}</p>
-                            <p className="text-xs font-semibold text-slate-900">{roleLabel}</p>
-                        </div>
-                        <ChevronDown size={16} className="text-slate-900 hidden sm:block ml-1" />
-                    </Link>
+                        {/* User Profile - Enlarged & Premium */}
+                        <Link to="/profile" className="flex items-center gap-5 pl-2 pr-6 py-2 rounded-[30px] hover:bg-slate-50 transition-all group border border-transparent hover:border-slate-100 shadow-sm bg-white">
+                            <div className="relative">
+                                <img
+                                    src={userPhotoUrl}
+                                    alt="User"
+                                    className="w-14 h-14 rounded-[22px] object-cover ring-4 ring-slate-50 shadow-lg group-hover:ring-blue-100 transition-all"
+                                />
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-blue-600 border-4 border-white rounded-full flex items-center justify-center">
+                                    <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse"></div>
+                                </div>
+                            </div>
+                            <div className="hidden xl:block">
+                                <p className="text-lg font-black text-[#1e1b4b] leading-none mb-1.5 truncate max-w-[150px]">{user?.fullName || 'Utilisateur'}</p>
+                                <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest leading-none">{roleLabel}</p>
+                            </div>
+                            <ChevronDown size={20} className="text-slate-300 group-hover:text-blue-600 transition-colors" />
+                        </Link>
+                    </div>
                 </header>
 
-                {/* Page Content */}
-                <div className="flex-1 p-8 overflow-auto">
-                    {/* Page breadcrumb header */}
-                    <div className="mb-8">
-                        <p className="text-xs font-bold text-slate-900 uppercase tracking-widest mb-1.5">ICEM Industrial Solutions</p>
-                        <h1 className="text-3xl font-black text-black">{pageTitle}</h1>
+                {/* 🚀 Page Content Section */}
+                <div className="flex-1 p-12 overflow-auto relative">
+                    <div className="mb-16 animate-[fadeUp_0.4s_ease-out]">
+                        <div className="flex items-center gap-4 mb-4">
+                            <div className="h-[2px] w-12 bg-blue-600"></div>
+                            <span className="text-xs font-black text-blue-600 uppercase tracking-[0.6em]">Système ICEM</span>
+                        </div>
+                        <h1 className="text-6xl font-black text-[#1e1b4b] tracking-tighter leading-none">{pageTitle}</h1>
                     </div>
-                    <div style={{ animation: 'fadeUp 0.3s ease-out both' }}>
+
+                    <div className="relative z-10" style={{ animation: 'fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
                         <Outlet />
                     </div>
+                    
+                    {/* Background decoration */}
+                    <div className="absolute bottom-0 right-0 w-[800px] h-[800px] bg-blue-50/40 rounded-full blur-[150px] -z-10 pointer-events-none translate-x-1/3 translate-y-1/3"></div>
                 </div>
             </main>
         </div>

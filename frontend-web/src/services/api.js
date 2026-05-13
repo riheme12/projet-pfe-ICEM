@@ -36,6 +36,7 @@ api.interceptors.response.use(
 
 export const AuthService = {
     login: (idToken) => api.post('/auth/login', { idToken }),
+    signup: (data) => api.post('/auth/signup', data),
     getMe: () => api.get('/auth/me'),
 };
 
@@ -59,6 +60,7 @@ export const InspectionService = {
 
 export const AnomalyService = {
     getAll: (params) => api.get('/anomalies', { params }),
+    getUnreadCount: () => api.get('/anomalies/notifications/unread/count'),
     getStats: () => api.get('/anomalies/stats/summary'),
     getByCable: (cableId) => api.get(`/anomalies/cable/${cableId}`),
     create: (data) => api.post('/anomalies', data),
@@ -97,6 +99,13 @@ export const StatsService = {
 export const SettingsService = {
     get: () => api.get('/settings'),
     update: (data) => api.put('/settings', data),
+};
+
+export const RoleService = {
+    getAll: () => api.get('/roles'),
+    create: (data) => api.post('/roles', data),
+    update: (id, data) => api.patch(`/roles/${id}`, data),
+    delete: (id) => api.delete(`/roles/${id}`),
 };
 
 export default api;

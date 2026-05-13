@@ -34,7 +34,6 @@ router.get('/', async (req, res) => {
         const limit = parseInt(req.query.limit) || 100; // Limite par défaut pour éviter de tout charger
         
         const snapshot = await db.collection('manufacturingOrder')
-            .orderBy('createdAt', 'desc')
             .limit(limit)
             .get();
             
@@ -42,6 +41,10 @@ router.get('/', async (req, res) => {
             const order = ManufacturingOrder.fromJson({ id: doc.id, ...doc.data() });
             return order.toJson();
         });
+        
+        // Sort in memory by productionDate desc
+        orders.sort((a, b) => new Date(b.productionDate) - new Date(a.productionDate));
+        
         res.status(200).json(orders);
     } catch (error) {
         res.status(500).json({ error: error.message });

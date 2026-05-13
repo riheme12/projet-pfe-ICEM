@@ -52,52 +52,104 @@ const InspectionDetails = () => {
 
     const handleExportPDF = () => {
         try {
-            const doc = new jsPDF();
+            const doc = new jsPDF('p', 'pt', 'a4');
             const pageWidth = doc.internal.pageSize.getWidth();
+            let currentY = 40;
             
-            doc.setFillColor(30, 41, 59);
-            doc.rect(0, 0, pageWidth, 40, 'F');
+            // En-tête avec fond bleu
+            doc.setFillColor(30, 58, 138); // Indigo 900
+            doc.rect(0, 0, pageWidth, 80, 'F');
+            
+            // Logo Texte
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(20);
+            doc.setFontSize(24);
             doc.setFont('helvetica', 'bold');
-            doc.text('ICEM QUALITY CONTROL', 14, 18);
-            doc.setFontSize(11);
+            doc.text("ICEM", 40, 45);
+            
+            doc.setFontSize(16);
+            doc.text("Rapport d'Inspection Détaillé", 120, 45);
+
+            // Metadata de l'inspection
+            doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            doc.text(`RAPPORT D'INSPECTION - CÂBLE: ${inspection?.reference || id.substring(0, 8)}`, 14, 28);
-            
-            doc.setTextColor(51, 65, 85);
-            doc.setFontSize(12);
-            doc.text(`Ordre de Fabrication: ${inspection?.orderId || 'Non défini'}`, 14, 50);
-            doc.text(`Technicien: ${inspection?.technicianName || 'Système IA'}`, 14, 58);
-            doc.text(`Date: ${inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString() : 'En attente'}`, 14, 66);
-            doc.text(`Statut: ${inspection?.status || 'En attente'}`, 14, 74);
-            
+            doc.setTextColor(70, 70, 70);
+            const dateStr = inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR');
+            doc.text(`Câble ID : ${inspection?.reference || id}`, 40, 110);
+            doc.text(`Ordre de Fabrication (OF) : ${inspection?.orderId || 'Global'}`, 40, 125);
+            doc.text(`Technicien : ${inspection?.technicianName || inspection?.technicianId || 'Inconnu'}`, 40, 140);
+            doc.text(`Date et heure d'inspection : ${dateStr}`, 40, 155);
+            doc.text(`Statut final : ${inspection?.status || 'En attente'}`, 40, 170);
+
+            currentY = 200;
+
             if (anomalies.length > 0) {
                 doc.setFontSize(14);
                 doc.setFont('helvetica', 'bold');
-                doc.text('Défauts Détectés', 14, 90);
-                
-                const tableData = anomalies.map(a => [
-                    a.type || 'Inconnu',
-                    a.severity || 'Mineur',
-                    a.confidence ? `${(a.confidence * 100).toFixed(0)}%` : '—',
-                    a.location || 'Non précisée'
-                ]);
-                
-                autoTable(doc, {
-                    startY: 95,
-                    head: [['Type', 'Gravité', 'Confiance IA', 'Localisation']],
-                    body: tableData,
-                    theme: 'grid',
-                    headStyles: { fillColor: [220, 38, 38], textColor: 255 },
-                    margin: { left: 14, right: 14 }
+                doc.setTextColor(30, 58, 138);
+                doc.text("Défauts Détectés", 40, currentY);
+                currentY += 20;
+
+                anomalies.forEach((a, index) => {
+                    // Check page break
+                    if (currentY > doc.internal.pageSize.getHeight() - 250) {
+                        doc.addPage();
+                        currentY = 40;
+                    }
+
+                    // Background for defect
+                    doc.setFillColor(248, 250, 252);
+                    doc.rect(40, currentY, pageWidth - 80, 180, 'F');
+                    doc.setDrawColor(226, 232, 240);
+                    doc.rect(40, currentY, pageWidth - 80, 180, 'S');
+
+                    // Defect Details
+                    doc.setFontSize(12);
+                    doc.setFont('helvetica', 'bold');
+                    doc.setTextColor(0, 0, 0);
+                    doc.text(`Défaut #${index + 1} : ${a.type || 'Inconnu'}`, 50, currentY + 20);
+
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.setTextColor(70, 70, 70);
+                    doc.text(`Gravité : ${a.severity || 'Mineur'}`, 50, currentY + 40);
+                    doc.text(`Confiance IA : ${a.confidence ? (a.confidence * 100).toFixed(1) + '%' : 'N/A'}`, 50, currentY + 55);
+                    doc.text(`Statut : ${a.statut || 'détectée'}`, 50, currentY + 70);
+                    if(a.location) doc.text(`Localisation : ${a.location}`, 50, currentY + 85);
+
+                    // Add Image if exists
+                    if (a.imageUrl) {
+                        try {
+                            const isJpeg = a.imageUrl.includes('image/jpeg') || a.imageUrl.includes('jpg');
+                            doc.addImage(a.imageUrl, isJpeg ? 'JPEG' : 'PNG', pageWidth - 240, currentY + 10, 180, 160);
+                        } catch (e) {
+                            console.error("Impossible d'ajouter l'image", e);
+                            doc.text("(Image invalide)", pageWidth - 160, currentY + 90);
+                        }
+                    } else {
+                        doc.text("Pas de photo", pageWidth - 160, currentY + 90);
+                    }
+
+                    currentY += 200;
                 });
             } else {
                 doc.setFontSize(12);
                 doc.setTextColor(16, 185, 129); // Emerald 500
-                doc.text('Aucune anomalie détectée. Câble conforme.', 14, 90);
+                doc.text('Aucune anomalie détectée. Câble conforme.', 40, currentY);
+                currentY += 40;
             }
-            
+
+            // Signatures
+            if (currentY > doc.internal.pageSize.getHeight() - 100) {
+                doc.addPage();
+                currentY = 40;
+            }
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.setTextColor(0, 0, 0);
+            currentY += 40;
+            doc.text("Signature du Technicien", 40, currentY);
+            doc.text("Signature Responsable Qualité", pageWidth - 200, currentY);
+
             doc.save(`Rapport_Inspection_${inspection?.reference || id}.pdf`);
         } catch (err) {
             console.error("Erreur PDF:", err);

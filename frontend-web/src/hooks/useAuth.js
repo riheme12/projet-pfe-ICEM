@@ -7,10 +7,10 @@
 const ROLE_PERMISSIONS = {
     admin: {
         label: 'Administrateur',
-        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'trends'],
-        canCreate: ['orders', 'cables', 'users'],
-        canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts'],
-        canDelete: ['orders', 'cables', 'users'],
+        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'roles', 'trends'],
+        canCreate: ['orders', 'cables', 'users', 'roles'],
+        canEdit: ['orders', 'cables', 'users', 'roles', 'anomalies', 'alerts'],
+        canDelete: ['orders', 'cables', 'users', 'roles'],
         canExport: true,
         canResetPassword: true,
         canGenerateReport: true,
@@ -56,6 +56,7 @@ const PATH_TO_PAGE = {
     '/alerts': 'alerts',
     '/reports': 'reports',
     '/users': 'users',
+    '/roles': 'roles',
     '/trends': 'trends'
 };
 

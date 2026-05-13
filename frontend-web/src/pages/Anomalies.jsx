@@ -3,6 +3,7 @@ import { AlertCircle, Eye, Search, CheckCircle, Clock, X, Download } from 'lucid
 import { useNavigate } from 'react-router-dom';
 import { AnomalyService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
+import PageHeader from '../components/PageHeader';
 import * as XLSX from 'xlsx';
 
 const SeverityBadge = ({ severity }) => {
@@ -100,28 +101,22 @@ const Anomalies = () => {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 border border-red-100">
-                        <AlertCircle size={18} />
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-800">Anomalies Qualité</h1>
-                        <p className="text-xs text-slate-400 font-medium mt-0.5">Défauts détectés par IA — {anomalies.length} anomalie{anomalies.length !== 1 ? 's' : ''}</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2.5">
-                    {canExport && (
+            <PageHeader 
+                title="Anomalies Qualité"
+                subtitle={`Suivi des défauts détectés par l'intelligence artificielle — ${anomalies.length} anomalie${anomalies.length !== 1 ? 's' : ''}`}
+                icon={<AlertCircle />}
+                actions={
+                    canExport && (
                         <button
                             onClick={handleExportExcel}
-                            className="flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-100 rounded-xl transition-all"
+                            className="flex items-center gap-2 px-6 py-2.5 text-sm font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm"
                         >
-                            <Download size={15} />
-                            Export Excel
+                            <Download size={18} />
+                            Exporter Rapport
                         </button>
-                    )}
-                </div>
-            </div>
+                    )
+                }
+            />
 
             {/* Search & Filter */}
             <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>

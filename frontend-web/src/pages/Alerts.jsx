@@ -3,6 +3,7 @@ import { Bell, AlertTriangle, CheckCircle, Search, Filter, Clock, Shield, Chevro
 import { AnomalyService } from '../services/api';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
+import PageHeader from '../components/PageHeader';
 
 const SeverityBadge = ({ severity }) => {
     const s = severity?.toLowerCase() || 'moyenne';
@@ -113,27 +114,23 @@ const Alerts = () => {
 
     return (
         <div className="flex flex-col gap-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-2">
-                <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-red-500 border border-red-100">
-                        <AlertTriangle size={18} />
+            <PageHeader 
+                title="Gestion des Alertes"
+                subtitle="Surveillance en temps réel et traitement des anomalies qualité critiques"
+                icon={<Bell />}
+                actions={
+                    <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-200 rounded-xl shadow-sm">
+                            <AlertTriangle size={16} className="text-red-500" />
+                            <span className="text-sm font-black text-red-700">{criticalCount} Critiques</span>
+                        </div>
+                        <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-200 rounded-xl shadow-sm">
+                            <Bell size={16} className="text-amber-600" />
+                            <span className="text-sm font-black text-amber-700">{activeCount} Actives</span>
+                        </div>
                     </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-slate-800">Gestion des Alertes</h1>
-                        <p className="text-xs text-slate-400 font-medium mt-0.5">Suivi et traitement des alertes qualité en temps réel</p>
-                    </div>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-100 rounded-lg">
-                        <AlertTriangle size={14} className="text-red-500" />
-                        <span className="text-[11px] font-bold text-red-600">{criticalCount} critiques</span>
-                    </div>
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-50 border border-amber-100 rounded-lg">
-                        <Bell size={14} className="text-amber-500" />
-                        <span className="text-[11px] font-bold text-amber-600">{activeCount} actives</span>
-                    </div>
-                </div>
-            </div>
+                }
+            />
 
             {/* Filters */}
             <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
