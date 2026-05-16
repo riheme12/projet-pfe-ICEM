@@ -25,31 +25,13 @@ class AuthService {
 
       if (userCredential.user == null) return null;
 
-      // Fetch user role and details from Firestore
-      final userDoc = await _firestore
-          .collection('users')
-          .doc(userCredential.user!.uid)
-          .get();
-
-      if (!userDoc.exists) {
-        // If user exists in Auth but not in Firestore, we should probably handle this gracefully
-        // For now, return null or throw depending on requirements.
-        return null;
-      }
+      final userDoc = await _firestore.collection('users').doc(userCredential.user!.uid).get();
+      if (!userDoc.exists) return null;
 
       final userData = userDoc.data()!;
-      // Handle potential missing fields gracefully
-      final user = User.fromJson({
-        'id': userCredential.user!.uid,
-        ...userData,
-      });
+      final user = User.fromJson({'id': userCredential.user!.uid, ...userData});
 
-
-      // Save session
-      if (rememberMe) {
-        await _saveSession(user, rememberMe);
-      }
-
+      if (rememberMe) await _saveSession(user, rememberMe);
       return user;
     } catch (e) {
       debugPrint('Login error: $e');
@@ -57,41 +39,33 @@ class AuthService {
     }
   }
 
-  /// Register new user
+  /// Register new user (Simplified for PFE)
   Future<User?> signup({
+    required String username,
+    required String email,
     required String password,
     required String fullName,
-    required String username,
-    required UserRole role,
-    String? phone,
   }) async {
     try {
-      final email = '$username@icem.app';
-      // Create user in Firebase Auth
       final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
       if (userCredential.user == null) return null;
-
       final uid = userCredential.user!.uid;
 
-      // Create new user object
       final user = User(
         id: uid,
         username: username,
         fullName: fullName,
         email: email,
-        role: role,
-        phone: phone,
+        role: UserRole.technician,
         createdAt: DateTime.now(),
         stats: UserStats.empty(),
       );
 
-      // Save to Firestore. Use user.toJson() which now handles everything correctly.
       await _firestore.collection('users').doc(uid).set(user.toJson());
-
       return user;
     } catch (e) {
       debugPrint('Signup error: $e');
@@ -99,7 +73,16 @@ class AuthService {
     }
   }
 
-  /// Save user session to SharedPreferences
+  /// Send password reset email
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (e) {
+      debugPrint('Reset email error: $e');
+      rethrow;
+    }
+  }
+
   Future<void> _saveSession(User user, bool rememberMe) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_keyIsLoggedIn, true);
@@ -107,10 +90,8 @@ class AuthService {
     await prefs.setString(_keyCurrentUser, jsonEncode(user.toJson()));
   }
 
-  /// Get current logged-in user from session or Firebase
   Future<User?> getCurrentUser() async {
     try {
-      // First check SharedPreferences for offline/quick access
       final prefs = await SharedPreferences.getInstance();
       final isLoggedIn = prefs.getBool(_keyIsLoggedIn) ?? false;
       final rememberMe = prefs.getBool(_keyRememberMe) ?? false;
@@ -118,36 +99,19 @@ class AuthService {
       if (isLoggedIn && rememberMe) {
         final userJson = prefs.getString(_keyCurrentUser);
         if (userJson != null) {
-          try {
-            return User.fromJson(jsonDecode(userJson));
-          } catch (e) {
-             debugPrint('Error parsing session user: $e');
-             // Proceed to fetch from Firebase
-          }
+          try { return User.fromJson(jsonDecode(userJson)); } catch (_) {}
         }
       }
 
-      // If not in prefs, check Firebase Auth state
       final firebaseUser = _auth.currentUser;
       if (firebaseUser != null) {
-        final userDoc = await _firestore
-            .collection('users')
-            .doc(firebaseUser.uid)
-            .get();
-
+        final userDoc = await _firestore.collection('users').doc(firebaseUser.uid).get();
         if (userDoc.exists) {
-          final userData = userDoc.data()!;
-          final user = User.fromJson({
-            'id': firebaseUser.uid,
-            ...userData,
-          });
-          
-          // Refresh session
+          final user = User.fromJson({'id': firebaseUser.uid, ...userDoc.data()!});
           await _saveSession(user, true); 
           return user;
         }
       }
-
       return null;
     } catch (e) {
       debugPrint('Get current user error: $e');
@@ -155,17 +119,27 @@ class AuthService {
     }
   }
 
-  /// Logout user and clear session
+  Future<String?> updateProfilePhoto(String userId, String base64Image) async {
+    try {
+      await _firestore.collection('users').doc(userId).update({'photoUrl': base64Image});
+      final currentUser = await getCurrentUser();
+      if (currentUser != null && currentUser.id == userId) {
+        final updatedUser = User.fromJson({...currentUser.toJson(), 'photoUrl': base64Image});
+        await _saveSession(updatedUser, true);
+      }
+      return base64Image;
+    } catch (e) {
+      return null;
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _auth.signOut();
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool(_keyIsLoggedIn, false);
       await prefs.remove(_keyCurrentUser);
-      await prefs.remove(_keyRememberMe); // Also clear remember me flag? Usually yes if logging out explicitely.
-    } catch (e) {
-      debugPrint('Logout error: $e');
-      rethrow;
-    }
+      await prefs.remove(_keyRememberMe);
+    } catch (_) {}
   }
 }

@@ -172,14 +172,14 @@ class AnomalyService {
         }
         for (var doc in cableByCode.docs) {
           await _db.collection('cable').doc(doc.id).update({
-            'status': 'Conforme',
+            'status': 'Conforme (Corrigé)',
             'anomaliesCount': 0,
           });
         }
       } else {
         for (var doc in cableQuery.docs) {
           await _db.collection('cable').doc(doc.id).update({
-            'status': 'Conforme',
+            'status': 'Conforme (Corrigé)',
             'anomaliesCount': 0,
           });
         }

@@ -3,29 +3,29 @@
  * Synchronisé avec lib/models/manufacturing_order.dart (mobile)
  * 
  * Un ordre de fabrication contient :
- * - Les informations de production (référence, client, commande, type, quantité)
+ * - Les informations de production (référence, client, commande, quantité)
  * - Le statut de l'ordre
  * - Les statistiques de conformité
  */
 class ManufacturingOrder {
     constructor({ 
-        id, reference, client, numComd, cableType, quantity, 
+        id, reference, client, numComd, quantity, 
         productionDate, dateLiv, status, ligne = null, 
-        inspectedCount = 0, conformCount = 0, nonConformCount = 0 
+        giPros = '', inspectedCount = 0, conformCount = 0, nonConformCount = 0 
     }) {
         this.id = id;
-        this.reference = reference;                      // Ex: "OF-2024-001" (numeroOF)
-        this.client = client;                            // Client (client)
-        this.numComd = numComd;                          // Numéro de commande (NumComd)
-        this.cableType = cableType;                      // Type de câble (cableType)
-        this.quantity = quantity;                        // Quantité totale à produire (QTA)
+        this.reference = reference;                      // numeroOF
+        this.client = client;                            // client
+        this.numComd = numComd;                          // NumComd
+        this.giPros = giPros;                            // GI PROS
+        this.quantity = quantity;                        // QTA
         this.productionDate = productionDate instanceof Date ? productionDate : new Date(productionDate);
         this.dateLiv = dateLiv instanceof Date ? dateLiv : (dateLiv ? new Date(dateLiv) : null);
         this.status = status;                            // 'En cours', 'Terminé', 'En attente'
-        this.ligne = ligne;                              // Ligne de production (ligne)
-        this.inspectedCount = inspectedCount;            // Nombre de câbles déjà inspectés
-        this.conformCount = conformCount;                // Nombre de câbles conformes
-        this.nonConformCount = nonConformCount;          // Nombre de câbles non conformes
+        this.ligne = ligne;                              // ligne
+        this.inspectedCount = inspectedCount;            
+        this.conformCount = conformCount;                
+        this.nonConformCount = nonConformCount;          
     }
 
     /**
@@ -48,13 +48,11 @@ class ManufacturingOrder {
      * Créer depuis JSON (Mapping Firestore)
      */
     static fromJson(json) {
-        // Date de production
         let productionDate = new Date();
         if (json.productionDate) {
             productionDate = json.productionDate.toDate ? json.productionDate.toDate() : new Date(json.productionDate);
         }
 
-        // Date de livraison (DateLiv)
         let dateLiv = null;
         if (json.dateLiv || json.DateLiv) {
             const d = json.dateLiv || json.DateLiv;
@@ -74,7 +72,7 @@ class ManufacturingOrder {
             reference: json.reference || json.numeroOF,
             client: json.client || 'Inconnu',
             numComd: json.numComd || json.NumComd || '',
-            cableType: json.cableType || '',
+            giPros: json.giPros || json["Gi pros"] || json.gi_pros || '',
             quantity: json.quantity || json.QTA || 0,
             productionDate: productionDate,
             dateLiv: dateLiv,
@@ -97,7 +95,9 @@ class ManufacturingOrder {
             client: this.client,
             numComd: this.numComd,
             NumComd: this.numComd,
-            cableType: this.cableType,
+            giPros: this.giPros,
+            "Gi pros": this.giPros,
+            gi_pros: this.giPros,
             quantity: this.quantity,
             QTA: this.quantity,
             productionDate: this.productionDate.toISOString(),

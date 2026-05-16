@@ -34,7 +34,7 @@ class ICEMQualityApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ICEM Quality Control',
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.darkTheme,
       debugShowCheckedModeBanner: false,
       // Page d'accueil dynamique selon l'état d'authentification
       home: Consumer<AuthProvider>(

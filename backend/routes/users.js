@@ -181,4 +181,60 @@ router.post('/:id/reset-password', async (req, res) => {
     }
 });
 
+// --- Signature Upload ---
+const multer = require('multer');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB max
+
+// Upload/update user signature
+router.post('/:id/signature', upload.single('signature'), async (req, res) => {
+    try {
+        const doc = await db.collection('users').doc(req.params.id).get();
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'Aucun fichier de signature fourni' });
+        }
+
+        const { bucket } = require('../firebase');
+        const fileName = `signatures/${req.params.id}_${Date.now()}.${req.file.originalname.split('.').pop()}`;
+        const file = bucket.file(fileName);
+
+        await file.save(req.file.buffer, {
+            metadata: { contentType: req.file.mimetype },
+        });
+
+        // Make the file publicly accessible
+        await file.makePublic();
+
+        const signatureUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+
+        // Update Firestore
+        await db.collection('users').doc(req.params.id).update({ signatureUrl });
+
+        res.status(200).json({ signatureUrl, message: 'Signature uploadée avec succès' });
+    } catch (error) {
+        console.error('Error uploading signature:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Delete user signature
+router.delete('/:id/signature', async (req, res) => {
+    try {
+        const doc = await db.collection('users').doc(req.params.id).get();
+        if (!doc.exists) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        await db.collection('users').doc(req.params.id).update({ signatureUrl: null });
+
+        res.status(200).json({ message: 'Signature supprimée avec succès' });
+    } catch (error) {
+        console.error('Error deleting signature:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

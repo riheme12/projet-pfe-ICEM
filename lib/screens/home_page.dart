@@ -1,504 +1,310 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:projeticem/widgets/feature_card.dart';
-import 'package:projeticem/widgets/stats_card.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/providers/auth_provider.dart';
+import 'package:projeticem/services/reports_service.dart';
 import 'package:provider/provider.dart';
 import 'package:projeticem/screens/profile_page.dart';
 import 'package:projeticem/screens/orders_list_page.dart';
 import 'package:projeticem/screens/reports_page.dart';
 import 'package:projeticem/screens/inspection_page.dart';
 import 'package:projeticem/screens/anomalies_list_page.dart';
-import 'package:projeticem/services/orders_service.dart';
-import 'package:projeticem/services/reports_service.dart';
 
-/// Page d'accueil de l'application ICEM Quality Control
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
-
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
-class _HomePageState extends State<HomePage> {
-  final OrdersService _ordersService = OrdersService();
-  final ReportsService _reportsService = ReportsService();
+class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
+  int _currentTab = 0;
+  late AnimationController _animCtrl;
 
-  int _ordresEnCours = 0;
-  int _controlesEffectues = 0;
-  int _anomaliesDetectees = 0;
-  double _tauxConformite = 0.0;
+  // Données temps réel
   bool _statsLoading = true;
+  int _totalInspections = 0;
+  int _totalAnomalies = 0;
+  double _conformityRate = 0.0;
+  int _totalCables = 0;
 
   @override
   void initState() {
     super.initState();
-    _loadStats();
+    _animCtrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..forward();
+    _loadRealData();
   }
 
-  Future<void> _loadStats() async {
-    // Les statistiques sont maintenant gérées directement via le profil utilisateur
-    // On s'assure simplement que les données utilisateur sont à jour
+  @override
+  void dispose() { _animCtrl.dispose(); super.dispose(); }
+
+  Future<void> _loadRealData() async {
     try {
       final auth = Provider.of<AuthProvider>(context, listen: false);
-      await auth.refreshCurrentUser(); // Nouvelle méthode à ajouter si nécessaire
+      final techId = auth.currentUser?.id ?? '';
+      final service = ReportsService();
+
+      // Requête parallèle pour toutes les données
+      final stats = await service.getTechnicianStats(techId, period: 'Ce mois');
+
       if (mounted) {
         setState(() {
+          _totalInspections = stats.inspections;
+          _totalAnomalies = stats.anomaliesDetected;
+          _conformityRate = stats.conformityRate;
+          _totalCables = stats.inspections;
           _statsLoading = false;
         });
       }
-    } catch (e) {
-      print('Error refreshing user stats: $e');
-      if (mounted) {
-        setState(() => _statsLoading = false);
-      }
+    } catch (_) {
+      if (mounted) setState(() => _statsLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
-      body: CustomScrollView(
-        slivers: [
-          // Gradient SliverAppBar
-          SliverAppBar(
-            expandedHeight: 220,
-            floating: false,
-            pinned: true,
-            automaticallyImplyLeading: false,
-            backgroundColor: AppTheme.primaryBlue,
-            flexibleSpace: FlexibleSpaceBar(
-              collapseMode: CollapseMode.pin,
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Top row: logo + title + actions
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                Image.asset(
-                                  'assets/images/logo.png',
-                                  height: 32,
-                                  fit: BoxFit.contain,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'ICEM Quality',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                _buildAppBarIcon(
-                                  Icons.notifications_outlined,
-                                  () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const AnomaliesListPage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                                const SizedBox(width: 8),
-                                _buildAppBarIcon(
-                                  Icons.person_outline_rounded,
-                                  () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) =>
-                                            const ProfilePage(),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const Spacer(),
-                        // Welcome section
-                        _buildWelcomeContent(context),
-                      ],
-                    ),
-                  ),
+      backgroundColor: AppTheme.background,
+      body: CustomScrollView(slivers: [
+        SliverAppBar(
+          expandedHeight: 210,
+          floating: false, pinned: true,
+          automaticallyImplyLeading: false,
+          backgroundColor: AppTheme.primaryNavy,
+          flexibleSpace: FlexibleSpaceBar(
+            background: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF0F172A), Color(0xFF1E3A5F), Color(0xFF2563EB)],
+                  begin: Alignment.topLeft, end: Alignment.bottomRight,
                 ),
               ),
+              child: SafeArea(child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
+                  _buildTopBar(),
+                  const SizedBox(height: 20),
+                  _buildWelcome(),
+                ]),
+              )),
             ),
           ),
-
-          // Body content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildStatsSection(context),
-                  const SizedBox(height: 28),
-                  _buildFeaturesSection(context),
-                  const SizedBox(height: 24),
-                ],
-              ),
-            ),
-          ),
-
-        ],
-      ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
-              blurRadius: 20,
-              offset: const Offset(0, -4),
-            ),
-          ],
         ),
-        child: BottomNavigationBar(
-          currentIndex: 0,
-          type: BottomNavigationBarType.fixed,
-          backgroundColor: Colors.white,
-          selectedItemColor: AppTheme.primaryBlue,
-          unselectedItemColor: AppTheme.textLight,
-          elevation: 0,
-          selectedLabelStyle: GoogleFonts.inter(
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
-          ),
-          unselectedLabelStyle: GoogleFonts.inter(fontSize: 12),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home_rounded),
-              label: 'Accueil',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.camera_alt_outlined),
-              activeIcon: Icon(Icons.camera_alt_rounded),
-              label: 'Inspection',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.assignment_outlined),
-              activeIcon: Icon(Icons.assignment_rounded),
-              label: 'Ordres',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.person_outline_rounded),
-              activeIcon: Icon(Icons.person_rounded),
-              label: 'Profil',
-            ),
-          ],
-          onTap: (index) {
-            switch (index) {
-              case 0:
-                break;
-              case 1:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const InspectionPage(),
-                  ),
-                );
-                break;
-              case 2:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const OrdersListPage(),
-                  ),
-                );
-                break;
-              case 3:
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const ProfilePage(),
-                  ),
-                );
-                break;
-            }
-          },
-        ),
-      ),
+        SliverToBoxAdapter(child: FadeTransition(
+          opacity: Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut)),
+          child: Padding(padding: const EdgeInsets.all(20), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            _buildSectionTitle('Mon Activité Ce Mois'),
+            const SizedBox(height: 14),
+            _buildActivityBanner(),
+            const SizedBox(height: 28),
+            _buildSectionTitle('Pilotage Industriel'),
+            const SizedBox(height: 14),
+            _buildFeatures(),
+            const SizedBox(height: 40),
+          ])),
+        )),
+      ]),
+      bottomNavigationBar: _buildBottomNav(),
     );
   }
 
-  Widget _buildAppBarIcon(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.18),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.2),
+  Widget _buildSectionTitle(String title) => Text(
+    title,
+    style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy, letterSpacing: -0.5),
+  );
+
+  Widget _buildTopBar() {
+    return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+      Row(children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)],
           ),
+          child: const Icon(Icons.auto_awesome_mosaic_rounded, color: AppTheme.primaryNavy, size: 18),
         ),
-        child: Icon(icon, color: Colors.white, size: 22),
+        const SizedBox(width: 12),
+        Text('ICEM', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
+      ]),
+      GestureDetector(
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
+        child: Container(
+          padding: const EdgeInsets.all(2),
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white38, width: 2)),
+          child: const CircleAvatar(radius: 16, backgroundColor: Colors.white24, child: Icon(Icons.person_rounded, color: Colors.white, size: 18)),
+        ),
       ),
-    );
+    ]);
   }
 
-  Widget _buildWelcomeContent(BuildContext context) {
+  Widget _buildWelcome() {
     final auth = Provider.of<AuthProvider>(context);
     final user = auth.currentUser;
-    final now = DateTime.now();
-    final months = [
-      '',
-      'Jan',
-      'Fév',
-      'Mar',
-      'Avr',
-      'Mai',
-      'Jun',
-      'Jul',
-      'Août',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Déc'
-    ];
-    final dateStr = '${now.day} ${months[now.month]} ${now.year}';
+    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      Text('Bonjour, ${user?.fullName ?? "Utilisateur"}', style: GoogleFonts.inter(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+      const SizedBox(height: 2),
+      Text('Centre de Contrôle', style: GoogleFonts.inter(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900, letterSpacing: -0.5)),
+      const SizedBox(height: 10),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white24),
+        ),
+        child: Row(mainAxisSize: MainAxisSize.min, children: [
+          Container(width: 6, height: 6, decoration: const BoxDecoration(color: AppTheme.successGreen, shape: BoxShape.circle)),
+          const SizedBox(width: 6),
+          Text(user?.role.name.toUpperCase() ?? 'TECHNICIEN', style: GoogleFonts.inter(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800, letterSpacing: 1)),
+        ]),
+      ),
+    ]);
+  }
 
-    String greeting;
-    if (now.hour < 12) {
-      greeting = 'Bonjour';
-    } else if (now.hour < 18) {
-      greeting = 'Bon après-midi';
-    } else {
-      greeting = 'Bonsoir';
+  /// Bannière compacte avec les 4 KPIs temps réel côte à côte
+  Widget _buildActivityBanner() {
+    if (_statsLoading) {
+      return Container(
+        height: 100,
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+        child: const Center(child: CircularProgressIndicator(color: AppTheme.accentBlue, strokeWidth: 2)),
+      );
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Text(
-              '$greeting 👋',
-              style: GoogleFonts.inter(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontSize: 15,
-              ),
-            ),
-            const Spacer(),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.18),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                dateStr,
-                style: GoogleFonts.inter(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Text(
-          user?.fullName ?? 'Utilisateur',
-          style: GoogleFonts.inter(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.3,
-          ),
-        ),
-        const SizedBox(height: 4),
-        if (user?.role != null)
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E3A5F)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: const Color(0xFF0F172A).withOpacity(0.3), blurRadius: 16, offset: const Offset(0, 6))],
+      ),
+      child: Column(children: [
+        // Titre de la bannière
+        Row(children: [
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.22),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              user!.role.name,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.insights_rounded, color: Colors.white, size: 14),
+          ),
+          const SizedBox(width: 10),
+          Text('Performance du Mois', style: GoogleFonts.inter(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w800)),
+          const Spacer(),
+          GestureDetector(
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage())),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+              child: Text('Voir +', style: GoogleFonts.inter(color: Colors.white70, fontSize: 9, fontWeight: FontWeight.w700)),
             ),
           ),
-      ],
+        ]),
+        const SizedBox(height: 16),
+        // 4 KPIs en ligne
+        Row(children: [
+          _bannerKpi('$_totalInspections', 'Inspections', const Color(0xFF6366F1)),
+          _bannerDivider(),
+          _bannerKpi('${_conformityRate.toStringAsFixed(0)}%', 'Conformité', const Color(0xFF10B981)),
+          _bannerDivider(),
+          _bannerKpi('$_totalAnomalies', 'Anomalies', const Color(0xFFF43F5E)),
+          _bannerDivider(),
+          _bannerKpi('$_totalCables', 'Câbles', const Color(0xFF0EA5E9)),
+        ]),
+      ]),
     );
   }
 
-  Widget _buildStatsSection(BuildContext context) {
-    final auth = Provider.of<AuthProvider>(context);
-    final user = auth.currentUser;
-    final stats = user?.stats;
+  Widget _bannerKpi(String value, String label, Color color) => Expanded(
+    child: Column(children: [
+      Text(value, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w900, color: color)),
+      const SizedBox(height: 4),
+      Text(label, style: GoogleFonts.inter(fontSize: 9, color: Colors.white54, fontWeight: FontWeight.w700)),
+    ]),
+  );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Mes Performances',
-              style: GoogleFonts.inter(
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-                color: AppTheme.textDark,
-              ),
-            ),
-            Text(
-              'Aujourd\'hui',
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.accentBlue,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        _statsLoading
-            ? const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            : GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 2,
-                mainAxisSpacing: 12,
-                crossAxisSpacing: 12,
-                childAspectRatio: 0.9,
-                children: [
-                  StatsCard(
-                    value: '${stats?.inspectionsCount ?? 0}',
-                    label: 'Mes Inspections',
-                    icon: Icons.assignment_turned_in_rounded,
-                    color: AppTheme.accentBlue,
-                  ),
-                  StatsCard(
-                    value: '${stats?.cablesProcessed ?? 0}',
-                    label: 'Câbles Traités',
-                    icon: Icons.cable_rounded,
-                    color: AppTheme.secondaryOrange,
-                  ),
-                  StatsCard(
-                    value: '${stats?.anomaliesDetected ?? 0}',
-                    label: 'Mes Anomalies',
-                    icon: Icons.warning_amber_rounded,
-                    color: AppTheme.warningAmber,
-                  ),
-                  StatsCard(
-                    value: '${(stats?.conformityRate ?? 0.0).toStringAsFixed(0)}%',
-                    label: 'Mon Rendement',
-                    icon: Icons.trending_up_rounded,
-                    color: AppTheme.successGreen,
-                  ),
-                ],
-              ),
-      ],
-    );
+  Widget _bannerDivider() => Container(width: 1, height: 36, color: Colors.white12);
+
+  Widget _buildFeatures() {
+    return Column(children: [
+      _featureTile(Icons.assignment_rounded, 'Ordres de Fabrication', 'Gérer les productions', const Color(0xFF6366F1),
+        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersListPage()))),
+      _featureTile(Icons.camera_alt_rounded, 'Inspection Vision IA', 'Contrôle automatique', const Color(0xFF0EA5E9),
+        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InspectionPage()))),
+      _featureTile(Icons.notification_important_rounded, 'Registre Anomalies', 'Suivi non-conformités', const Color(0xFFF43F5E),
+        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnomaliesListPage()))),
+      _featureTile(Icons.insights_rounded, 'Rapports & Analytics', 'Performance industrielle', const Color(0xFF10B981),
+        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()))),
+    ]);
   }
 
-  Widget _buildFeaturesSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Fonctionnalités',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.textDark,
+  Widget _featureTile(IconData icon, String title, String desc, Color color, VoidCallback onTap) => Container(
+    margin: const EdgeInsets.only(bottom: 10),
+    child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: color.withOpacity(0.1)),
           ),
+          child: Row(children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [color.withOpacity(0.15), color.withOpacity(0.05)]),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 22),
+            ),
+            const SizedBox(width: 16),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.primaryNavy)),
+              const SizedBox(height: 2),
+              Text(desc, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textGrey, fontWeight: FontWeight.w500)),
+            ])),
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(color: AppTheme.surfaceGrey, borderRadius: BorderRadius.circular(8)),
+              child: Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color),
+            ),
+          ]),
         ),
-        const SizedBox(height: 14),
-        FeatureCard(
-          icon: Icons.assignment_outlined,
-          title: 'Ordres de fabrication',
-          description: 'Consulter et gérer les ordres de fabrication',
-          color: AppTheme.accentBlue,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const OrdersListPage()),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        FeatureCard(
-          icon: Icons.camera_alt_outlined,
-          title: 'Inspection par caméra',
-          description: 'Lancer l\'inspection automatique avec IA',
-          color: AppTheme.secondaryOrange,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const InspectionPage()),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        FeatureCard(
-          icon: Icons.warning_amber_outlined,
-          title: 'Gestion des anomalies',
-          description: 'Consulter et traiter les anomalies détectées',
-          color: AppTheme.warningAmber,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                  builder: (context) => const AnomaliesListPage()),
-            );
-          },
-        ),
-        const SizedBox(height: 12),
-        FeatureCard(
-          icon: Icons.bar_chart_outlined,
-          title: 'Rapports et statistiques',
-          description: 'Générer et consulter les rapports qualité',
-          color: AppTheme.successGreen,
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const ReportsPage()),
-            );
-          },
-        ),
-      ],
+      ),
+    ),
+  );
+
+  Widget _buildBottomNav() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, -2))],
+      ),
+      child: BottomNavigationBar(
+        currentIndex: _currentTab,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        selectedItemColor: AppTheme.accentBlue,
+        unselectedItemColor: AppTheme.textLight,
+        showSelectedLabels: true,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
+        selectedLabelStyle: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 10),
+        unselectedLabelStyle: GoogleFonts.inter(fontSize: 10),
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded, size: 22), label: 'Tableau'),
+          BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner_rounded, size: 22), label: 'Scanner'),
+          BottomNavigationBarItem(icon: Icon(Icons.person_rounded, size: 22), label: 'Profil'),
+        ],
+        onTap: (i) {
+          setState(() => _currentTab = i);
+          if (i == 1) Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersListPage()));
+          if (i == 2) Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+        },
+      ),
     );
   }
 }

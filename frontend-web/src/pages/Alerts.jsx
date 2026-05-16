@@ -4,6 +4,7 @@ import { AnomalyService } from '../services/api';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
 import PageHeader from '../components/PageHeader';
+import CustomSelect from '../components/CustomSelect';
 
 const SeverityBadge = ({ severity }) => {
     const s = severity?.toLowerCase() || 'moyenne';
@@ -46,16 +47,16 @@ const Alerts = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('Tous');
     const [selectedAlert, setSelectedAlert] = useState(null);
-    const [corrective, setCorrective] = useState('');
 
     const fetchAlerts = async () => {
         try {
             setLoading(true);
             const response = await AnomalyService.getAll();
-            const sorted = (response.data || []).sort((a, b) => {
-                const order = { critique: 0, haute: 0, majeur: 1, moyenne: 1, faible: 2, mineur: 2 };
-                return (order[a.severity?.toLowerCase()] ?? 3) - (order[b.severity?.toLowerCase()] ?? 3);
-            });
+            const allAnomalies = response.data || [];
+            // Tri par date décroissante pour le monitoring
+            const sorted = allAnomalies.sort((a, b) => 
+                new Date(b.detectedAt || 0) - new Date(a.detectedAt || 0)
+            );
             setAlerts(sorted);
         } catch (error) {
             console.error("Erreur chargement alertes", error);
@@ -68,55 +69,27 @@ const Alerts = () => {
         fetchAlerts(); 
         
         // Real-time listener for new alerts
-        const q = query(collection(db, 'anomaly'), orderBy('detectedAt', 'desc'), limit(1));
+        const q = query(collection(db, 'anomaly'), limit(50));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (!snapshot.empty && !loading) {
-                // If a new document is detected, refresh the list
                 fetchAlerts();
-                
-                // Show a brief notification for critical ones
-                const newAnom = snapshot.docs[0].data();
-                if (newAnom.severity === 'Critique' || newAnom.severity === 'Majeur') {
-                    // One could use a toast library here, but we will use a simple state or console for now
-                    console.log("Nouvelle anomalie détectée !", newAnom);
-                }
             }
         });
 
         return () => unsubscribe();
     }, []);
 
-    const handleTreat = async () => {
-        if (!selectedAlert) return;
-        try {
-            await AnomalyService.update(selectedAlert.id, {
-                statut: 'traitee',
-                mesureCorrective: corrective
-            });
-            setSelectedAlert(null);
-            setCorrective('');
-            fetchAlerts();
-        } catch (error) {
-            console.error("Erreur traitement", error);
-        }
-    };
+    // On affiche uniquement les alertes critiques
+    const filteredAlerts = alerts.filter(a => a.severity?.toLowerCase() === 'critique');
 
-    const filteredAlerts = alerts.filter(a => {
-        const matchesSearch = searchTerm === '' ||
-            a.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            a.cableId?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchesSeverity = filterSeverity === 'Tous' || a.severity?.toLowerCase() === filterSeverity.toLowerCase();
-        return matchesSearch && matchesSeverity;
-    });
-
-    const activeCount = alerts.filter(a => a.statut !== 'traitee' && a.statut !== 'archivee').length;
-    const criticalCount = alerts.filter(a => ['critique', 'haute'].includes(a.severity?.toLowerCase())).length;
+    const activeCount = filteredAlerts.filter(a => a.statut !== 'traitee' && a.statut !== 'archivee').length;
+    const criticalCount = filteredAlerts.filter(a => ['critique', 'haute'].includes(a.severity?.toLowerCase())).length;
 
     return (
         <div className="flex flex-col gap-6">
             <PageHeader 
-                title="Gestion des Alertes"
-                subtitle="Surveillance en temps réel et traitement des anomalies qualité critiques"
+                title="Registre des Anomalies"
+                subtitle="Flux complet de surveillance et suivi des non-conformités détectées"
                 icon={<Bell />}
                 actions={
                     <div className="flex items-center gap-3">
@@ -132,180 +105,231 @@ const Alerts = () => {
                 }
             />
 
-            {/* Filters */}
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
-                    <input
-                        type="text"
-                        placeholder="Rechercher par type ou câble..."
-                        className="input-field pl-9 text-sm"
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                </div>
-                <select
-                    className="input-field w-full md:w-44 text-sm"
-                    value={filterSeverity}
-                    onChange={(e) => setFilterSeverity(e.target.value)}
-                >
-                    <option value="Tous">Toutes gravités</option>
-                    <option value="Critique">Critique</option>
-                    <option value="Majeur">Majeur</option>
-                    <option value="Mineur">Mineur</option>
-                </select>
-            </div>
-
             {/* Alerts List */}
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4">
                 {loading ? (
-                    <div className="card py-16 text-center">
-                        <div className="w-5 h-5 border-2 border-slate-100 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3"></div>
-                        <p className="text-sm text-slate-400">Chargement des alertes...</p>
+                    <div className="card py-24 text-center">
+                        <div className="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Surveillance ICEM en cours...</p>
                     </div>
                 ) : filteredAlerts.length > 0 ? (
-                    filteredAlerts.map((alert) => (
-                        <div key={alert.id} 
-                             onClick={() => setSelectedAlert(alert)}
-                             className="card flex flex-col md:flex-row md:items-center gap-4 !p-4 cursor-pointer hover:bg-slate-50/80 transition-colors border-l-4 border-l-transparent hover:border-l-indigo-500 group">
-                            <div className="flex items-center gap-4 flex-1">
-                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-inner
-                                    ${['critique', 'haute'].includes(alert.severity?.toLowerCase()) ? 'bg-red-100 text-red-600 border border-red-200' : 'bg-amber-100 text-amber-600 border border-amber-200'}`}>
-                                    <AlertTriangle size={28} />
+                    filteredAlerts.map((alert, index) => {
+                        const isCritical = ['critique', 'haute'].includes(alert.severity?.toLowerCase());
+                        const isTraitee = alert.statut === 'traitee';
+                        
+                        return (
+                            <div key={alert.id} 
+                                 onClick={() => setSelectedAlert(alert)}
+                                 className={`group relative bg-white/80 backdrop-blur-xl rounded-[32px] border border-white/80 p-6 flex flex-col lg:flex-row lg:items-center gap-6 cursor-pointer transition-all duration-500 hover:shadow-[0_30px_60px_-12px_rgba(30,27,75,0.15)] hover:-translate-y-1.5 overflow-hidden
+                                 ${isCritical && !isTraitee ? 'ring-2 ring-red-500/30 bg-red-50/40' : 'hover:bg-white'}`}>
+                                
+                                {/* Severity Edge Indicator with Glow */}
+                                <div className={`absolute left-0 top-0 bottom-0 w-2.5 transition-all duration-500 group-hover:w-3
+                                    ${isCritical ? 'bg-red-500 shadow-[4px_0_15px_rgba(239,68,68,0.3)]' : 'bg-amber-400 shadow-[4px_0_15px_rgba(245,158,11,0.2)]'}`}></div>
+
+                                <div className="flex items-center gap-6 flex-1 min-w-0">
+                                    {/* Icon Container with Animated Glow */}
+                                    <div className="relative flex-shrink-0">
+                                        <div className={`absolute inset-0 blur-2xl opacity-30 group-hover:opacity-50 transition-all duration-700
+                                            ${isCritical ? 'bg-red-500 animate-pulse' : 'bg-amber-500'}`}></div>
+                                        <div className={`relative w-16 h-16 rounded-[22px] flex items-center justify-center border-2 transition-all duration-500 group-hover:scale-110
+                                            ${isCritical ? 'bg-red-50 text-red-600 border-red-100' : 'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                            {isTraitee ? <CheckCircle size={32} strokeWidth={2.5} /> : <AlertTriangle size={32} strokeWidth={2.5} />}
+                                        </div>
+                                    </div>
+
+                                    <div className="min-w-0 flex-1">
+                                        <div className="flex items-center gap-3 mb-2 flex-wrap">
+                                            <h3 className="text-[19px] font-black text-slate-900 capitalize tracking-tight group-hover:text-blue-600 transition-colors">{alert.type}</h3>
+                                            {isTraitee ? (
+                                                <span className="px-3 py-1 bg-emerald-500 text-white text-[9px] font-black uppercase rounded-lg shadow-sm shadow-emerald-200 tracking-widest border border-emerald-400/20">RÉSOLU</span>
+                                            ) : isCritical && (
+                                                <span className="px-3 py-1 bg-red-600 text-white text-[9px] font-black uppercase rounded-lg shadow-sm shadow-red-200 tracking-widest animate-pulse">ACTION REQUISE</span>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-4 text-[13px] font-bold text-slate-500 flex-wrap">
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-all">
+                                                <Shield size={14} className="text-slate-400 group-hover:text-blue-500" />
+                                                <span className="text-slate-400">Câble:</span>
+                                                <span className="text-slate-900">{alert.cableId || '—'}</span>
+                                            </div>
+                                            <div className="flex items-center gap-2 px-3 py-1 bg-slate-50 rounded-full border border-slate-100 group-hover:bg-blue-50 group-hover:border-blue-100 transition-all">
+                                                <Clock size={14} className="text-slate-400 group-hover:text-blue-500" />
+                                                <span className="text-slate-900">{alert.technicianName || 'Surveillance IA'}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="min-w-0">
-                                    <h3 className="text-base font-bold text-slate-900 capitalize mb-1">{alert.type}</h3>
-                                    <p className="text-sm text-slate-600">
-                                        Câble: <span className="font-medium text-slate-800">{alert.cableId?.substring(0, 12) || '—'}</span> • Par: <span className="font-bold text-slate-800">{alert.technicianName || 'Auto System'}</span>
-                                    </p>
+
+                                <div className="flex items-center gap-4 flex-wrap lg:justify-end">
+                                    <SeverityBadge severity={alert.severity} />
+                                    
+                                    <div className="flex flex-col items-end gap-1 px-4 py-2 bg-white rounded-2xl border border-slate-100 shadow-sm min-w-[120px]">
+                                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Détecté le</span>
+                                        <div className="flex items-center gap-2">
+                                            <Clock size={14} className="text-blue-500" />
+                                            <span className="text-[13px] font-black text-slate-900">
+                                                {alert.detectedAt ? new Date(alert.detectedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex items-center">
+                                        {isTraitee ? (
+                                            <div className="w-10 h-10 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center border border-emerald-100 shadow-sm group-hover:bg-emerald-500 group-hover:text-white transition-all duration-500">
+                                                <CheckCircle size={20} strokeWidth={3} />
+                                            </div>
+                                        ) : (
+                                            <div className="w-10 h-10 bg-amber-50 text-amber-500 rounded-full flex items-center justify-center border border-amber-100 shadow-sm group-hover:bg-amber-500 group-hover:text-white transition-all duration-500">
+                                                <Clock size={20} strokeWidth={3} />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-4 flex-wrap">
-                                <SeverityBadge severity={alert.severity} />
-                                <StatusBadge status={alert.statut || 'detectee'} />
-                                <span className="flex items-center gap-1.5 text-sm font-medium text-slate-500 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                                    <Clock size={16} />
-                                    {alert.detectedAt ? new Date(alert.detectedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
-                                </span>
-                            </div>
-                            <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                                {alert.statut !== 'traitee' && (
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); setSelectedAlert(alert); }}
-                                        className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-lg transition-colors"
-                                    >
-                                        <CheckCircle size={15} />
-                                        Traiter
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                        );
+                    })
                 ) : (
-                    <div className="card flex flex-col items-center py-20 text-slate-400 gap-3">
-                        <Shield size={48} className="text-emerald-400" />
-                        <p className="text-base font-medium text-slate-600">Aucune alerte trouvée</p>
-                        <p className="text-sm">Toutes les alertes ont été traitées ou les filtres ne correspondent à aucun résultat.</p>
+                    <div className="card flex flex-col items-center py-24 text-center">
+                        <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-6 shadow-inner">
+                            <Shield size={48} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">Système de Surveillance OK</h3>
+                        <p className="text-slate-400 font-bold max-w-sm mx-auto">Aucune anomalie détectée pour le moment. Votre chaîne de production est conforme aux standards qualité.</p>
                     </div>
                 )}
             </div>
 
-            {/* Details & Treat Modal */}
+            {/* Details Modal */}
             {selectedAlert && (
-                <div className="modal-overlay" onClick={() => setSelectedAlert(null)}>
-                    <div className="modal-content !max-w-2xl" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <div>
-                                <h2 className="text-xl font-bold text-slate-900 flex items-center gap-3">
-                                    <AlertTriangle size={24} className={['critique', 'haute'].includes(selectedAlert.severity?.toLowerCase()) ? 'text-red-500' : 'text-amber-500'} />
-                                    Détails de l'Anomalie
-                                </h2>
-                            </div>
-                            <button onClick={() => setSelectedAlert(null)} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
-                                <X size={24} className="text-slate-500" />
-                            </button>
-                        </div>
-                        <div className="p-8 space-y-8">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100 space-y-1">
-                                    <p className="text-xs font-bold text-blue-500 uppercase tracking-widest">Type d'anomalie</p>
-                                    <p className="text-xl font-black text-blue-900 capitalize">{selectedAlert.type}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-1">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Gravité</p>
-                                    <div className="pt-1"><SeverityBadge severity={selectedAlert.severity} /></div>
-                                </div>
-                                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-1">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Câble / Commande</p>
-                                    <p className="text-lg font-bold text-slate-800">{selectedAlert.cableId?.substring(0, 16) || '—'}</p>
-                                </div>
-                                <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-1">
-                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Détecté par</p>
-                                    <p className="text-lg font-bold text-slate-800">{selectedAlert.technicianName || 'Système IA'}</p>
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="p-4 bg-amber-50/50 rounded-2xl border border-amber-100 flex justify-between items-center">
-                                    <span className="text-sm font-bold text-amber-700">Date et Heure</span>
-                                    <span className="font-black text-amber-900">{new Date(selectedAlert.detectedAt).toLocaleString()}</span>
-                                </div>
-                                <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100 flex justify-between items-center">
-                                    <span className="text-sm font-bold text-emerald-700">Confiance IA</span>
-                                    <span className="font-black text-emerald-900">{selectedAlert.confidence ? (selectedAlert.confidence * 100).toFixed(0) : 0}%</span>
-                                </div>
-                            </div>
-                            
-                            {selectedAlert.statut !== 'traitee' ? (
-                                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-200">
-                                    <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
-                                        <Shield size={20} className="text-blue-500" />
-                                        Traitement de l'alerte
-                                    </h3>
-                                    <label className="block text-sm font-semibold text-slate-700 mb-2">Mesure corrective prise</label>
-                                    <textarea
-                                        rows={3}
-                                        className="input-field resize-none text-base p-4"
-                                        placeholder="Décrivez la mesure corrective appliquée pour résoudre cette anomalie..."
-                                        value={corrective}
-                                        onChange={(e) => setCorrective(e.target.value)}
-                                    />
-                                    <div className="flex gap-4 pt-6">
-                                        <button
-                                            onClick={() => setSelectedAlert(null)}
-                                            className="flex-1 btn-secondary py-3 text-base"
-                                        >
-                                            Fermer
-                                        </button>
-                                        <button
-                                            onClick={handleTreat}
-                                            className="flex-1 btn-primary py-3 text-base flex items-center justify-center gap-2"
-                                        >
-                                            <CheckCircle size={20} />
-                                            Confirmer le traitement
-                                        </button>
-                                    </div>
-                                </div>
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-300" onClick={() => setSelectedAlert(null)}>
+                    <div className="bg-white rounded-[40px] shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row animate-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+                        
+                        {/* Left Side: Visual Context */}
+                        <div className={`w-full md:w-1/2 relative min-h-[400px] flex flex-col justify-end p-8 lg:p-12 overflow-hidden ${selectedAlert.imageUrl ? 'bg-black' : 'bg-blue-600'}`}>
+                            {!selectedAlert.imageUrl && (
+                                <>
+                                    <div className="absolute inset-0 bg-gradient-to-br from-blue-600 via-blue-500 to-indigo-600"></div>
+                                    <div className="absolute -top-24 -left-24 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
+                                </>
+                            )}
+                            {selectedAlert.imageUrl ? (
+                                <img 
+                                    src={selectedAlert.imageUrl} 
+                                    alt="Anomaly" 
+                                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 hover:scale-105"
+                                />
                             ) : (
-                                <div className="p-6 bg-emerald-50 rounded-3xl border border-emerald-100">
-                                    <h3 className="text-base font-bold text-emerald-800 mb-2 flex items-center gap-2">
-                                        <CheckCircle size={20} className="text-emerald-600" />
-                                        Alerte Traitée
-                                    </h3>
-                                    <p className="text-sm text-emerald-700 mb-4 font-medium">Cette anomalie a été traitée avec succès.</p>
-                                    {selectedAlert.mesureCorrective && (
-                                        <div className="p-4 bg-white/60 rounded-xl border border-emerald-200/50">
-                                            <p className="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Mesure corrective</p>
-                                            <p className="text-emerald-900 font-medium">{selectedAlert.mesureCorrective}</p>
-                                        </div>
-                                    )}
-                                    <div className="pt-6">
-                                        <button onClick={() => setSelectedAlert(null)} className="w-full btn-secondary py-3 text-base">
-                                            Fermer
-                                        </button>
+                                <div className="absolute inset-0 flex flex-col items-center justify-center p-12 text-center">
+                                    <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[32px] flex items-center justify-center mb-6 border border-white/20 shadow-2xl">
+                                        <AlertTriangle size={48} className="text-white" />
                                     </div>
+                                    <p className="text-[10px] font-black uppercase tracking-widest text-white/40">Aucune capture visuelle</p>
                                 </div>
                             )}
+                            
+                            <div className="relative z-10">
+                                <div className="flex items-center gap-3 mb-4">
+                                    <span className="px-4 py-2 rounded-xl bg-white/15 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/20">
+                                        Gravité {selectedAlert.severity}
+                                    </span>
+                                    <span className="px-4 py-2 rounded-xl bg-white/15 backdrop-blur-md text-white text-[10px] font-black uppercase tracking-widest border border-white/20">
+                                        Confiance {selectedAlert.confidence ? (selectedAlert.confidence * 100).toFixed(0) : 0}%
+                                    </span>
+                                </div>
+                                <h2 className="text-4xl font-black text-white capitalize leading-[1.1] tracking-tight drop-shadow-lg">{selectedAlert.type}</h2>
+                            </div>
+                            
+                            <button 
+                                onClick={() => setSelectedAlert(null)}
+                                className="absolute top-6 right-6 w-12 h-12 bg-white/10 hover:bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center text-white transition-all z-20 border border-white/20 shadow-xl"
+                            >
+                                <X size={24} />
+                            </button>
+                        </div>
+
+                        {/* Right Side: Data & Actions */}
+                        <div className="w-full md:w-1/2 p-8 lg:p-12 overflow-y-auto">
+                            <div className="flex flex-col h-full">
+                                <div className="mb-8">
+                                    <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6 border-b border-slate-100 pb-2">Spécifications Techniques</h3>
+                                    
+                                    <div className="grid grid-cols-2 gap-y-8">
+                                        <div>
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Identifiant Câble</p>
+                                            <p className="text-lg font-black text-slate-900">{selectedAlert.cableId || '—'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Localisation</p>
+                                            <p className="text-lg font-black text-slate-900">{selectedAlert.location || 'Atelier ICEM'}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Date de détection</p>
+                                            <p className="text-lg font-black text-slate-900">
+                                                {selectedAlert.detectedAt ? new Date(selectedAlert.detectedAt).toLocaleDateString('fr-FR') : '—'}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Heure précise</p>
+                                            <p className="text-lg font-black text-slate-900">
+                                                {selectedAlert.detectedAt ? new Date(selectedAlert.detectedAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                                            </p>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-1">Responsable Qualité</p>
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-black text-xs">
+                                                    {(selectedAlert.technicianName || 'IA').substring(0, 1).toUpperCase()}
+                                                </div>
+                                                <p className="text-lg font-black text-slate-900">{selectedAlert.technicianName || 'Surveillance IA Automatique'}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="mt-auto pt-8 border-t border-slate-100">
+                                    <div className={`p-6 rounded-3xl border transition-all duration-500 ${
+                                        selectedAlert.statut === 'traitee' 
+                                            ? 'bg-emerald-50 border-emerald-100' 
+                                            : 'bg-amber-50 border-amber-100'
+                                    }`}>
+                                        <div className="flex items-center gap-4 mb-4">
+                                            <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                                                selectedAlert.statut === 'traitee' ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+                                            }`}>
+                                                {selectedAlert.statut === 'traitee' ? <CheckCircle size={22} /> : <Clock size={22} />}
+                                            </div>
+                                            <div>
+                                                <p className={`text-[10px] font-black uppercase tracking-widest ${
+                                                    selectedAlert.statut === 'traitee' ? 'text-emerald-600' : 'text-amber-600'
+                                                }`}>Statut de résolution</p>
+                                                <p className="text-base font-black text-slate-900">
+                                                    {selectedAlert.statut === 'traitee' ? 'Anomalie Résolue' : 'En attente de traitement'}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        
+                                        {selectedAlert.statut === 'traitee' ? (
+                                            <div className="bg-white/60 p-4 rounded-xl border border-emerald-100">
+                                                <p className="text-sm italic text-slate-700 font-medium leading-relaxed">
+                                                    "{selectedAlert.mesureCorrective || 'Le technicien a confirmé la mise en conformité du câble.'}"
+                                                </p>
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm font-bold text-amber-700/80 leading-relaxed">
+                                                Cette anomalie nécessite une intervention physique sur la ligne de production pour validation et correction.
+                                            </p>
+                                        )}
+                                    </div>
+                                    
+                                    <button
+                                        onClick={() => setSelectedAlert(null)}
+                                        className="w-full mt-6 bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-widest transition-all hover:shadow-[0_20px_40px_-10px_rgba(37,99,235,0.4)] active:scale-[0.98] border border-blue-500/20"
+                                    >
+                                        Fermer le registre
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>

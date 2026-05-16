@@ -1,35 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Users as UsersIcon, Shield, Mail, Phone, UserPlus, Pencil, X, KeyRound, Loader2, Search, Plus } from 'lucide-react';
-import { UserService, RoleService } from '../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { Users as UsersIcon, Shield, Mail, Phone, UserPlus, Pencil, X, KeyRound, Loader2, Search, Plus, Upload, Trash2, FileSignature } from 'lucide-react';
+import { UserService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import PageHeader from '../components/PageHeader';
 import toast from 'react-hot-toast';
 
-const RoleBadge = ({ role, allRoles = [] }) => {
-    const roleData = allRoles.find(r => r.value === role);
-    const color = roleData?.color || 'slate';
-
-    const colorClasses = {
-        indigo: 'bg-indigo-50 text-indigo-600',
-        blue: 'bg-blue-50 text-blue-600',
-        emerald: 'bg-emerald-50 text-emerald-600',
-        amber: 'bg-amber-50 text-amber-600',
-        red: 'bg-red-50 text-red-600',
-        purple: 'bg-purple-50 text-purple-600',
-        pink: 'bg-pink-50 text-pink-600',
-        slate: 'bg-slate-50 text-slate-600',
-    };
-
-    return (
-        <span className={`px-2 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold ${colorClasses[color] || colorClasses.slate}`}>
-            {roleData?.label || role}
-        </span>
-    );
-};
 
 const Users = () => {
     const [users, setUsers] = useState([]);
-    const [roles, setRoles] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editUser, setEditUser] = useState(null);
@@ -37,9 +15,13 @@ const Users = () => {
     const [newPassword, setNewPassword] = useState('');
     const [resetting, setResetting] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [signatureFile, setSignatureFile] = useState(null);
+    const [signaturePreview, setSignaturePreview] = useState(null);
+    const [uploadingSignature, setUploadingSignature] = useState(false);
+    const signatureInputRef = useRef(null);
     
     const [form, setForm] = useState({
-        fullName: '', username: '', email: '', role: 'technician', roles: [], phone: '', isActive: true
+        fullName: '', username: '', email: '', phone: '', isActive: true
     });
 
     const { canResetPassword } = useAuth();
@@ -47,12 +29,8 @@ const Users = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [usersRes, rolesRes] = await Promise.all([
-                UserService.getAll(),
-                RoleService.getAll()
-            ]);
+            const usersRes = await UserService.getAll();
             setUsers(usersRes.data);
-            setRoles(rolesRes.data);
         } catch (error) {
             toast.error("Erreur de chargement des données");
         } finally {
@@ -64,7 +42,9 @@ const Users = () => {
 
     const openCreateUser = () => {
         setEditUser(null);
-        setForm({ fullName: '', username: '', email: '', role: roles[0]?.value || 'technician', roles: [], phone: '', isActive: true });
+        setForm({ fullName: '', username: '', email: '', phone: '', isActive: true });
+        setSignatureFile(null);
+        setSignaturePreview(null);
         setIsModalOpen(true);
     };
 
@@ -74,24 +54,45 @@ const Users = () => {
             fullName: user.fullName || '',
             username: user.username || '',
             email: user.email || '',
-            role: user.role || (user.roles?.length > 0 ? user.roles[0] : 'technician'),
-            roles: user.roles?.filter(r => r !== (user.role || user.roles[0])) || [],
             phone: user.phone || '',
             isActive: user.isActive !== false,
         });
+        setSignatureFile(null);
+        setSignaturePreview(user.signatureUrl || null);
         setIsModalOpen(true);
+    };
+
+    const handleSignatureSelect = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (!file.type.startsWith('image/')) {
+            toast.error('Veuillez sélectionner une image (PNG, JPG)');
+            return;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('La taille maximale est de 5 Mo');
+            return;
+        }
+        setSignatureFile(file);
+        const reader = new FileReader();
+        reader.onload = (ev) => setSignaturePreview(ev.target.result);
+        reader.readAsDataURL(file);
+    };
+
+    const handleRemoveSignature = () => {
+        setSignatureFile(null);
+        setSignaturePreview(null);
+        if (signatureInputRef.current) signatureInputRef.current.value = '';
     };
 
     const handleUserSubmit = async (e) => {
         e.preventDefault();
         try {
-            const finalRoles = [form.role, ...form.roles];
-            const data = { ...form, roles: [...new Set(finalRoles)] };
+            const data = { ...form, role: 'admin', roles: ['admin'] }; // Default to admin for everyone
+            let userId = editUser?.id;
 
             if (editUser) {
                 await UserService.update(editUser.id, data);
-                setIsModalOpen(false);
-                fetchData();
                 toast.success('Utilisateur mis à jour !');
             } else {
                 const response = await UserService.create({
@@ -99,11 +100,36 @@ const Users = () => {
                     createdAt: new Date().toISOString(),
                     stats: { inspectionsCount: 0, anomaliesDetected: 0, conformityRate: 0, cablesProcessed: 0 }
                 });
+                userId = response.data.id;
                 const password = response.data.defaultPassword || 'Icem2026!';
-                setIsModalOpen(false);
-                fetchData();
                 toast.success(`Utilisateur créé !\nMot de passe : ${password}`, { duration: 8000 });
             }
+
+            // Upload signature if a new file was selected
+            if (signatureFile && userId) {
+                setUploadingSignature(true);
+                try {
+                    await UserService.uploadSignature(userId, signatureFile);
+                    toast.success('Signature uploadée avec succès !');
+                } catch (sigError) {
+                    toast.error("Erreur lors de l'upload de la signature");
+                    console.error(sigError);
+                } finally {
+                    setUploadingSignature(false);
+                }
+            }
+
+            // Delete signature if preview was cleared on an existing user
+            if (editUser && !signaturePreview && editUser.signatureUrl) {
+                try {
+                    await UserService.deleteSignature(editUser.id);
+                } catch (err) {
+                    console.error('Error deleting signature:', err);
+                }
+            }
+
+            setIsModalOpen(false);
+            fetchData();
         } catch (error) {
             toast.error("Erreur : " + (error.response?.data?.error || error.message));
         }
@@ -185,11 +211,11 @@ const Users = () => {
                             <div className="min-w-0 flex-1">
                                 <div className="flex items-center gap-3 mb-1">
                                     <h3 className="font-bold text-slate-900 text-base">{user.fullName}</h3>
-                                    <div className="flex flex-wrap gap-1">
-                                        {[user.role, ...(user.roles || [])].filter(Boolean).filter((v, i, a) => a.indexOf(v) === i).map(r => (
-                                            <RoleBadge key={r} role={r} allRoles={roles} />
-                                        ))}
-                                    </div>
+                                    {user.signatureUrl && (
+                                        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                            <FileSignature size={12} /> Signature
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
                                     <span className="flex items-center gap-1"><Mail size={14} /> {user.email}</span>
@@ -267,44 +293,72 @@ const Users = () => {
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Rôle Principal</label>
-                                <select 
-                                    className="input-field cursor-pointer"
-                                    value={form.role}
-                                    onChange={(e) => setForm({ ...form, role: e.target.value })}
-                                >
-                                    {roles.map(r => (
-                                        <option key={r.id} value={r.value}>{r.label}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Rôles Additionnels</label>
-                                <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200 max-h-32 overflow-y-auto">
-                                    {roles.filter(r => r.value !== form.role).map(r => (
-                                        <label key={r.id} className="flex items-center gap-3 cursor-pointer">
-                                            <input 
-                                                type="checkbox" 
-                                                className="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500"
-                                                checked={form.roles.includes(r.value)}
-                                                onChange={(e) => {
-                                                    let newRoles = e.target.checked 
-                                                        ? [...form.roles, r.value] 
-                                                        : form.roles.filter(x => x !== r.value);
-                                                    setForm({...form, roles: newRoles});
-                                                }}
+                            {/* Signature Upload Section */}
+                            <div className="col-span-2">
+                                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                                    <span className="flex items-center gap-1.5">
+                                        <FileSignature size={15} className="text-indigo-500" />
+                                        Signature de l'utilisateur
+                                    </span>
+                                </label>
+                                
+                                {signaturePreview ? (
+                                    <div className="relative border-2 border-dashed border-indigo-200 rounded-xl p-4 bg-indigo-50/30">
+                                        <div className="flex items-center justify-center">
+                                            <img 
+                                                src={signaturePreview} 
+                                                alt="Signature" 
+                                                className="max-h-24 object-contain rounded-lg"
+                                                style={{ maxWidth: '100%' }}
                                             />
-                                            <span className="text-xs font-medium text-slate-700">{r.label}</span>
-                                        </label>
-                                    ))}
-                                </div>
+                                        </div>
+                                        <div className="flex justify-center gap-2 mt-3">
+                                            <button
+                                                type="button"
+                                                onClick={() => signatureInputRef.current?.click()}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
+                                            >
+                                                <Upload size={13} /> Remplacer
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={handleRemoveSignature}
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                                            >
+                                                <Trash2 size={13} /> Supprimer
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div 
+                                        onClick={() => signatureInputRef.current?.click()}
+                                        className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center cursor-pointer hover:border-indigo-300 hover:bg-indigo-50/30 transition-all group"
+                                    >
+                                        <Upload size={28} className="mx-auto mb-2 text-slate-300 group-hover:text-indigo-400 transition-colors" />
+                                        <p className="text-sm font-medium text-slate-500 group-hover:text-indigo-600 transition-colors">
+                                            Cliquez pour ajouter une signature
+                                        </p>
+                                        <p className="text-xs text-slate-400 mt-1">PNG, JPG — Max 5 Mo</p>
+                                    </div>
+                                )}
+                                <input
+                                    ref={signatureInputRef}
+                                    type="file"
+                                    accept="image/png,image/jpeg,image/jpg"
+                                    className="hidden"
+                                    onChange={handleSignatureSelect}
+                                />
                             </div>
 
                             <div className="flex gap-3 pt-3">
                                 <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 btn-secondary">Annuler</button>
-                                <button type="submit" className="flex-1 btn-primary">{editUser ? 'Enregistrer' : 'Créer le compte'}</button>
+                                <button type="submit" disabled={uploadingSignature} className="flex-1 btn-primary flex items-center justify-center gap-2">
+                                    {uploadingSignature ? (
+                                        <><Loader2 size={16} className="animate-spin" /> Upload en cours...</>
+                                    ) : (
+                                        editUser ? 'Enregistrer' : 'Créer le compte'
+                                    )}
+                                </button>
                             </div>
                         </form>
                     </div>

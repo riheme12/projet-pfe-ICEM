@@ -1,9 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 /// Une ligne de câble dans la fiche de contrôle électrique ICEM
-/// Correspond à une ligne du tableau de la fiche papier
 class CableDefectRow {
   String numeroSerie;
+  String comment; // Ajouté pour observations par câble
 
   // Fil mal Inséré
   String fmiConnecteur;
@@ -29,6 +29,7 @@ class CableDefectRow {
 
   CableDefectRow({
     this.numeroSerie = '',
+    this.comment = '',
     this.fmiConnecteur = '',
     this.fmiPos = '',
     this.fiConnecteur = '',
@@ -55,6 +56,7 @@ class CableDefectRow {
 
   Map<String, dynamic> toMap() => {
         'numeroSerie': numeroSerie,
+        'comment': comment,
         'fmiConnecteur': fmiConnecteur,
         'fmiPos': fmiPos,
         'fiConnecteur': fiConnecteur,
@@ -69,31 +71,24 @@ class CableDefectRow {
 
   factory CableDefectRow.fromMap(Map<String, dynamic> map) => CableDefectRow(
         numeroSerie: map['numeroSerie'] as String? ?? '',
+        comment: map['comment'] as String? ?? '',
         fmiConnecteur: map['fmiConnecteur'] as String? ?? '',
         fmiPos: map['fmiPos'] as String? ?? '',
         fiConnecteur: map['fiConnecteur'] as String? ?? '',
         fiPos: map['fiPos'] as String? ?? '',
         fiMarCoul: map['fiMarCoul'] as String? ?? '',
-        etiquetteManquanteConnecteur:
-            map['etiquetteManquanteConnecteur'] as String? ?? '',
-        etiquetteInvertieConn1:
-            map['etiquetteInvertieConn1'] as String? ?? '',
-        etiquetteInvertieConn2:
-            map['etiquetteInvertieConn2'] as String? ?? '',
+        etiquetteManquanteConnecteur: map['etiquetteManquanteConnecteur'] as String? ?? '',
+        etiquetteInvertieConn1: map['etiquetteInvertieConn1'] as String? ?? '',
+        etiquetteInvertieConn2: map['etiquetteInvertieConn2'] as String? ?? '',
         connecteurDerivation: map['connecteurDerivation'] as String? ?? '',
-        protectionManquanteConnecteur:
-            map['protectionManquanteConnecteur'] as String? ?? '',
+        protectionManquanteConnecteur: map['protectionManquanteConnecteur'] as String? ?? '',
       );
 }
 
-/// Modèle principal — Fiche de Contrôle Électrique ICEM
-/// Collection Firestore : 'electrical_checklists'
 class ElectricalChecklist {
   final String id;
   final String orderId;
   final String orderReference;
-
-  // Header de la fiche
   final String ligneDeProd;
   final String matriculeOperateur;
   final String controleurId;
@@ -102,15 +97,11 @@ class ElectricalChecklist {
   final String codeCable;
   final String revision;
   final int quantiteCablesControles;
-
-  // Lignes du tableau
   final List<CableDefectRow> cableRows;
-
-  // Résumé
   final int nombreDefauts;
   final String signatureRespLigne;
   final String signatureRespQualite;
-  final String status; // 'Conforme' | 'Non conforme'
+  final String status;
 
   ElectricalChecklist({
     this.id = '',
@@ -141,16 +132,13 @@ class ElectricalChecklist {
       matriculeOperateur: data['matriculeOperateur'] as String? ?? '',
       controleurId: data['controleurId'] as String? ?? '',
       controleurName: data['controleurName'] as String? ?? '',
-      date: data['date'] != null
-          ? (data['date'] as Timestamp).toDate()
-          : DateTime.now(),
+      date: data['date'] != null ? (data['date'] as Timestamp).toDate() : DateTime.now(),
       codeCable: data['codeCable'] as String? ?? '',
       revision: data['revision'] as String? ?? '',
       quantiteCablesControles: data['quantiteCablesControles'] as int? ?? 0,
       cableRows: (data['cableRows'] as List<dynamic>?)
               ?.map((e) => CableDefectRow.fromMap(e as Map<String, dynamic>))
-              .toList() ??
-          [],
+              .toList() ?? [],
       nombreDefauts: data['nombreDefauts'] as int? ?? 0,
       signatureRespLigne: data['signatureRespLigne'] as String? ?? '',
       signatureRespQualite: data['signatureRespQualite'] as String? ?? '',

@@ -1,50 +1,18 @@
 /**
- * Hook d'authentification et de contrôle d'accès RBAC
- * Gère les rôles : admin, manager (responsable qualité), direction
+ * Hook d'authentification simplifié (RBAC annulé)
+ * Tous les utilisateurs ont désormais accès à toutes les fonctionnalités
  */
 
-// Définition des permissions par rôle
-const ROLE_PERMISSIONS = {
-    admin: {
-        label: 'Administrateur',
-        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'roles', 'trends'],
-        canCreate: ['orders', 'cables', 'users', 'roles'],
-        canEdit: ['orders', 'cables', 'users', 'roles', 'anomalies', 'alerts'],
-        canDelete: ['orders', 'cables', 'users', 'roles'],
-        canExport: true,
-        canResetPassword: true,
-        canGenerateReport: true,
-    },
-    manager: {
-        label: 'Responsable Qualité',
-        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'trends'],
-        canCreate: [],
-        canEdit: ['anomalies', 'alerts'],
-        canDelete: [],
-        canExport: true,
-        canResetPassword: false,
-        canGenerateReport: true,
-    },
-    direction: {
-        label: 'Direction',
-        pages: ['dashboard', 'reports', 'trends'],
-        canCreate: [],
-        canEdit: [],
-        canDelete: [],
-        canExport: true,
-        canResetPassword: false,
-        canGenerateReport: false,
-    },
-    technician: {
-        label: 'Technicien Qualité',
-        pages: ['dashboard'],
-        canCreate: [],
-        canEdit: [],
-        canDelete: [],
-        canExport: false,
-        canResetPassword: false,
-        canGenerateReport: false,
-    },
+// Permissions universelles (Admin pour tous)
+const UNIVERSAL_PERMISSIONS = {
+    label: 'Utilisateur ICEM',
+    pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users'],
+    canCreate: ['orders', 'cables', 'users'],
+    canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts'],
+    canDelete: ['orders', 'cables', 'users'],
+    canExport: true,
+    canResetPassword: true,
+    canGenerateReport: true,
 };
 
 // Mapping des paths de routes vers les noms de pages
@@ -55,9 +23,7 @@ const PATH_TO_PAGE = {
     '/anomalies': 'anomalies',
     '/alerts': 'alerts',
     '/reports': 'reports',
-    '/users': 'users',
-    '/roles': 'roles',
-    '/trends': 'trends'
+    '/users': 'users'
 };
 
 /**
@@ -76,39 +42,18 @@ export function getCurrentUser() {
 }
 
 /**
- * Hook principal d'authentification et RBAC
+ * Hook principal d'authentification (Accès Total)
  */
 export function useAuth() {
     const user = getCurrentUser();
-    const roles = user?.roles || (user?.role ? [user.role] : ['technician']);
     
-    // Combine permissions
-    const permissions = {
-        label: roles.map(r => ROLE_PERMISSIONS[r]?.label || r).join(', '),
-        pages: [],
-        canCreate: [],
-        canEdit: [],
-        canDelete: [],
-        canExport: false,
-        canResetPassword: false,
-        canGenerateReport: false,
-    };
-
-    roles.forEach(role => {
-        const p = ROLE_PERMISSIONS[role] || ROLE_PERMISSIONS.technician;
-        permissions.pages = [...new Set([...permissions.pages, ...p.pages])];
-        permissions.canCreate = [...new Set([...permissions.canCreate, ...p.canCreate])];
-        permissions.canEdit = [...new Set([...permissions.canEdit, ...p.canEdit])];
-        permissions.canDelete = [...new Set([...permissions.canDelete, ...p.canDelete])];
-        permissions.canExport = permissions.canExport || p.canExport;
-        permissions.canResetPassword = permissions.canResetPassword || p.canResetPassword;
-        permissions.canGenerateReport = permissions.canGenerateReport || p.canGenerateReport;
-    });
+    // Tout le monde est considéré comme ayant les permissions maximales
+    const permissions = UNIVERSAL_PERMISSIONS;
 
     return {
         user,
-        roles,
-        role: roles[0],
+        roles: ['admin'], // Valeur fixe pour la compatibilité
+        role: 'admin',
         roleLabel: permissions.label,
         
         /** Vérifie si l'utilisateur a accès à une page */
@@ -117,7 +62,7 @@ export function useAuth() {
         /** Vérifie si l'utilisateur a accès à un path de route */
         hasRouteAccess: (path) => {
             const page = PATH_TO_PAGE[path];
-            if (!page) return true; // Les paths non mappés (comme /inspections/:id) sont accessibles
+            if (!page) return true;
             return permissions.pages.includes(page);
         },
         
@@ -144,5 +89,5 @@ export function useAuth() {
     };
 }
 
-export { ROLE_PERMISSIONS, PATH_TO_PAGE };
+export { PATH_TO_PAGE };
 export default useAuth;

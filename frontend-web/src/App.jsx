@@ -10,8 +10,7 @@ import Users from './pages/Users';
 import Login from './pages/Login';
 import InspectionDetails from './pages/InspectionDetails';
 import Profile from './pages/Profile';
-import Trends from './pages/Trends';
-import Roles from './pages/Roles';
+import Cables from './pages/Cables';
 import { useAuth } from './hooks/useAuth';
 import { auth, onAuthStateChanged } from './services/firebase';
 import { AuthService } from './services/api';
@@ -23,16 +22,6 @@ const ProtectedRoute = ({ children }) => {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 };
 
-// Composant pour protéger les routes par rôle (RBAC)
-const RoleRoute = ({ page, children }) => {
-  const { hasPageAccess } = useAuth();
-
-  if (!hasPageAccess(page)) {
-    return <Navigate to="/" replace />;
-  }
-
-  return children;
-};
 
 function App() {
   const [authReady, setAuthReady] = useState(false);
@@ -95,27 +84,12 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="orders" element={
-            <RoleRoute page="orders"><Orders /></RoleRoute>
-          } />
-          <Route path="anomalies" element={
-            <RoleRoute page="anomalies"><Anomalies /></RoleRoute>
-          } />
-          <Route path="alerts" element={
-            <RoleRoute page="alerts"><Alerts /></RoleRoute>
-          } />
-          <Route path="reports" element={
-            <RoleRoute page="reports"><Reports /></RoleRoute>
-          } />
-          <Route path="users" element={
-            <RoleRoute page="users"><Users /></RoleRoute>
-          } />
-          <Route path="trends" element={
-            <RoleRoute page="trends"><Trends /></RoleRoute>
-          } />
-          <Route path="roles" element={
-            <RoleRoute page="roles"><Roles /></RoleRoute>
-          } />
+          <Route path="orders" element={<Orders />} />
+          <Route path="anomalies" element={<Anomalies />} />
+          <Route path="alerts" element={<Alerts />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="users" element={<Users />} />
+          <Route path="cables" element={<Cables />} />
           <Route path="inspections/:id" element={<InspectionDetails />} />
           <Route path="profile" element={<Profile />} />
         </Route>

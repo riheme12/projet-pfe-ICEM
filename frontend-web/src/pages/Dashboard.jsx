@@ -41,37 +41,43 @@ const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend }) =
     }
 
     return (
-        <div className="card group hover:-translate-y-0.5 transition-all duration-200">
-            <div className="flex justify-between items-start mb-3">
-                <div className="w-9 h-9 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-500 group-hover:bg-indigo-100 transition-colors">
-                    {React.cloneElement(icon, { size: 17 })}
-                </div>
-                {trend !== undefined && (
-                    <div className={`flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full
-                        ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-500'}`}>
-                        {trend >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                        {Math.abs(trend)}%
+        <div className="bg-gradient-to-br from-white to-indigo-50/30 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 group hover:shadow-2xl hover:shadow-indigo-900/10 transition-all duration-500 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100/20 rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-125 transition-transform duration-700"></div>
+            <div className="relative z-10">
+                <div className="flex justify-between items-start mb-4">
+                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                        {React.cloneElement(icon, { size: 24 })}
                     </div>
-                )}
+                    {trend !== undefined && (
+                        <div className={`flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-xl
+                            ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                            {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                            {Math.abs(trend)}%
+                        </div>
+                    )}
+                </div>
+                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                <div className="flex items-baseline gap-1">
+                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                        {value}
+                    </h3>
+                    {unit && <span className="text-sm font-black text-slate-400 uppercase tracking-widest">{unit}</span>}
+                </div>
+                {subtitle && <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-3 opacity-60 group-hover:opacity-100 transition-opacity">{subtitle}</p>}
             </div>
-            <p className="stat-label mb-1">{label}</p>
-            <p className="text-2xl font-extrabold text-gray-800 tracking-tight leading-none">
-                {value}{unit && <span className="text-base font-semibold text-gray-300 ml-0.5">{unit}</span>}
-            </p>
-            {subtitle && <p className="text-[11px] text-gray-400 mt-2">{subtitle}</p>}
         </div>
     );
 };
 
 /* ─── Mini stat item ─── */
 const MiniStat = ({ icon, label, value, color }) => (
-    <div className="card flex items-center gap-3 !p-4 hover:-translate-y-0.5 transition-all duration-200">
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-sm font-bold flex-shrink-0 ${color}`}>
+    <div className="bg-gradient-to-br from-white to-slate-50/50 p-6 rounded-[32px] border border-white shadow-xl shadow-indigo-900/5 flex items-center gap-4 hover:shadow-2xl transition-all duration-300">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-sm font-black flex-shrink-0 ${color} shadow-sm`}>
             {icon}
         </div>
         <div>
-            <p className="stat-label">{label}</p>
-            <p className="text-lg font-bold text-gray-800">{value}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+            <p className="text-xl font-black text-slate-900 tracking-tight">{value}</p>
         </div>
     </div>
 );
@@ -107,11 +113,14 @@ const Dashboard = () => {
     const { canExport, user } = useAuth();
 
     useEffect(() => {
-        const qAnomalies = query(collection(db, 'anomaly'), orderBy('detectedAt', 'desc'), limit(5));
+        const qAnomalies = query(collection(db, 'anomaly'), limit(50));
         let isFirstLoad = true;
         const unsubAnomalies = onSnapshot(qAnomalies, (snapshot) => {
             const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setRecentAnomalies(list);
+            // Sort in memory to avoid missing index errors
+            list.sort((a, b) => new Date(b.detectedAt || 0) - new Date(a.detectedAt || 0));
+            const recent = list.slice(0, 5);
+            setRecentAnomalies(recent);
             if (!isFirstLoad && snapshot.docChanges().some(c => c.type === 'added')) {
                 const a = list[0];
                 if (a?.type) toast.error(`🚨 ${a.type} détecté — câble #${a.cableId?.substring(0, 8) || 'N/A'}`, {
@@ -124,23 +133,33 @@ const Dashboard = () => {
             setStats(prev => ({ ...prev, anomalies: { ...prev.anomalies, total: list.length, critique: crit } }));
         }, console.error);
 
-        const qInspections = query(collection(db, 'cable'), orderBy('inspectionDate', 'desc'), limit(5));
+        const qInspections = query(collection(db, 'cable'), limit(50));
         const unsubInspections = onSnapshot(qInspections, (snapshot) => {
-            setRecentInspections(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            // Sort in memory
+            list.sort((a, b) => new Date(b.inspectionDate || 0) - new Date(a.inspectionDate || 0));
+            setRecentInspections(list.slice(0, 5));
         });
 
         const fetchStats = async () => {
             try {
-                const [orderRes, anomalyRes, cableRes, trendsRes] = await Promise.all([
-                    OrderService.getStats(),
-                    AnomalyService.getStats(),
-                    CableService.getStats(),
+                const [summaryRes, trendsRes] = await Promise.all([
+                    StatsService.getSummary(),
                     StatsService.getTrends().catch(() => ({ data: [] })),
                 ]);
-                setStats({ orders: orderRes.data, anomalies: anomalyRes.data, cables: cableRes.data });
+                
+                const data = summaryRes.data;
+                setStats({ 
+                    orders: data.orders, 
+                    anomalies: data.anomalies, 
+                    cables: data.cables 
+                });
                 setTrends(trendsRes.data || []);
-            } catch (e) { console.error(e); }
-            finally { setLoading(false); }
+            } catch (e) { 
+                console.error('Error fetching dashboard stats:', e); 
+            } finally { 
+                setLoading(false); 
+            }
         };
         fetchStats();
 
@@ -165,54 +184,69 @@ const Dashboard = () => {
     const trendData = trends.slice(-12);
 
     const handleExportPDF = async () => {
-        const doc = new jsPDF();
-        const w = doc.internal.pageSize.getWidth();
-        doc.setFillColor(99, 102, 241);
-        doc.rect(0, 0, w, 38, 'F');
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(18); doc.setFont('helvetica', 'bold');
-        doc.text('ICEM Quality Control', 14, 16);
-        doc.setFontSize(10); doc.setFont('helvetica', 'normal');
-        doc.text('Tableau de Bord — ' + new Date().toLocaleString('fr-FR'), 14, 26);
-        doc.setTextColor(30, 32, 53);
-        autoTable(doc, {
-            startY: 48,
-            head: [['KPI', 'Valeur']],
-            body: [
-                ['Ordres en cours', stats.orders.enCours || 0],
-                ['Ordres terminés', stats.orders.termine || 0],
-                ['Anomalies critiques', stats.anomalies.critique || 0],
-                ['Taux de conformité', `${conformityRate}%`],
-                ['Câbles inspectés', stats.cables.total || 0],
-            ],
-            theme: 'grid',
-            headStyles: { fillColor: [99, 102, 241], textColor: 255 },
-            alternateRowStyles: { fillColor: [238, 242, 255] },
-        });
-        doc.save(`ICEM_Dashboard_${new Date().toISOString().split('T')[0]}.pdf`);
+        const toastId = toast.loading("Génération du rapport exécutif...");
+        try {
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
+            
+            // Header
+            pdf.setFillColor(15, 23, 42);
+            pdf.rect(0, 0, pageWidth, 40, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(22);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('ICEM QUALITY DASHBOARD', 15, 18);
+            
+            pdf.setFontSize(9);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`GÉNÉRÉ LE : ${new Date().toLocaleString('fr-FR')}`, 15, 28);
+            pdf.text(`UTILISATEUR : ${user?.fullName || 'DIRECTEUR'}`, 15, 33);
+
+            // Table Summary
+            autoTable(pdf, {
+                startY: 50,
+                head: [['Indicateur', 'Valeur Actuelle']],
+                body: [
+                    ['Ordres en cours', stats.orders.enCours || 0],
+                    ['Câbles Inspectés (30j)', stats.cables.total || 0],
+                    ['Taux de Conformité', `${conformityRate}%`],
+                    ['Anomalies Critiques', stats.anomalies.critique || 0],
+                    ['Total Anomalies', stats.anomalies.total || 0],
+                ],
+                theme: 'striped',
+                headStyles: { fillColor: [79, 70, 229] }
+            });
+
+            pdf.save(`ICEM_Dashboard_Summary_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success("Rapport exporté !", { id: toastId });
+        } catch (e) {
+            console.error(e);
+            toast.error("Erreur d'export", { id: toastId });
+        }
     };
 
     return (
         <div className="flex flex-col gap-5">
             <Toaster position="top-right" />
 
-            <PageHeader 
-                title={`Bonjour, ${user?.fullName?.split(' ')[0] || 'Utilisateur'}`}
-                subtitle="Voici l'état global de la qualité de production en temps réel"
-                icon={<LayoutDashboard />}
-                actions={
-                    canExport && (
-                        <button onClick={handleExportPDF}
-                            className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/20">
-                            <Download size={18} />
-                            Exporter PDF
+            {/* Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 p-10 bg-gradient-to-br from-white to-slate-50/50 rounded-[45px] shadow-2xl shadow-indigo-900/5 border border-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
+                <div className="relative z-10">
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Supervision Centrale</h1>
+                    <p className="text-slate-400 font-bold text-sm mt-1">Surveillance des performances en temps réel</p>
+                </div>
+                <div className="flex items-center gap-3 relative z-10">
+                    {canExport && (
+                        <button onClick={handleExportPDF} className="btn-secondary px-8 py-4 bg-white/80 backdrop-blur-sm border-2 border-slate-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-indigo-200 transition-all shadow-xl shadow-indigo-900/5 flex items-center gap-3 active:scale-95">
+                            <Download size={18} /> Export Stratégique
                         </button>
-                    )
-                }
-            />
+                    )}
+                </div>
+            </div>
 
             {/* KPI Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     icon={<Package />}
                     label="Ordres en cours"
@@ -242,11 +276,11 @@ const Dashboard = () => {
             </div>
 
             {/* Charts + Activity Row */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 {/* Area Chart — spans 2 cols */}
                 {trendData.length > 0 && (
-                    <div className="card lg:col-span-2">
+                    <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-2">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-800">Tendances de Conformité</h3>
@@ -287,7 +321,7 @@ const Dashboard = () => {
                 )}
 
                 {/* Pie Chart */}
-                <div className="card">
+                <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Anomalies par Gravité</h3>
                     <p className="text-xs text-gray-400 mb-4">Répartition des défauts</p>
                     {pieData.length > 0 ? (
@@ -327,9 +361,9 @@ const Dashboard = () => {
             </div>
 
             {/* Bottom Row: Bar Chart + Mini Stats + Activity */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Bar Chart */}
-                <div className="card lg:col-span-1">
+                <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-1">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Production</h3>
                     <p className="text-xs text-gray-400 mb-4">Par statut</p>
                     <div className="h-44">
@@ -355,7 +389,7 @@ const Dashboard = () => {
                 </div>
 
                 {/* Recent Activity */}
-                <div className="card lg:col-span-1">
+                <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-1">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-bold text-gray-800">Activité Récente</h3>
                         <span className="chip text-[10px]">En direct</span>
@@ -374,12 +408,12 @@ const Dashboard = () => {
                                 title: `Câble #${ins.reference || ins.id?.substring(0, 10)}`,
                                 sub: `OF: ${ins.orderId?.substring(0, 10) || '—'}`,
                                 date: ins.inspectionDate ? new Date(ins.inspectionDate).toLocaleDateString('fr-FR') : '',
-                            })), ...recentAnomalies.slice(0, 2).map((ano, i) => ({
+                            })), ...recentAnomalies.filter(a => a.severity?.toLowerCase() === 'critique').slice(0, 3).map((ano, i) => ({
                                 type: 'anomaly', key: `ano-${i}`,
                                 icon: <AlertTriangle size={14} />,
                                 iconBg: 'bg-red-50 text-red-500',
-                                title: `Anomalie: ${ano.type}`,
-                                sub: `${ano.severity} — ${ano.confidence ? (ano.confidence * 100).toFixed(0) : 0}% confiance`,
+                                title: `Alerte Critique: ${ano.type}`,
+                                sub: `${ano.reference || 'REF-STD'} — ${ano.confidence ? (ano.confidence * 100).toFixed(0) : 0}% confiance`,
                                 date: ano.detectedAt?.seconds
                                     ? new Date(ano.detectedAt.seconds * 1000).toLocaleDateString('fr-FR')
                                     : ano.detectedAt ? new Date(ano.detectedAt).toLocaleDateString('fr-FR') : '',

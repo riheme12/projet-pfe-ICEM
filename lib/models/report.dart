@@ -13,6 +13,7 @@ class Report {
   final DateTime generatedAt;       // Date de génération
   final String conformityStatus;    // 'Conforme' ou 'Non conforme'
   final int anomaliesCount;         // Nombre d'anomalies détectées
+  final String? type;              // 'performance' ou 'inspection'
   final String? pdfUrl;             // URL du PDF généré (si disponible)
   final String? notes;              // Notes du technicien
 
@@ -25,6 +26,7 @@ class Report {
     required this.generatedAt,
     required this.conformityStatus,
     required this.anomaliesCount,
+    this.type,
     this.pdfUrl,
     this.notes,
   });
@@ -47,6 +49,7 @@ class Report {
       generatedAt: (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       conformityStatus: data['conformityStatus'] as String? ?? 'Inconnu',
       anomaliesCount: data['anomaliesCount'] as int? ?? 0,
+      type: data['type'] as String?,
       pdfUrl: data['pdfUrl'] as String?,
       notes: data['notes'] as String?,
     );
@@ -63,6 +66,7 @@ class Report {
       generatedAt: DateTime.parse(json['generatedAt'] as String),
       conformityStatus: json['conformityStatus'] as String,
       anomaliesCount: json['anomaliesCount'] as int,
+      type: json['type'] as String?,
       pdfUrl: json['pdfUrl'] as String?,
       notes: json['notes'] as String?,
     );
@@ -79,6 +83,7 @@ class Report {
       'generatedAt': generatedAt.toIso8601String(),
       'conformityStatus': conformityStatus,
       'anomaliesCount': anomaliesCount,
+      'type': type,
       'pdfUrl': pdfUrl,
       'notes': notes,
     };

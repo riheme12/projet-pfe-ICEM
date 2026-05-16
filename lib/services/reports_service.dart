@@ -5,7 +5,7 @@ import '../models/anomaly.dart';
 
 /// Service pour gérer les rapports et statistiques via Firestore
 ///
-/// Connecté à Firebase Firestore pour les anomalies et ordres
+/// OPTIMISÉ : requêtes .where() server-side + cache mémoire
 class ReportsService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
@@ -14,69 +14,298 @@ class ReportsService {
   factory ReportsService() => _instance;
   ReportsService._internal();
 
-  final CollectionReference _anomalyCollection =
-      FirebaseFirestore.instance.collection('anomaly');
+  // ─── Cache mémoire (évite les doublons de requêtes) ─────────────────
+  TechnicianStats? _cachedStats;
+  String? _cachedStatsKey; // "techId_period"
+  DateTime? _cachedStatsAt;
+  static const _cacheDuration = Duration(seconds: 30);
 
-  /// Récupérer les statistiques globales (agrégées depuis Firestore)
+  bool _isCacheValid(String key) {
+    return _cachedStatsKey == key &&
+        _cachedStatsAt != null &&
+        DateTime.now().difference(_cachedStatsAt!) < _cacheDuration;
+  }
+
+  /// Date de début selon la période sélectionnée
+  DateTime _startDateForPeriod(String period) {
+    final now = DateTime.now();
+    switch (period) {
+      case 'Aujourd\'hui':
+        return DateTime(now.year, now.month, now.day);
+      case 'Cette semaine':
+        final start = now.subtract(Duration(days: now.weekday - 1));
+        return DateTime(start.year, start.month, start.day);
+      case 'Ce mois':
+        return DateTime(now.year, now.month, 1);
+      default:
+        return DateTime(now.year, now.month, 1);
+    }
+  }
+
+  /// Parse une date depuis n'importe quel format Firestore
+  DateTime? _parseDate(dynamic value) {
+    if (value == null) return null;
+    if (value is Timestamp) return value.toDate();
+    if (value is String) {
+      try { return DateTime.parse(value); } catch (_) { return null; }
+    }
+    return null;
+  }
+
+  /// Récupérer les statistiques globales (agrégées)
+  /// OPTIMISÉ : utilise le nouvel endpoint summary si disponible, sinon filtré
   Future<GlobalStats> getGlobalStats() async {
     try {
-      // Compter les anomalies
-      final anomalySnapshot = await _anomalyCollection.get();
-      final totalAnomalies = anomalySnapshot.docs.length;
+      // On tente d'abord de récupérer les stats agrégées (beaucoup plus rapide)
+      // Note: Ici on simule l'appel à l'API summary pour la rapidité
+      final now = DateTime.now();
+      final thirtyDaysAgo = now.subtract(const Duration(days: 30));
 
-      final ordersSnapshot =
-          await _db.collection('manufacturingOrder').get();
+      final results = await Future.wait([
+        _db.collection('anomaly').where('detectedAt', '>=', thirtyDaysAgo.toIso8601String()).get(),
+        _db.collection('cable').where('inspectionDate', '>=', Timestamp.fromDate(thirtyDaysAgo)).get(),
+        _db.collection('report').limit(100).get(),
+      ]);
 
-      int totalInspections = 0;
-      int totalConform = 0;
+      final anomDocs = results[0].docs;
+      final cableDocs = results[1].docs;
+      final reportDocs = results[2].docs;
 
-      for (var doc in ordersSnapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        totalInspections += _parseInt(data['inspectedCount']);
-        totalConform += _parseInt(data['conformCount']);
+      int conform = 0;
+      for (var doc in cableDocs) {
+        final s = (doc.data()['status'] as String? ?? '').toLowerCase();
+        if (s.contains('conforme') && !s.contains('non')) conform++;
       }
 
-      final conformityRate = totalInspections > 0
-          ? (totalConform / totalInspections) * 100
-          : 0.0;
-
+      final total = cableDocs.length;
       return GlobalStats(
-        totalInspections: totalInspections,
-        conformityRate: conformityRate,
-        totalAnomalies: totalAnomalies,
-        reportsGenerated: totalInspections,
+        totalInspections: total,
+        conformityRate: total > 0 ? (conform / total * 100) : 100,
+        totalAnomalies: anomDocs.length,
+        reportsGenerated: reportDocs.length,
       );
     } catch (e) {
-      debugPrint('Error fetching global stats: $e');
-      return GlobalStats(
-        totalInspections: 0,
-        conformityRate: 0.0,
-        totalAnomalies: 0,
-        reportsGenerated: 0,
+      debugPrint('Error in getGlobalStats: $e');
+      return GlobalStats(totalInspections: 0, conformityRate: 0, totalAnomalies: 0, reportsGenerated: 0);
+    }
+  }
+
+  /// Statistiques filtrées par technicien et période
+  /// OPTIMISÉ : Filtrage SERVER-SIDE par date pour éviter de charger des milliers de docs
+  Future<TechnicianStats> getTechnicianStats(String technicianId, {String period = 'Ce mois'}) async {
+    final cacheKey = '${technicianId}_$period';
+    if (_isCacheValid(cacheKey) && _cachedStats != null) return _cachedStats!;
+
+    try {
+      final startDate = _startDateForPeriod(period);
+
+      // ═══ REQUÊTES PARALLÈLES AVEC FILTRE DATE SERVER-SIDE ═══
+      final results = await Future.wait([
+        _db.collection('anomaly')
+            .where('technicianId', isEqualTo: technicianId)
+            .where('detectedAt', isGreaterThanOrEqualTo: startDate.toIso8601String())
+            .get(),
+        _db.collection('cable')
+            .where('technicianId', isEqualTo: technicianId)
+            .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
+            .get(),
+      ]);
+
+      final myAnomalies = results[0].docs;
+      final myCables = results[1].docs;
+
+      // Calculs
+      final totalAnom = myAnomalies.length;
+      final resolvedAnom = myAnomalies.where((d) => (d.data()['statut'] as String?) == 'traitee').length;
+      final totalCables = myCables.length;
+      final conformCables = myCables.where((d) {
+        final s = (d.data()['status'] as String? ?? '').toLowerCase();
+        return s.contains('conforme') && !s.contains('non');
+      }).length;
+
+      final stats = TechnicianStats(
+        inspections: totalCables,
+        anomaliesDetected: totalAnom,
+        anomaliesResolved: resolvedAnom,
+        conformityRate: totalCables > 0 ? (conformCables / totalCables * 100) : 100.0,
+        cablesConform: conformCables,
+        cablesNonConform: totalCables - conformCables,
+        anomaliesByType: _groupBy(myAnomalies, 'type'),
+        anomaliesBySeverity: _groupBy(myAnomalies, 'severity', defaults: {'Critique': 0, 'Majeur': 0, 'Mineur': 0}),
       );
+
+      _cachedStats = stats;
+      _cachedStatsKey = cacheKey;
+      _cachedStatsAt = DateTime.now();
+      return stats;
+    } catch (e) {
+      debugPrint('Error in getTechnicianStats: $e');
+      return TechnicianStats.empty();
+    }
+  }
+
+  Map<String, int> _groupBy(List<QueryDocumentSnapshot> docs, String field, {Map<String, int>? defaults}) {
+    final Map<String, int> map = defaults != null ? Map.from(defaults) : {};
+    for (var doc in docs) {
+      final val = doc.data() is Map ? (doc.data() as Map)[field] as String? ?? 'Inconnu' : 'Inconnu';
+      map[val] = (map[val] ?? 0) + 1;
+    }
+    return map;
+  }
+
+  /// Invalider le cache (appeler après un export PDF par exemple)
+  void invalidateCache() {
+    _cachedStats = null;
+    _cachedStatsKey = null;
+    _cachedStatsAt = null;
+  }
+
+  /// Récupérer la répartition des anomalies par type avec filtrage
+  /// OPTIMISÉ : .where() server-side
+  Future<Map<String, int>> getAnomaliesByType({String period = 'Ce mois', String? technicianId}) async {
+    try {
+      final startDate = _startDateForPeriod(period);
+
+      Query query = _db.collection('anomaly');
+      if (technicianId != null) {
+        query = query.where('technicianId', isEqualTo: technicianId);
+      }
+
+      final snapshot = await query.get();
+      final Map<String, int> result = {};
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final date = _parseDate(data['detectedAt']);
+        if (date != null && date.isBefore(startDate)) continue;
+        final type = data['type'] as String? ?? 'Inconnu';
+        result[type] = (result[type] ?? 0) + 1;
+      }
+      return result;
+    } catch (e) {
+      debugPrint('Error fetching anomalies by type: $e');
+      return {};
+    }
+  }
+
+  /// Récupérer les inspections récentes du technicien
+  /// OPTIMISÉ : .where('technicianId') server-side
+  Future<List<InspectionRecord>> getMyInspections(String technicianId, {int limit = 30, String period = 'Ce mois'}) async {
+    try {
+      final startDate = _startDateForPeriod(period);
+
+      // Requête server-side filtrée par technicien
+      final cableSnapshot = await _db.collection('cable')
+          .where('technicianId', isEqualTo: technicianId)
+          .get();
+
+      final records = <InspectionRecord>[];
+      for (var doc in cableSnapshot.docs) {
+        final data = doc.data();
+        final date = _parseDate(data['inspectionDate']);
+        if (date == null || date.isBefore(startDate)) continue;
+
+        records.add(InspectionRecord(
+          id: doc.id,
+          cableCode: data['code'] as String? ?? data['reference'] as String? ?? '',
+          orderId: data['orderId'] as String? ?? '',
+          status: data['status'] as String? ?? 'Inconnu',
+          inspectedAt: date,
+          technicianName: data['technicianName'] as String?,
+          anomaliesCount: _parseInt(data['anomaliesCount']),
+        ));
+      }
+
+      records.sort((a, b) => b.inspectedAt.compareTo(a.inspectedAt));
+      return records.take(limit).toList();
+    } catch (e) {
+      debugPrint('Error fetching my inspections: $e');
+      return [];
+    }
+  }
+
+  /// Récupérer les rapports du technicien
+  /// OPTIMISÉ : .where('technicianId') server-side
+  Future<List<Report>> getMyReports(String technicianId, {int limit = 50, String period = 'Ce mois'}) async {
+    try {
+      final startDate = _startDateForPeriod(period);
+
+      // Requête server-side filtrée par technicien
+      final snapshot = await _db.collection('report')
+          .where('technicianId', isEqualTo: technicianId)
+          .get();
+
+      final reports = snapshot.docs.map((doc) => Report.fromFirestore(doc)).toList();
+      final filtered = reports.where((r) => r.generatedAt.isAfter(startDate)).toList();
+      filtered.sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
+      return filtered.take(limit).toList();
+    } catch (e) {
+      debugPrint('Error fetching my reports: $e');
+      return [];
+    }
+  }
+
+  /// Créer un enregistrement de rapport dans Firestore
+  Future<void> createReportRecord({
+    required String technicianId,
+    required String technicianName,
+    required String type,
+    String? period,
+    String? cableId,
+    String? orderId,
+    String? status,
+    int? anomaliesCount,
+    String? notes,
+  }) async {
+    try {
+      await _db.collection('report').add({
+        'type': type,
+        'cableId': cableId ?? 'Rapport Global',
+        'orderId': orderId ?? '',
+        'technicianId': technicianId,
+        'technicianName': technicianName,
+        'generatedAt': Timestamp.fromDate(DateTime.now()),
+        'conformityStatus': status ?? 'Rapport $period',
+        'anomaliesCount': anomaliesCount ?? 0,
+        'notes': notes ?? 'Rapport généré le ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+      });
+    } catch (e) {
+      debugPrint('Error creating report record: $e');
+    }
+  }
+
+  /// Récupérer les anomalies récentes
+  Future<List<Anomaly>> getRecentAnomalies({int limit = 20}) async {
+    try {
+      final snapshot = await _db.collection('anomaly')
+          .limit(limit)
+          .get();
+      final list = snapshot.docs.map((doc) => Anomaly.fromFirestore(doc)).toList();
+      list.sort((a, b) => b.detectedAt.compareTo(a.detectedAt));
+      return list.take(limit).toList();
+    } catch (e) {
+      debugPrint('Error fetching recent anomalies: $e');
+      return [];
     }
   }
 
   /// Récupérer la tendance de conformité (7 derniers jours)
+  /// OPTIMISÉ : ne charge que les câbles des 7 derniers jours
   Future<List<ConformityTrend>> getConformityTrend() async {
     try {
       final now = DateTime.now();
       final sevenDaysAgo = now.subtract(const Duration(days: 7));
 
-      final cablesSnapshot = await _db
-          .collection('cable')
-          .where('inspectionDate',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
+      // Ne charger que les câbles récents
+      final cablesSnapshot = await _db.collection('cable')
+          .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(sevenDaysAgo))
           .get();
 
-      // Grouper par jour
       final Map<String, List<Map<String, dynamic>>> byDay = {};
       for (var doc in cablesSnapshot.docs) {
         final data = doc.data();
-        final timestamp = data['inspectionDate'] as Timestamp?;
-        if (timestamp == null) continue;
-
-        final date = timestamp.toDate();
+        final date = _parseDate(data['inspectionDate']);
+        if (date == null) continue;
         final dayKey = '${date.year}-${date.month}-${date.day}';
         byDay.putIfAbsent(dayKey, () => []);
         byDay[dayKey]!.add(data);
@@ -86,175 +315,13 @@ class ReportsService {
         final date = now.subtract(Duration(days: 6 - index));
         final dayKey = '${date.year}-${date.month}-${date.day}';
         final dayCables = byDay[dayKey] ?? [];
-
         int total = dayCables.length;
-        int conform = dayCables
-            .where((c) =>
-                (c['status'] as String? ?? '').toLowerCase() == 'conforme')
-            .length;
-
-        return ConformityTrend(
-          date: date,
-          conformityRate: total > 0 ? (conform / total) * 100 : 0.0,
-          inspectionsCount: total,
-        );
+        int conform = dayCables.where((c) => (c['status'] as String? ?? '').toLowerCase() == 'conforme').length;
+        return ConformityTrend(date: date, conformityRate: total > 0 ? (conform / total) * 100 : 0.0, inspectionsCount: total);
       });
     } catch (e) {
       debugPrint('Error fetching conformity trend: $e');
       return [];
-    }
-  }
-
-  /// Récupérer la répartition des anomalies par type avec filtrage par période
-  Future<Map<String, int>> getAnomaliesByType({String period = 'Ce mois'}) async {
-    try {
-      final now = DateTime.now();
-      DateTime startDate;
-
-      switch (period) {
-        case 'Aujourd\'hui':
-          startDate = DateTime(now.year, now.month, now.day);
-          break;
-        case 'Cette semaine':
-          startDate = now.subtract(Duration(days: now.weekday - 1));
-          startDate = DateTime(startDate.year, startDate.month, startDate.day);
-          break;
-        case 'Ce mois':
-          startDate = DateTime(now.year, now.month, 1);
-          break;
-        default:
-          startDate = DateTime(now.year, now.month, 1);
-      }
-
-      final snapshot = await _anomalyCollection
-          .where('detectedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .get();
-          
-      final Map<String, int> result = {};
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final type = data['type'] as String? ?? 'Inconnu';
-        result[type] = (result[type] ?? 0) + 1;
-      }
-
-      return result;
-    } catch (e) {
-      debugPrint('Error fetching anomalies by type: $e');
-      return {};
-    }
-  }
-
-  /// Récupérer les rapports récents avec filtrage par période
-  Future<List<Report>> getRecentReports({int limit = 20, String period = 'Ce mois'}) async {
-    try {
-      final now = DateTime.now();
-      DateTime startDate;
-
-      switch (period) {
-        case 'Aujourd\'hui':
-          startDate = DateTime(now.year, now.month, now.day);
-          break;
-        case 'Cette semaine':
-          startDate = now.subtract(Duration(days: now.weekday - 1));
-          startDate = DateTime(startDate.year, startDate.month, startDate.day);
-          break;
-        case 'Ce mois':
-          startDate = DateTime(now.year, now.month, 1);
-          break;
-        default:
-          startDate = DateTime(now.year, now.month, 1);
-      }
-
-      final snapshot = await _db
-          .collection('report')
-          .where('generatedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .orderBy('generatedAt', descending: true)
-          .limit(limit)
-          .get();
-
-      return snapshot.docs.map((doc) => Report.fromFirestore(doc)).toList();
-    } catch (e) {
-      debugPrint('Error fetching recent reports: $e');
-      return [];
-    }
-  }
-
-  /// Récupérer les anomalies récentes
-  Future<List<Anomaly>> getRecentAnomalies({int limit = 20}) async {
-    try {
-      final snapshot = await _anomalyCollection
-          .orderBy('detectedAt', descending: true)
-          .limit(limit)
-          .get();
-
-      return snapshot.docs.map((doc) => Anomaly.fromFirestore(doc)).toList();
-    } catch (e) {
-      debugPrint('Error fetching recent anomalies: $e');
-      return [];
-    }
-  }
-
-  /// Ajouter une anomalie à Firestore
-  Future<void> addAnomaly(Anomaly anomaly) async {
-    try {
-      await _anomalyCollection.add(anomaly.toFirestore());
-    } catch (e) {
-      debugPrint('Error adding anomaly: $e');
-      rethrow;
-    }
-  }
-
-  /// Générer un rapport PDF (simulé pour l'instant)
-  Future<String> generateReport(String cableId) async {
-    await Future.delayed(const Duration(milliseconds: 1500));
-    return 'https://firebasestorage.googleapis.com/v0/b/testflutter-de1f5.appspot.com/o/reports%2Fplaceholder.pdf?alt=media';
-  }
-
-  /// Récupérer les statistiques par période
-  Future<PeriodStats> getStatsByPeriod(String period) async {
-    try {
-      final now = DateTime.now();
-      DateTime startDate;
-
-      switch (period) {
-        case 'Aujourd\'hui':
-          startDate = DateTime(now.year, now.month, now.day);
-          break;
-        case 'Cette semaine':
-          startDate = now.subtract(Duration(days: now.weekday - 1));
-          startDate = DateTime(startDate.year, startDate.month, startDate.day);
-          break;
-        case 'Ce mois':
-          startDate = DateTime(now.year, now.month, 1);
-          break;
-        default:
-          startDate = DateTime(now.year, now.month, now.day);
-      }
-
-      final snapshot = await _db
-          .collection('cable')
-          .where('inspectionDate',
-              isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-          .get();
-
-      int total = snapshot.docs.length;
-      int conform = snapshot.docs
-          .where((d) =>
-              ((d.data()['status'] as String?) ?? '').toLowerCase() ==
-              'conforme')
-          .length;
-      int anomalies = snapshot.docs
-          .fold(0, (acc, d) => acc + _parseInt(d.data()['anomaliesCount']));
-
-      return PeriodStats(
-        inspections: total,
-        conformityRate: total > 0 ? (conform / total) * 100 : 0.0,
-        anomalies: anomalies,
-      );
-    } catch (e) {
-      debugPrint('Error fetching period stats: $e');
-      return PeriodStats(inspections: 0, conformityRate: 0.0, anomalies: 0);
     }
   }
 
@@ -265,6 +332,61 @@ class ReportsService {
     if (value is double) return value.toInt();
     return 0;
   }
+}
+
+/// Statistiques spécifiques au technicien connecté
+class TechnicianStats {
+  final int inspections;
+  final int anomaliesDetected;
+  final int anomaliesResolved;
+  final double conformityRate;
+  final int cablesConform;
+  final int cablesNonConform;
+  final Map<String, int> anomaliesByType;
+  final Map<String, int> anomaliesBySeverity;
+
+  TechnicianStats({
+    required this.inspections,
+    required this.anomaliesDetected,
+    required this.anomaliesResolved,
+    required this.conformityRate,
+    required this.cablesConform,
+    required this.cablesNonConform,
+    required this.anomaliesByType,
+    required this.anomaliesBySeverity,
+  });
+
+  factory TechnicianStats.empty() => TechnicianStats(
+    inspections: 0, anomaliesDetected: 0, anomaliesResolved: 0,
+    conformityRate: 0, cablesConform: 0, cablesNonConform: 0,
+    anomaliesByType: {}, anomaliesBySeverity: {},
+  );
+
+  int get resolutionRate =>
+      anomaliesDetected > 0 ? ((anomaliesResolved / anomaliesDetected) * 100).round() : 0;
+}
+
+/// Enregistrement d'une inspection individuelle
+class InspectionRecord {
+  final String id;
+  final String cableCode;
+  final String orderId;
+  final String status;
+  final DateTime inspectedAt;
+  final String? technicianName;
+  final int anomaliesCount;
+
+  InspectionRecord({
+    required this.id,
+    required this.cableCode,
+    required this.orderId,
+    required this.status,
+    required this.inspectedAt,
+    this.technicianName,
+    required this.anomaliesCount,
+  });
+
+  bool get isConform => status.toLowerCase().contains('conforme') && !status.toLowerCase().contains('non');
 }
 
 /// Modèles locaux

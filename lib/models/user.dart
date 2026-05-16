@@ -59,6 +59,7 @@ extension UserRoleExtension on UserRole {
 /// - Informations personnelles (nom, email, téléphone)
 /// - Rôle dans le système
 /// - Statistiques personnelles
+/// - URL de la signature (image uploadée par l'admin)
 
 class User {
   final String id;
@@ -68,6 +69,7 @@ class User {
   final UserRole role;
   final String? photoUrl;
   final String? phone;
+  final String? signatureUrl;  // URL de l'image signature (uploadée par admin)
   final DateTime createdAt;
   final UserStats stats;
 
@@ -79,6 +81,7 @@ class User {
     required this.role,
     this.photoUrl,
     this.phone,
+    this.signatureUrl,
     required this.createdAt,
     required this.stats,
   });
@@ -93,6 +96,7 @@ class User {
       role: UserRoleExtension.fromString(json['role'] as String? ?? 'operator'),
       photoUrl: json['photoUrl'] as String?,
       phone: json['phone'] as String?,
+      signatureUrl: json['signatureUrl'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -112,6 +116,7 @@ class User {
       'role': role.toString().split('.').last, // Store logical name (e.g., 'operator')
       'photoUrl': photoUrl,
       'phone': phone,
+      'signatureUrl': signatureUrl,
       'createdAt': createdAt.toIso8601String(),
       'stats': stats.toJson(),
     };
@@ -159,4 +164,3 @@ class UserStats {
     };
   }
 }
-

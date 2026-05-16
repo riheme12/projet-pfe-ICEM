@@ -4,6 +4,16 @@ const { db, bucket } = require('../firebase');
 const { Anomaly } = require('../models');
 const emailService = require('../services/emailService');
 
+// ═══ CACHE MÉMOIRE ══════════════════════════════════════
+const cache = {};
+const CACHE_TTL = 30 * 1000;
+function getCached(key) {
+    const e = cache[key];
+    if (e && Date.now() - e.time < CACHE_TTL) return e.data;
+    return null;
+}
+function setCache(key, data) { cache[key] = { data, time: Date.now() }; }
+
 // Get all anomalies (avec pagination)
 router.get('/', async (req, res) => {
     try {
@@ -148,23 +158,21 @@ router.post('/', async (req, res) => {
     }
 });
 
-// Get anomalies stats
+// Get anomalies stats (CACHED)
 router.get('/stats/summary', async (req, res) => {
     try {
+        const cached = getCached('anomaly_stats');
+        if (cached) return res.status(200).json(cached);
+
         const snapshot = await db.collection('anomaly').get();
-        const stats = {
-            total: snapshot.size,
-            critique: 0,
-            majeur: 0,
-            mineur: 0
-        };
+        const stats = { total: snapshot.size, critique: 0, majeur: 0, mineur: 0 };
         snapshot.forEach(doc => {
-            const anomaly = Anomaly.fromJson({ id: doc.id, ...doc.data() });
-            const severity = anomaly.severity.toLowerCase();
+            const severity = (doc.data().severity || '').toLowerCase();
             if (severity === 'critique') stats.critique++;
             else if (severity === 'majeur') stats.majeur++;
             else if (severity === 'mineur') stats.mineur++;
         });
+        setCache('anomaly_stats', stats);
         res.status(200).json(stats);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -279,14 +287,25 @@ router.delete('/:id', async (req, res) => {
     }
 });
 
-// Get unread notifications count (Optimized)
+// Get unread critical alerts count (CACHED)
 router.get('/notifications/unread/count', async (req, res) => {
     try {
-        const snapshot = await db.collection('notifications')
-            .where('statut', '==', 'unread')
-            .count()
+        const cached = getCached('unread_count');
+        if (cached) return res.status(200).json(cached);
+
+        // Requête filtrée server-side : seulement les anomalies non traitées
+        const snapshot = await db.collection('anomaly')
+            .where('statut', '==', 'detectee')
             .get();
-        res.status(200).json({ count: snapshot.data().count });
+
+        const criticalCount = snapshot.docs.filter(doc => {
+            const severity = (doc.data().severity || '').toLowerCase();
+            return ['critique', 'haute'].includes(severity);
+        }).length;
+
+        const result = { count: criticalCount };
+        setCache('unread_count', result);
+        res.status(200).json(result);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

@@ -3,53 +3,59 @@ const router = express.Router();
 const { db } = require('../firebase');
 const { ManufacturingOrder } = require('../models');
 
+// ═══ CACHE MÉMOIRE ══════════════════════════════════════
+const cache = {};
+const CACHE_TTL = 30 * 1000;
+function getCached(key) {
+    const e = cache[key];
+    if (e && Date.now() - e.time < CACHE_TTL) return e.data;
+    return null;
+}
+function setCache(key, data) { cache[key] = { data, time: Date.now() }; }
+
 // ⚠️ IMPORTANT: Static routes (/stats/summary) MUST come before dynamic routes (/:id)
 
-// Get statistics for production orders
+// Get statistics for production orders (CACHED)
 router.get('/stats/summary', async (req, res) => {
     try {
+        const cached = getCached('order_stats');
+        if (cached) return res.status(200).json(cached);
+
         const snapshot = await db.collection('manufacturingOrder').get();
-        const stats = {
-            total: snapshot.size,
-            enCours: 0,
-            termine: 0,
-            enAttente: 0
-        };
+        const stats = { total: snapshot.size, enCours: 0, termine: 0, enAttente: 0 };
         snapshot.forEach(doc => {
-            const order = ManufacturingOrder.fromJson({ id: doc.id, ...doc.data() });
-            const status = order.status;
-            if (status === 'En cours') stats.enCours++;
-            else if (status === 'Terminé') stats.termine++;
-            else if (status === 'En attente') stats.enAttente++;
+            const status = doc.data().status || '';
+            if (status === 'En cours' || status === 'en cours') stats.enCours++;
+            else if (status === 'Terminé' || status === 'terminé') stats.termine++;
+            else if (status === 'En attente' || status === 'en attente') stats.enAttente++;
         });
+        setCache('order_stats', stats);
         res.status(200).json(stats);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-// Get all production orders (avec pagination basique)
+// Get all production orders (CACHED)
 router.get('/', async (req, res) => {
     try {
-        const limit = parseInt(req.query.limit) || 100; // Limite par défaut pour éviter de tout charger
-        
-        const snapshot = await db.collection('manufacturingOrder')
-            .limit(limit)
-            .get();
-            
+        const cached = getCached('orders_list');
+        if (cached) return res.status(200).json(cached);
+
+        const limit = parseInt(req.query.limit) || 100;
+        const snapshot = await db.collection('manufacturingOrder').limit(limit).get();
         const orders = snapshot.docs.map(doc => {
             const order = ManufacturingOrder.fromJson({ id: doc.id, ...doc.data() });
             return order.toJson();
         });
-        
-        // Sort in memory by productionDate desc
         orders.sort((a, b) => new Date(b.productionDate) - new Date(a.productionDate));
-        
+        setCache('orders_list', orders);
         res.status(200).json(orders);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 // Get order by ID (MUST be after /stats/summary)
 router.get('/:id', async (req, res) => {
@@ -69,8 +75,9 @@ const { body, validationResult } = require('express-validator');
 
 // Validation middleware for orders
 const validateOrder = [
-    body('orderNumber').trim().notEmpty().withMessage('Le numéro d\'ordre est requis').escape(),
-    body('cableId').trim().notEmpty().withMessage('L\'ID du câble est requis').escape(),
+    body('reference').optional().trim().escape(),
+    body('numeroOF').optional().trim().escape(),
+    body('client').trim().notEmpty().withMessage('Le client est requis').escape(),
     body('quantity').isInt({ min: 1 }).withMessage('La quantité doit être un entier positif'),
     body('status').optional().trim().escape()
 ];

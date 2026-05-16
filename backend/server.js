@@ -50,7 +50,7 @@ const cablesRoutes = require('./routes/cables');
 const statsRoutes = require('./routes/stats');
 const settingsRoutes = require('./routes/settings');
 const aiRoutes = require('./routes/ai');
-const rolesRoutes = require('./routes/roles');
+const iotRoutes = require('./routes/iot');
 
 // Health Check Endpoint (Phase 3)
 app.get('/health', (req, res) => {
@@ -64,6 +64,9 @@ app.get('/health', (req, res) => {
 // Auth routes (public — no middleware)
 app.use('/api/auth', authRoutes);
 
+// IoT routes (public — no middleware, used by ESP32)
+app.use('/api/iot', iotRoutes);
+
 // Protected routes (require valid Firebase token)
 app.use('/api/orders', authenticateToken, ordersRoutes);
 app.use('/api/inspections', authenticateToken, inspectionsRoutes);
@@ -74,7 +77,6 @@ app.use('/api/cables', authenticateToken, cablesRoutes);
 app.use('/api/stats', authenticateToken, statsRoutes);
 app.use('/api/settings', authenticateToken, settingsRoutes);
 app.use('/api/ai', authenticateToken, aiRoutes);
-app.use('/api/roles', authenticateToken, rolesRoutes);
 
 // Basic route
 app.get('/', (req, res) => {

@@ -7,35 +7,25 @@ class CustomScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
+      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Background image
-          Image.asset(
-            'assets/images/bg1.png',
-            fit: BoxFit.cover,
-            width: double.infinity,
-            height: double.infinity,
-          ),
-          // Rich gradient overlay: dark top → medium mid → light bottom for card contrast
+          // Dark gradient background
           Container(
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               gradient: LinearGradient(
+                colors: [Color(0xFF0A0E1A), Color(0xFF1A2332), Color(0xFF0F2440)],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF1E3A5F).withValues(alpha: 0.88),
-                  const Color(0xFF1E3A5F).withValues(alpha: 0.55),
-                  const Color(0xFF1E3A5F).withValues(alpha: 0.15),
-                  Colors.transparent,
-                ],
-                stops: const [0.0, 0.25, 0.55, 0.75],
               ),
+            ),
+          ),
+          // Subtle geometric pattern overlay
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.04,
+              child: Image.asset('assets/images/bg1.png', fit: BoxFit.cover),
             ),
           ),
           SafeArea(child: child!),

@@ -1,192 +1,122 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:projeticem/models/user.dart';
-import 'package:projeticem/services/user_service.dart';
+import 'package:projeticem/services/auth_service.dart';
 import 'package:projeticem/theme/app_theme.dart';
 
-/// Page pour modifier les informations du profil utilisateur
+/// Page de modification du profil (High-Contrast Light)
 class EditProfilePage extends StatefulWidget {
   final User user;
-
   const EditProfilePage({super.key, required this.user});
-
   @override
   State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
 class _EditProfilePageState extends State<EditProfilePage> {
-  final _formKey = GlobalKey<FormState>();
-  late TextEditingController _nameController;
-  late TextEditingController _phoneController;
+  final AuthService _authService = AuthService();
   bool _isSaving = false;
+  String? _photoBase64;
 
-  @override
-  void initState() {
-    super.initState();
-    _nameController = TextEditingController(text: widget.user.fullName);
-    _phoneController = TextEditingController(text: widget.user.phone ?? '');
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 50);
+    
+    if (pickedFile != null) {
+      final bytes = await File(pickedFile.path).readAsBytes();
+      setState(() {
+        _photoBase64 = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+      });
+      _savePhoto();
+    }
   }
 
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _phoneController.dispose();
-    super.dispose();
+  Future<void> _savePhoto() async {
+    if (_photoBase64 == null) return;
+    setState(() => _isSaving = true);
+    final result = await _authService.updateProfilePhoto(widget.user.id, _photoBase64!);
+    setState(() => _isSaving = false);
+    
+    if (mounted && result != null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo mise à jour ✓')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Modifier le profil'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.info_outline),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Les modifications sont désactivées')),
-              );
-            },
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildProfileImage(),
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildTextField(
-                      controller: _nameController,
-                      label: 'Nom complet',
-                      icon: Icons.person_outline,
-                      validator: (v) => v!.isEmpty ? 'Veuillez entrer votre nom' : null,
-                    ),
-                    const SizedBox(height: 20),
-                    _buildTextField(
-                      controller: _phoneController,
-                      label: 'Téléphone',
-                      icon: Icons.phone_outlined,
-                      keyboardType: TextInputType.phone,
-                    ),
-                    const SizedBox(height: 40),
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.amber.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
-                      ),
-                      child: const Row(
-                        children: [
-                          Icon(Icons.lock_outline, color: Colors.amber),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              'Modification impossible. Contactez votre administrateur pour changer vos informations.',
-                              style: TextStyle(fontSize: 13, color: Colors.amber),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileImage() {
-    return Container(
-      width: double.infinity,
-      color: AppTheme.primaryBlue.withValues(alpha: 0.1),
-      padding: const EdgeInsets.symmetric(vertical: 40),
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
+      backgroundColor: AppTheme.background,
+      appBar: AppBar(title: const Text('Mon Profil')),
+      body: SingleChildScrollView(child: Column(children: [
+        _buildPhotoHeader(),
+        Padding(padding: const EdgeInsets.all(24), child: Column(children: [
+          _buildReadOnlyInfo('Nom complet', widget.user.fullName, Icons.person_outline),
+          const SizedBox(height: 16),
+          _buildReadOnlyInfo('Username', widget.user.username, Icons.alternate_email),
+          const SizedBox(height: 16),
+          _buildReadOnlyInfo('Rôle', widget.user.role.name.toUpperCase(), Icons.admin_panel_settings_outlined),
+          const SizedBox(height: 32),
           Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white,
-              border: Border.all(color: AppTheme.primaryBlue, width: 3),
-            ),
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primaryBlue.withValues(alpha: 0.2),
-              child: Text(
-                widget.user.fullName.substring(0, 1).toUpperCase(),
-                style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
-              ),
-            ),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: AppTheme.accentBlue.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.accentBlue.withOpacity(0.1))),
+            child: Row(children: [
+              const Icon(Icons.info_outline, color: AppTheme.accentBlue, size: 20),
+              const SizedBox(width: 12),
+              Expanded(child: Text('Pour modifier vos informations personnelles, veuillez contacter le service RH.', style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textGrey))),
+            ]),
           ),
-          Positioned(
-            bottom: 0,
-            right: MediaQuery.of(context).size.width / 2 - 60,
-            child: CircleAvatar(
-              backgroundColor: AppTheme.primaryBlue,
-              radius: 18,
-              child: IconButton(
-                icon: const Icon(Icons.camera_alt, size: 18, color: Colors.white),
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sélecteur d\'image - À venir')),
-                  );
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
+        ])),
+      ])),
     );
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required IconData icon,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
-  }) {
-    return TextFormField(
-      controller: controller,
-      readOnly: true,
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: Icon(icon, color: AppTheme.primaryBlue),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 2),
+  Widget _buildPhotoHeader() => Container(
+    width: double.infinity, color: Colors.white, padding: const EdgeInsets.symmetric(vertical: 40),
+    child: Column(children: [
+      Stack(children: [
+        Container(
+          width: 120, height: 120,
+          decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.accentBlue, width: 3)),
+          child: CircleAvatar(
+            backgroundColor: AppTheme.divider,
+            backgroundImage: (_photoBase64 ?? widget.user.photoUrl) != null 
+              ? MemoryImage(base64Decode((_photoBase64 ?? widget.user.photoUrl)!.split(',').last)) 
+              : null,
+            child: (_photoBase64 ?? widget.user.photoUrl) == null 
+              ? Text(widget.user.fullName.substring(0, 1).toUpperCase(), style: GoogleFonts.inter(fontSize: 40, fontWeight: FontWeight.w900, color: AppTheme.primaryBlue))
+              : null,
+          ),
         ),
-      ),
-      keyboardType: keyboardType,
-      validator: validator,
-    );
-  }
+        Positioned(
+          bottom: 0, right: 0,
+          child: GestureDetector(
+            onTap: _pickImage,
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: const BoxDecoration(color: AppTheme.accentBlue, shape: BoxShape.circle),
+              child: _isSaving ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+            ),
+          ),
+        ),
+      ]),
+      const SizedBox(height: 16),
+      Text(widget.user.fullName, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800)),
+      Text(widget.user.email, style: GoogleFonts.inter(fontSize: 13, color: AppTheme.textGrey)),
+    ]),
+  );
 
-  Future<void> _saveProfile() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() => _isSaving = true);
-      
-      await UserService().updateProfile(
-        fullName: _nameController.text,
-        phone: _phoneController.text,
-      );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Profil mis à jour avec succès')),
-        );
-        Navigator.pop(context, true); // Retourner true pour indiquer un changement
-      }
-    }
-  }
+  Widget _buildReadOnlyInfo(String label, String value, IconData icon) => Container(
+    padding: const EdgeInsets.all(16),
+    decoration: AppTheme.cardDecoration(),
+    child: Row(children: [
+      Icon(icon, color: AppTheme.accentBlue, size: 20),
+      const SizedBox(width: 16),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textGrey)),
+        Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.textDark)),
+      ]),
+    ]),
+  );
 }

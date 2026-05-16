@@ -1,303 +1,207 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/models/anomaly.dart';
-import 'package:projeticem/services/reports_service.dart';
-import 'package:projeticem/widgets/status_badge.dart';
+import 'package:projeticem/services/anomaly_service.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/screens/anomaly_detail_page.dart';
 
-/// Page qui liste toutes les anomalies détectées
 class AnomaliesListPage extends StatefulWidget {
   const AnomaliesListPage({super.key});
-
   @override
   State<AnomaliesListPage> createState() => _AnomaliesListPageState();
 }
 
 class _AnomaliesListPageState extends State<AnomaliesListPage> {
-  final ReportsService _reportsService = ReportsService();
-  List<Anomaly> _anomalies = [];
+  final AnomalyService _service = AnomalyService();
+  List<Anomaly> _allAnomalies = [];
   bool _isLoading = true;
   String _selectedSeverity = 'Tous';
-  String _selectedType = 'Tous';
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
 
   @override
-  void initState() {
-    super.initState();
-    _loadAnomalies();
-    _searchController.addListener(() {
-      setState(() {
-        _searchQuery = _searchController.text.trim().toLowerCase();
-      });
-    });
-  }
+  void initState() { super.initState(); _load(); }
 
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _loadAnomalies() async {
+  Future<void> _load() async {
     setState(() => _isLoading = true);
-    final anomalies = await _reportsService.getRecentAnomalies(limit: 50);
-    // Filtrer : ne montrer que les anomalies actives (non résolues)
-    setState(() {
-      _anomalies = anomalies.where((a) => a.statut != 'traitee').toList();
-      _isLoading = false;
-    });
+    final all = await _service.getRecentAnomalies(limit: 200);
+    if (mounted) setState(() { _allAnomalies = all; _isLoading = false; });
   }
 
-  List<Anomaly> get _filteredAnomalies {
-    return _anomalies.where((a) {
-      final matchesSeverity = _selectedSeverity == 'Tous' || a.severity == _selectedSeverity;
-      final matchesType = _selectedType == 'Tous' || a.type == _selectedType;
-      final matchesSearch = _searchQuery.isEmpty || a.cableId.toLowerCase().contains(_searchQuery);
-      return matchesSeverity && matchesType && matchesSearch;
+  List<Anomaly> get _filtered {
+    return _allAnomalies.where((a) {
+      if (_selectedSeverity == 'Tous') return true;
+      if (_selectedSeverity == 'Non traitée') return !a.isResolved;
+      return a.severity == _selectedSeverity;
     }).toList();
   }
 
-  List<String> get _availableTypes {
-    final types = _anomalies.map((a) => a.type).toSet().toList();
-    types.sort();
-    return ['Tous', ...types];
+  Color _getSeverityColor(String s) {
+    switch (s) {
+      case 'Critique': return const Color(0xFFF43F5E);
+      case 'Majeur': return const Color(0xFFF59E0B);
+      case 'Mineur': return const Color(0xFF6366F1);
+      default: return AppTheme.primaryNavy;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final filtered = _filtered;
+    final totalActive = _allAnomalies.where((a) => !a.isResolved).length;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Gestion des Anomalies'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadAnomalies,
+      backgroundColor: AppTheme.background,
+      body: NestedScrollView(
+        headerSliverBuilder: (_, __) => [
+          SliverAppBar(
+            expandedHeight: 150,
+            pinned: true,
+            backgroundColor: AppTheme.primaryNavy,
+            flexibleSpace: FlexibleSpaceBar(
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF7F1D1D), Color(0xFFF43F5E)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+                ),
+                child: SafeArea(child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 50),
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.end, children: [
+                    Row(children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(10)),
+                        child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text('Registre Anomalies', style: GoogleFonts.inter(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900)),
+                        Text('$totalActive non-conformités actives', style: GoogleFonts.inter(color: Colors.white60, fontSize: 11, fontWeight: FontWeight.w600)),
+                      ]),
+                    ]),
+                  ]),
+                )),
+              ),
+            ),
           ),
         ],
-      ),
-      body: Column(
-        children: [
-          _buildSearchBar(),
-          _buildFilterSection(),
-          _buildTypeFilterSection(),
+        body: Column(children: [
+          _buildFilters(),
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredAnomalies.isEmpty
-                    ? _buildEmptyState()
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: _filteredAnomalies.length,
-                        itemBuilder: (context, index) {
-                          final anomaly = _filteredAnomalies[index];
-                          return _buildAnomalyCard(anomaly);
-                        },
-                      ),
+                ? const Center(child: CircularProgressIndicator(color: AppTheme.accentBlue))
+                : filtered.isEmpty ? _buildEmptyState() : _buildList(filtered),
           ),
-        ],
+        ]),
       ),
     );
   }
 
-  Widget _buildSearchBar() {
-    return Padding(
+  Widget _buildFilters() {
+    final filters = ['Tous', 'Non traitée', 'Critique', 'Majeur', 'Mineur'];
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: TextField(
-        controller: _searchController,
-        decoration: InputDecoration(
-          hintText: 'Rechercher par code câble...',
-          prefixIcon: const Icon(Icons.search_rounded),
-          suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded),
-                  onPressed: () {
-                    _searchController.clear();
-                  },
-                )
-              : null,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.grey.shade300),
+      child: Row(children: filters.map((f) {
+        final sel = _selectedSeverity == f;
+        final color = f == 'Non traitée' ? AppTheme.errorRed : _getSeverityColor(f);
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedSeverity = f),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: sel ? LinearGradient(colors: [color, color.withOpacity(0.8)]) : null,
+                color: sel ? null : Colors.white,
+                borderRadius: BorderRadius.circular(25),
+                border: sel ? null : Border.all(color: AppTheme.borderGris),
+                boxShadow: sel ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))] : null,
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                if (f != 'Tous' && f != 'Non traitée') ...[
+                  Container(width: 8, height: 8, decoration: BoxDecoration(color: sel ? Colors.white : color, shape: BoxShape.circle)),
+                  const SizedBox(width: 8),
+                ],
+                Text(f, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700, color: sel ? Colors.white : AppTheme.textGrey)),
+              ]),
+            ),
           ),
-          filled: true,
-          fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-        ),
-      ),
+        );
+      }).toList()),
     );
   }
 
-  Widget _buildFilterSection() {
-    final severities = ['Tous', 'Mineur', 'Majeur', 'Critique'];
+  Widget _buildList(List<Anomaly> list) => RefreshIndicator(
+    onRefresh: _load,
+    child: ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
+      itemCount: list.length,
+      itemBuilder: (_, i) => _buildAnomalyCard(list[i]),
+    ),
+  );
+
+  Widget _buildAnomalyCard(Anomaly a) {
+    final color = _getSeverityColor(a.severity);
+    final isResolved = a.isResolved;
+    final dateStr = '${a.detectedAt.day}/${a.detectedAt.month} à ${a.detectedAt.hour}:${a.detectedAt.minute.toString().padLeft(2, '0')}';
+
     return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: severities.length,
-        itemBuilder: (context, index) {
-          final severity = severities[index];
-          final isSelected = _selectedSeverity == severity;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(severity),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected) setState(() => _selectedSeverity = severity);
-              },
-              selectedColor: AppTheme.primaryBlue,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textDark,
-                fontSize: 12,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+      margin: const EdgeInsets.only(bottom: 10),
+      child: Material(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => AnomalyDetailPage(anomaly: a))).then((_) => _load()),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: color.withOpacity(0.15)),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildTypeFilterSection() {
-    final types = _availableTypes;
-    return Container(
-      height: 50,
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        itemCount: types.length,
-        itemBuilder: (context, index) {
-          final type = types[index];
-          final isSelected = _selectedType == type;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: ChoiceChip(
-              label: Text(type),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected) setState(() => _selectedType = type);
-              },
-              selectedColor: AppTheme.secondaryOrange,
-              labelStyle: TextStyle(
-                color: isSelected ? Colors.white : AppTheme.textDark,
-                fontSize: 12,
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildAnomalyCard(Anomaly anomaly) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AnomalyDetailPage(anomaly: anomaly),
-            ),
-          ).then((_) => _loadAnomalies());
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            child: Row(children: [
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: _getSeverityColor(anomaly.severity).withValues(alpha: 0.1),
-                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [color.withOpacity(0.15), color.withOpacity(0.05)]),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  Icons.report_problem_rounded,
-                  color: _getSeverityColor(anomaly.severity),
-                  size: 24,
+                child: Icon(isResolved ? Icons.check_circle_rounded : Icons.warning_rounded, color: color, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(a.type, style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 13, color: AppTheme.primaryNavy), overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 3),
+                Text('Câble: ${a.cableId}', style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textGrey, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 2),
+                Text(dateStr, style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textLight)),
+              ])),
+              Column(children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(20)),
+                  child: Text(a.severity, style: GoogleFonts.inter(color: color, fontSize: 9, fontWeight: FontWeight.w900)),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      anomaly.type,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Câble: ${anomaly.cableId}',
-                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppTheme.primaryBlue, fontSize: 15),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      'Zone: ${anomaly.location ?? "Inconnue"}',
-                      style: const TextStyle(fontSize: 14, color: AppTheme.textGrey),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Détecté le ${anomaly.detectedAt.day}/${anomaly.detectedAt.month}/${anomaly.detectedAt.year} à ${anomaly.detectedAt.hour}h${anomaly.detectedAt.minute.toString().padLeft(2, '0')}',
-                      style: const TextStyle(fontSize: 13, color: AppTheme.textLight),
-                    ),
-                  ],
+                const SizedBox(height: 6),
+                if (isResolved) Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(color: AppTheme.successGreen.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Text('TRAITÉ', style: GoogleFonts.inter(color: AppTheme.successGreen, fontSize: 8, fontWeight: FontWeight.w900)),
                 ),
-              ),
-              Column(
-                mainAxisAlignment: MainAxisAlignment.start,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  StatusBadge(status: anomaly.severity, isSmall: true),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      '${(anomaly.confidence * 100).toStringAsFixed(0)}% IA',
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey.shade700),
-                    ),
-                  ),
-                ],
-              ),
-            ],
+              ]),
+            ]),
           ),
         ),
       ),
     );
   }
 
-  Color _getSeverityColor(String severity) {
-    switch (severity) {
-      case 'Critique': return AppTheme.errorRed;
-      case 'Majeur': return AppTheme.secondaryOrange;
-      case 'Mineur': return AppTheme.warningAmber;
-      default: return AppTheme.textGrey;
-    }
-  }
-
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.check_circle_outline, size: 64, color: AppTheme.successGreen),
-          const SizedBox(height: 16),
-          const Text('Aucune anomalie à traiter !', style: TextStyle(fontSize: 20, color: AppTheme.textGrey)),
-        ],
-      ),
-    );
-  }
+  Widget _buildEmptyState() => Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+    Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: AppTheme.successGreen.withOpacity(0.08), shape: BoxShape.circle),
+      child: const Icon(Icons.check_circle_rounded, size: 48, color: AppTheme.successGreen),
+    ),
+    const SizedBox(height: 16),
+    Text('Aucune anomalie', style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy)),
+    Text('Tout est en ordre !', style: GoogleFonts.inter(color: AppTheme.textGrey, fontSize: 12)),
+  ]));
 }

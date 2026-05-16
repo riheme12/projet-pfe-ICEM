@@ -74,7 +74,7 @@ class UserStats {
  * Modèle User
  */
 class User {
-    constructor({ id, username, fullName, email, role, roles, photoUrl = null, phone = null, createdAt, stats, isActive = true }) {
+    constructor({ id, username, fullName, email, role, roles, photoUrl = null, phone = null, signatureUrl = null, createdAt, stats, isActive = true }) {
         this.id = id || '';
         this.username = username || '';
         this.fullName = fullName || '';
@@ -83,6 +83,7 @@ class User {
         this.role = this.roles[0]; // Compatibility field
         this.photoUrl = photoUrl;
         this.phone = phone;
+        this.signatureUrl = signatureUrl;
         this.createdAt = createdAt instanceof Date ? createdAt : new Date(createdAt || Date.now());
         this.stats = stats instanceof UserStats ? stats : UserStats.empty();
         this.isActive = isActive !== undefined ? isActive : true;
@@ -97,6 +98,7 @@ class User {
             roles: json.roles ? json.roles.map(parseUserRole) : (json.role ? [parseUserRole(json.role)] : [UserRole.OPERATOR]),
             photoUrl: json.photoUrl || null,
             phone: json.phone || null,
+            signatureUrl: json.signatureUrl || null,
             createdAt: json.createdAt ? new Date(json.createdAt) : new Date(),
             stats: json.stats ? UserStats.fromJson(json.stats) : UserStats.empty(),
             isActive: json.isActive !== undefined ? json.isActive : true,
@@ -113,6 +115,7 @@ class User {
             roles: this.roles,
             photoUrl: this.photoUrl,
             phone: this.phone,
+            signatureUrl: this.signatureUrl,
             createdAt: this.createdAt.toISOString(),
             stats: this.stats.toJson(),
             isActive: this.isActive,

@@ -72,10 +72,10 @@ class ChartPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.backgroundLight,
+        color: AppTheme.surfaceGrey,
         borderRadius: BorderRadius.circular(8),
         border: Border.all(
-          color: AppTheme.dividerGrey,
+          color: AppTheme.borderGris,
           style: BorderStyle.solid,
           width: 2,
         ),

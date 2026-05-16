@@ -15,38 +15,32 @@ class AuthProvider with ChangeNotifier {
   String? get errorMessage => _errorMessage;
   bool get isAuthenticated => _currentUser != null;
 
-  /// Initialize auth provider and check for existing session
   Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       _currentUser = await _authService.getCurrentUser();
     } catch (e) {
       _errorMessage = 'Failed to restore session';
-      debugPrint('Initialize error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Login with username and password
   Future<bool> login(String username, String password, bool rememberMe) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       final user = await _authService.login(username, password, rememberMe);
-      
       if (user != null) {
         _currentUser = user;
         _isLoading = false;
         notifyListeners();
         return true;
       } else {
-        _errorMessage = 'Invalid username or password';
+        _errorMessage = 'Identifiant ou mot de passe incorrect';
         _isLoading = false;
         notifyListeners();
         return false;
@@ -55,112 +49,84 @@ class AuthProvider with ChangeNotifier {
       _errorMessage = _handleAuthError(e);
       _isLoading = false;
       notifyListeners();
-      debugPrint('Login error: $e');
       return false;
     }
   }
 
-  /// Signup with password, and role
-  Future<bool> signup({
-    required String password,
-    required String fullName,
-    required String username,
-    required UserRole role,
-    String? phone,
-  }) async {
+  Future<bool> signup(String username, String email, String password, String fullName) async {
     _isLoading = true;
     _errorMessage = null;
     notifyListeners();
-
     try {
       final user = await _authService.signup(
+        username: username,
+        email: email,
         password: password,
         fullName: fullName,
-        username: username,
-        role: role,
-        phone: phone,
       );
-
       if (user != null) {
         _currentUser = user;
         _isLoading = false;
         notifyListeners();
         return true;
-      } else {
-        _errorMessage = 'Signup failed';
-        _isLoading = false;
-        notifyListeners();
-        return false;
       }
+      _errorMessage = 'Échec de l\'inscription';
+      _isLoading = false;
+      notifyListeners();
+      return false;
     } catch (e) {
       _errorMessage = _handleAuthError(e);
       _isLoading = false;
       notifyListeners();
-      debugPrint('Signup error: $e');
+      return false;
+    }
+  }
+
+  Future<bool> forgotPassword(String email) async {
+    _isLoading = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      _isLoading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = _handleAuthError(e);
+      _isLoading = false;
+      notifyListeners();
       return false;
     }
   }
 
   String _handleAuthError(dynamic e) {
-    if (e.toString().contains('user-not-found')) {
-      return 'No user found for that email.';
-    } else if (e.toString().contains('wrong-password')) {
-      return 'Wrong password provided.';
-    } else if (e.toString().contains('email-already-in-use')) {
-      return 'The account already exists for that email.';
-    } else if (e.toString().contains('invalid-email')) {
-      return 'The email address is not valid.';
-    } else if (e.toString().contains('weak-password')) {
-      return 'The password is too weak.';
-    }
-    return 'Authentication failed. Please try again.';
+    final err = e.toString().toLowerCase();
+    if (err.contains('user-not-found')) return 'Compte inexistant.';
+    if (err.contains('wrong-password')) return 'Mot de passe incorrect.';
+    if (err.contains('email-already-in-use')) return 'Cet email est déjà utilisé.';
+    if (err.contains('invalid-email')) return 'Email invalide.';
+    if (err.contains('weak-password')) return 'Mot de passe trop faible.';
+    return 'Une erreur est survenue. Veuillez réessayer.';
   }
 
-  /// Logout current user
   Future<void> logout() async {
     _isLoading = true;
     notifyListeners();
-
     try {
       await _authService.logout();
       _currentUser = null;
-      _errorMessage = null;
-    } catch (e) {
-      _errorMessage = 'Logout failed';
-      debugPrint('Logout error: $e');
     } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  /// Clear error message
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
-  }
+  void clearError() { _errorMessage = null; notifyListeners(); }
 
-  /// Refresh current user data (including stats)
   Future<void> refreshCurrentUser() async {
     try {
       final user = await _authService.getCurrentUser();
-      if (user != null) {
-        _currentUser = user;
-        notifyListeners();
-      }
-    } catch (e) {
-      debugPrint('Refresh user error: $e');
-    }
-  }
-
-  /// Check if user has specific role
-  bool hasRole(UserRole role) {
-    return _currentUser?.role == role;
-  }
-
-  /// Check if user has any of the specified roles
-  bool hasAnyRole(List<UserRole> roles) {
-    if (_currentUser == null) return false;
-    return roles.contains(_currentUser!.role);
+      if (user != null) { _currentUser = user; notifyListeners(); }
+    } catch (_) {}
   }
 }

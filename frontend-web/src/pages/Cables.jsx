@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Cable as CableIcon, Plus, Search, QrCode, Eye, Pencil, Trash2, X, CheckCircle, AlertCircle, Clock } from 'lucide-react';
+import { Cable as CableIcon, Plus, Search, QrCode, Eye, Pencil, Trash2, X, CheckCircle, AlertCircle, Clock, ClipboardList } from 'lucide-react';
 import { CableService, OrderService } from '../services/api';
 import PageHeader from '../components/PageHeader';
 import toast from 'react-hot-toast';
@@ -117,113 +117,111 @@ const Cables = () => {
         }
     };
 
-    const filteredCables = cables.filter(c =>
-        c.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.code?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-
     const getOrderRef = (orderId) => {
         const order = orders.find(o => o.id === orderId);
-        return order?.reference || orderId?.substring(0, 10) || '—';
+        return order ? order.reference : '—';
     };
+
+    const filteredCables = cables.filter(c => {
+        const orderRef = getOrderRef(c.orderId).toLowerCase();
+        const search = searchTerm.toLowerCase();
+        return c.reference?.toLowerCase().includes(search) ||
+               c.code?.toLowerCase().includes(search) ||
+               orderRef.includes(search);
+    });
 
     return (
         <div className="flex flex-col gap-6">
             <PageHeader 
-                title="Gestion des Câbles"
-                subtitle="Suivi unitaire et traçabilité des câbles par référence et QR code"
+                title="Suivi des Câbles"
+                subtitle="Traçabilité unitaire et contrôle qualité par QR Code"
                 icon={<CableIcon />}
                 actions={
-                    <button onClick={openCreate} className="btn-primary flex items-center gap-2 px-6 py-2.5 rounded-xl shadow-lg shadow-blue-600/20">
-                        <Plus size={18} />
-                        Nouveau Câble
+                    <button onClick={openCreate} className="btn-primary flex items-center gap-2 px-6 py-3 rounded-2xl shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                        <Plus size={20} />
+                        Enregistrer un Câble
                     </button>
                 }
             />
 
-            {/* Search */}
-            <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center bg-white p-3.5 rounded-xl border border-slate-100" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+            {/* Search Suite */}
+            <div className="flex flex-col md:flex-row gap-4 items-stretch md:items-center bg-white/60 backdrop-blur-md p-4 rounded-[28px] border border-white/60 shadow-sm">
+                <div className="relative flex-1 group">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-blue-500 transition-colors" size={18} />
                     <input
                         type="text"
-                        placeholder="Rechercher par référence ou code QR..."
-                        className="input-field pl-9 text-sm"
+                        placeholder="Rechercher par référence, QR Code ou n° d'OF..."
+                        className="w-full bg-slate-50/50 border border-slate-200/60 rounded-2xl py-3.5 pl-12 pr-4 text-[15px] font-bold text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
             </div>
 
-            {/* Table */}
-            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 3px 0 rgb(0 0 0 / 0.03)' }}>
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left">
-                        <thead>
-                            <tr className="border-b border-slate-100">
-                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Référence</th>
-                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Code QR</th>
-                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Ordre</th>
-                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Statut</th>
-                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Date Contrôle</th>
-                                <th className="px-5 py-3.5 text-[11px] font-semibold text-slate-400 uppercase tracking-wider text-right">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                            {loading ? (
-                                <tr>
-                                    <td colSpan="6" className="px-5 py-12 text-center text-slate-400">
-                                        <div className="w-5 h-5 border-2 border-slate-100 border-t-indigo-500 rounded-full animate-spin mx-auto mb-3"></div>
-                                        <p className="text-sm">Chargement des câbles...</p>
-                                    </td>
-                                </tr>
-                            ) : filteredCables.length > 0 ? (
-                                filteredCables.map((cable) => (
-                                    <tr key={cable.id} className="hover:bg-slate-50/80 transition-colors border-b border-slate-50 last:border-0 group">
-                                        <td className="px-5 py-3.5 font-bold text-slate-800 text-sm">{cable.reference}</td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex items-center gap-1.5 text-sm text-slate-600 font-medium">
-                                                <QrCode size={15} className="text-slate-400" />
-                                                {cable.code || '—'}
-                                            </div>
-                                        </td>
-                                        <td className="px-5 py-3.5 text-sm text-slate-600 font-medium">{getOrderRef(cable.orderId)}</td>
-                                        <td className="px-5 py-3.5"><StatusBadge status={cable.status} /></td>
-                                        <td className="px-5 py-3.5 text-sm font-medium text-slate-500">
-                                            {cable.inspectionDate ? new Date(cable.inspectionDate).toLocaleDateString('fr-FR') : '—'}
-                                        </td>
-                                        <td className="px-5 py-3.5">
-                                            <div className="flex justify-end gap-1.5">
-                                                <button
-                                                    onClick={() => openEdit(cable)}
-                                                    className="p-2 bg-amber-50 hover:bg-amber-100 rounded-lg text-amber-600 transition-colors"
-                                                    title="Modifier"
-                                                >
-                                                    <Pencil size={15} />
-                                                </button>
-                                                <button
-                                                    onClick={() => setDeleteConfirm(cable)}
-                                                    className="p-2 bg-red-50 hover:bg-red-100 rounded-lg text-red-500 transition-colors"
-                                                    title="Supprimer"
-                                                >
-                                                    <Trash2 size={15} />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr>
-                                    <td colSpan="6" className="px-6 py-16 text-center">
-                                        <QrCode size={44} className="mx-auto text-slate-200 mb-3" />
-                                        <p className="text-slate-500 font-medium">Aucun câble trouvé</p>
-                                        <p className="text-sm text-slate-400 mt-1">Ajoutez un câble ou modifiez vos critères de recherche</p>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+            {/* Cables Grid/List */}
+            <div className="grid grid-cols-1 gap-4">
+                {loading ? (
+                    <div className="bg-white/50 backdrop-blur-sm rounded-[30px] border border-white py-24 text-center">
+                        <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
+                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Chargement des données câbles...</p>
+                    </div>
+                ) : filteredCables.length > 0 ? (
+                    filteredCables.map((cable) => (
+                        <div key={cable.id} className="group bg-white/70 backdrop-blur-md rounded-[30px] border border-white/60 p-5 flex flex-col lg:flex-row lg:items-center gap-6 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1 overflow-hidden">
+                            
+                            <div className="flex items-center gap-5 flex-1">
+                                {/* Icon with background */}
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center border border-slate-200/50 text-slate-400 group-hover:text-blue-600 transition-colors">
+                                    <QrCode size={32} />
+                                </div>
+
+                                <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-3 mb-1">
+                                        <h3 className="text-lg font-black text-slate-900 tracking-tight">{cable.reference}</h3>
+                                        <StatusBadge status={cable.status} />
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-4 text-sm font-bold text-slate-500">
+                                        <span className="flex items-center gap-1.5"><QrCode size={14} className="text-slate-300" /> {cable.code || 'Sans Code'}</span>
+                                        <span className="w-1 h-1 rounded-full bg-slate-200"></span>
+                                        <span className="flex items-center gap-1.5 text-blue-600 font-black"><ClipboardList size={14} className="text-blue-300" /> OF: {getOrderRef(cable.orderId)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-4 flex-wrap lg:justify-end">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 border border-slate-100 rounded-2xl">
+                                    <Clock size={16} className="text-slate-400" />
+                                    <span className="text-[13px] font-black text-slate-700">
+                                        {cable.inspectionDate ? new Date(cable.inspectionDate).toLocaleDateString('fr-FR') : 'Non inspecté'}
+                                    </span>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => openEdit(cable)}
+                                        className="w-11 h-11 bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white transition-all active:scale-90"
+                                    >
+                                        <Pencil size={16} strokeWidth={2.5} />
+                                    </button>
+                                    <button
+                                        onClick={() => setDeleteConfirm(cable)}
+                                        className="w-11 h-11 bg-white text-red-500 rounded-xl border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white transition-all active:scale-90"
+                                    >
+                                        <Trash2 size={16} strokeWidth={2.5} />
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                ) : (
+                    <div className="bg-white/50 backdrop-blur-sm rounded-[30px] border border-white py-24 text-center">
+                        <div className="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center text-slate-300 mx-auto mb-6 border border-slate-100 shadow-inner">
+                            <QrCode size={40} />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">Aucun câble trouvé</h3>
+                        <p className="text-slate-400 font-bold max-w-sm mx-auto">Aucun résultat ne correspond à votre recherche pour "{searchTerm}".</p>
+                    </div>
+                )}
             </div>
 
             {/* Create/Edit Modal */}

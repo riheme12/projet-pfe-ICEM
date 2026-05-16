@@ -17,9 +17,7 @@ const Sidebar = () => {
         { icon: <AlertCircle size={22} />, label: 'Anomalies', path: '/anomalies', page: 'anomalies' },
         { icon: <Bell size={22} />, label: 'Alertes', path: '/alerts', page: 'alerts' },
         { icon: <FileBarChart size={22} />, label: 'Rapports', path: '/reports', page: 'reports' },
-        { icon: <TrendingUp size={22} />, label: 'Tendances', path: '/trends', page: 'trends' },
         { icon: <Users size={22} />, label: 'Utilisateurs', path: '/users', page: 'users' },
-        { icon: <Shield size={22} />, label: 'Rôles', path: '/roles', page: 'roles' },
     ];
 
     const menuItems = allMenuItems.filter(item => hasPageAccess(item.page));
@@ -61,7 +59,8 @@ const Sidebar = () => {
                     backgroundPosition: 'center',
                 }}
             />
-            <div className="absolute inset-0 z-0 bg-gradient-to-b from-white/70 via-white/50 to-blue-50/70"></div>
+            <div className="absolute inset-0 z-0 bg-gradient-to-b from-indigo-900/10 via-white/40 to-blue-900/10 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 z-0 bg-white/30"></div>
 
             <div className="relative z-10 flex flex-col h-full w-full">
                 
@@ -85,24 +84,29 @@ const Sidebar = () => {
                 </div>
 
                 {/* Navigation */}
-                <nav className="flex-1 flex flex-col gap-1.5 px-4 overflow-y-auto pb-6 custom-scrollbar">
+                <nav className="flex-1 flex flex-col gap-2 px-4 overflow-y-auto pb-6 custom-scrollbar relative z-10">
                     {menuItems.map((item) => (
                         <NavLink
                             key={item.path}
                             to={item.path}
                             className={({ isActive }) =>
-                                `flex items-center gap-5 px-5 py-4 rounded-[22px] transition-all duration-300 font-bold text-[15px]
+                                `flex items-center gap-5 px-5 py-4 rounded-[24px] transition-all duration-500 font-bold text-[17px] relative group
                                 ${isActive 
-                                    ? 'bg-[#1e1b4b] text-white shadow-2xl shadow-indigo-950/20 translate-x-2' 
-                                    : 'text-slate-600 hover:bg-white/60 hover:text-[#1e1b4b]'}`
+                                    ? 'active-nav-link bg-gradient-to-r from-[#1e1b4b] to-[#312e81] text-white shadow-[0_10px_30px_rgba(30,27,75,0.25)] translate-x-2' 
+                                    : 'text-slate-600 hover:bg-white/60 hover:text-[#1e1b4b] hover:translate-x-1'}`
                             }
                         >
                             {({ isActive }) => (
                                 <>
-                                    <span className={`${isActive ? 'text-white' : 'text-slate-400'}`}>
+                                    {/* Active Indicator Dot/Line */}
+                                    {isActive && (
+                                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-blue-500 rounded-r-full shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
+                                    )}
+                                    
+                                    <span className={`transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-blue-600'}`}>
                                         {item.icon}
                                     </span>
-                                    <span className={`flex-1 truncate tracking-tight ${isActive ? 'text-white' : ''}`}>{item.label}</span>
+                                    <span className={`flex-1 truncate tracking-tight ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-[#1e1b4b]'}`}>{item.label}</span>
                                     {item.page === 'alerts' && activeAlertsCount > 0 && (
                                         <span className="inline-flex min-w-[24px] h-[24px] px-1.5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black shadow-lg">
                                             {activeAlertsCount > 99 ? '99+' : activeAlertsCount}
@@ -116,36 +120,30 @@ const Sidebar = () => {
                     <div className="my-8 border-t border-slate-200/60 mx-6"></div>
 
                     <NavLink to="/profile" className={({ isActive }) => 
-                        `flex items-center gap-5 px-5 py-4 rounded-[22px] transition-all font-bold text-[15px]
-                        ${isActive ? 'bg-[#1e1b4b] text-white shadow-xl' : 'text-slate-600 hover:bg-white/60'}`
+                        `flex items-center gap-5 px-5 py-4 rounded-[24px] transition-all font-bold text-[17px] group relative
+                        ${isActive ? 'active-nav-link bg-gradient-to-r from-[#1e1b4b] to-[#312e81] text-white shadow-xl translate-x-2' : 'text-slate-600 hover:bg-white/60 hover:translate-x-1'}`
                     }>
-                        <User size={22} />
-                        <span>Mon Profil</span>
+                        {({ isActive }) => (
+                            <>
+                                {isActive && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-6 bg-blue-500 rounded-r-full shadow-[0_0_15px_rgba(59,130,246,0.6)]"></div>
+                                )}
+                                <span className={`transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-slate-400 group-hover:text-blue-600'}`}>
+                                    <User size={22} />
+                                </span>
+                                <span className={`flex-1 truncate tracking-tight ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-[#1e1b4b]'}`}>Mon Profil</span>
+                            </>
+                        )}
                     </NavLink>
 
                     <button
                         onClick={handleLogout}
-                        className="flex items-center gap-5 px-5 py-4 rounded-[22px] transition-all font-bold text-[15px] text-slate-600 hover:bg-red-50 hover:text-red-600 mt-auto"
+                        className="flex items-center gap-5 px-5 py-4 rounded-[24px] transition-all font-bold text-[17px] text-slate-600 hover:bg-red-50 hover:text-red-600 mt-auto"
                     >
                         <LogOut size={22} />
                         <span>Déconnexion</span>
                     </button>
                 </nav>
-
-                {/* Footer User Widget */}
-                <div className="p-5 m-5 rounded-[30px] bg-white/70 backdrop-blur-md border border-white/60 shadow-xl shadow-blue-900/5">
-                    <div className="flex items-center gap-4">
-                        <img
-                            src={userPhotoUrl}
-                            alt="User"
-                            className="w-12 h-12 rounded-[18px] border-2 border-blue-500/10 object-cover flex-shrink-0"
-                        />
-                        <div className="min-w-0">
-                            <p className="text-[15px] font-black text-[#1e1b4b] truncate leading-none mb-1.5">{user?.fullName || 'Utilisateur'}</p>
-                            <p className="text-[10px] text-blue-600 font-black uppercase tracking-widest">{roleLabel}</p>
-                        </div>
-                    </div>
-                </div>
             </div>
         </aside>
     );

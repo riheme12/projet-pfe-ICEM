@@ -81,6 +81,14 @@ export const UserService = {
     create: (data) => api.post('/users', data),
     update: (id, data) => api.patch(`/users/${id}`, data),
     resetPassword: (id, newPassword) => api.post(`/users/${id}/reset-password`, { newPassword }),
+    uploadSignature: (id, file) => {
+        const formData = new FormData();
+        formData.append('signature', file);
+        return api.post(`/users/${id}/signature`, formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+    },
+    deleteSignature: (id) => api.delete(`/users/${id}/signature`),
 };
 
 export const CableService = {
@@ -94,18 +102,12 @@ export const CableService = {
 
 export const StatsService = {
     getTrends: () => api.get('/stats/trends'),
+    getSummary: () => api.get('/stats/summary'),
 };
 
 export const SettingsService = {
     get: () => api.get('/settings'),
     update: (data) => api.put('/settings', data),
-};
-
-export const RoleService = {
-    getAll: () => api.get('/roles'),
-    create: (data) => api.post('/roles', data),
-    update: (id, data) => api.patch(`/roles/${id}`, data),
-    delete: (id) => api.delete(`/roles/${id}`),
 };
 
 export default api;

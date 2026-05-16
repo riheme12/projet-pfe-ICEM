@@ -1,17 +1,16 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../models/user.dart';
 import '../services/user_service.dart';
-import '../widgets/stats_card.dart';
 import '../theme/app_theme.dart';
 import '../screens/edit_profile_page.dart';
 import '../providers/auth_provider.dart';
-import 'package:provider/provider.dart';
 
-/// Page du profil utilisateur
+/// Page du profil utilisateur — Design Unifié (sans cartes stats)
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
-
   @override
   State<ProfilePage> createState() => _ProfilePageState();
 }
@@ -22,370 +21,166 @@ class _ProfilePageState extends State<ProfilePage> {
   bool _isLoading = true;
 
   @override
-  void initState() {
-    super.initState();
-    _loadUserData();
-  }
+  void initState() { super.initState(); _loadUserData(); }
 
   Future<void> _loadUserData() async {
     final user = await _userService.getCurrentUser();
-    setState(() {
-      _user = user;
-      _isLoading = false;
-    });
+    if (mounted) setState(() { _user = user; _isLoading = false; });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) return const Scaffold(backgroundColor: AppTheme.background, body: Center(child: CircularProgressIndicator(color: AppTheme.accentBlue)));
+    if (_user == null) return const Scaffold(body: Center(child: Text('Erreur : Profil introuvable')));
+
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
-      // ✅ Bug fixed: explicit AppBar color so title is visible
-      appBar: AppBar(
-        backgroundColor: AppTheme.primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'Mon Profil',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: Colors.white,
+      backgroundColor: AppTheme.background,
+      body: CustomScrollView(slivers: [
+        SliverAppBar(
+          expandedHeight: 260,
+          pinned: true,
+          backgroundColor: AppTheme.primaryNavy,
+          actions: [
+            IconButton(
+              icon: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
+              ),
+              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => EditProfilePage(user: _user!))).then((_) => _loadUserData()),
+            ),
+          ],
+          flexibleSpace: FlexibleSpaceBar(
+            background: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E3A5F), Color(0xFF2563EB)], begin: Alignment.topLeft, end: Alignment.bottomRight),
+              ),
+              child: SafeArea(child: _buildProfileHeader()),
+            ),
           ),
         ),
-      ),
-      body: _isLoading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: AppTheme.primaryBlue,
-              ),
-            )
-          : SingleChildScrollView(
-              child: Column(
-                children: [
-                  _buildProfileHeader(),
-                  const SizedBox(height: 24),
-
-                  _buildInfoSection(),
-                  const SizedBox(height: 24),
-                  _buildSettingsSection(),
-                  const SizedBox(height: 24),
-                  _buildLogoutButton(),
-                  const SizedBox(height: 40),
-                ],
-              ),
-            ),
+        SliverToBoxAdapter(child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(children: [
+            _buildInfoSection(),
+            const SizedBox(height: 20),
+            _buildSignatureSection(),
+            const SizedBox(height: 32),
+            _buildLogoutButton(context),
+            const SizedBox(height: 40),
+          ]),
+        )),
+      ]),
     );
   }
 
   Widget _buildProfileHeader() {
-    return Container(
-      width: double.infinity,
-      decoration: const BoxDecoration(
-        gradient: AppTheme.primaryGradient,
-      ),
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 36),
-      child: Column(
-        children: [
-          // Avatar with ring
-          Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.3),
-            ),
-            child: Container(
-              width: 96,
-              height: 96,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-              ),
-              child: CircleAvatar(
-                backgroundColor: AppTheme.accentBlue.withValues(alpha: 0.15),
-                child: Text(
-                  _user!.fullName.isNotEmpty
-                      ? _user!.fullName.substring(0, 1).toUpperCase()
-                      : 'U',
-                  style: GoogleFonts.inter(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    color: AppTheme.primaryBlue,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          // Nom
-          Text(
-            _user!.fullName,
-            style: GoogleFonts.inter(
-              fontSize: 22,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              letterSpacing: -0.3,
-            ),
-          ),
-          const SizedBox(height: 6),
-          // Rôle
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-            ),
-            child: Text(
-              _user!.role.name,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Email sous le rôle
-          Text(
-            _user!.email,
-            style: GoogleFonts.inter(
-              fontSize: 13,
-              color: Colors.white.withValues(alpha: 0.75),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
+    final photo = _user!.photoUrl;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w700,
-          color: AppTheme.textDark,
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+      child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white.withOpacity(0.3), width: 2),
+            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 20)],
+          ),
+          child: CircleAvatar(
+            radius: 46,
+            backgroundColor: Colors.white24,
+            backgroundImage: photo != null ? MemoryImage(base64Decode(photo.split(',').last)) : null,
+            child: photo == null ? Text(
+              _user!.fullName.isNotEmpty ? _user!.fullName.substring(0, 1).toUpperCase() : 'U',
+              style: GoogleFonts.inter(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white),
+            ) : null,
+          ),
         ),
-      ),
-    );
-  }
-
-
-
-  Widget _buildInfoSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Informations personnelles'),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: AppTheme.dividerGrey.withValues(alpha: 0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                _buildInfoTile(Icons.email_outlined, 'Email', _user!.email),
-                const Divider(height: 1, indent: 56),
-                _buildInfoTile(Icons.phone_outlined, 'Téléphone',
-                    _user!.phone ?? 'Non renseigné'),
-                const Divider(height: 1, indent: 56),
-                _buildInfoTile(
-                  Icons.calendar_today_outlined,
-                  'Membre depuis',
-                  '${_user!.createdAt.day}/${_user!.createdAt.month}/${_user!.createdAt.year}',
-                ),
-              ],
-            ),
+        const SizedBox(height: 16),
+        Text(_user!.fullName, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.white24),
           ),
-        ],
-      ),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Container(width: 7, height: 7, decoration: const BoxDecoration(color: AppTheme.successGreen, shape: BoxShape.circle)),
+            const SizedBox(width: 8),
+            Text(_user!.role.name.toUpperCase(), style: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w800, letterSpacing: 1.2)),
+          ]),
+        ),
+      ]),
     );
   }
 
-  Widget _buildInfoTile(IconData icon, String label, String value) {
-    return ListTile(
-      contentPadding:
-          const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-      leading: Container(
+  Widget _buildInfoSection() => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: AppTheme.borderGris),
+    ),
+    child: Column(children: [
+      _infoTile(Icons.alternate_email, 'Identifiant', _user!.username, const Color(0xFF6366F1)),
+      Divider(height: 1, color: AppTheme.borderGris),
+      _infoTile(Icons.phone_outlined, 'Téléphone', _user!.phone ?? 'N/A', const Color(0xFF10B981)),
+      Divider(height: 1, color: AppTheme.borderGris),
+      _infoTile(Icons.calendar_today_outlined, 'Inscription', '${_user!.createdAt.day}/${_user!.createdAt.month}/${_user!.createdAt.year}', const Color(0xFF0EA5E9)),
+    ]),
+  );
+
+  Widget _infoTile(IconData icon, String label, String value, Color color) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    child: Row(children: [
+      Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: AppTheme.accentBlue.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: AppTheme.accentBlue, size: 20),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+        child: Icon(icon, color: color, size: 18),
       ),
-      title: Text(
-        label,
-        style: GoogleFonts.inter(
-            fontSize: 12, color: AppTheme.textGrey, fontWeight: FontWeight.w500),
-      ),
-      subtitle: Text(
-        value,
-        style: GoogleFonts.inter(
-            fontSize: 15, color: AppTheme.textDark, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
+      const SizedBox(width: 14),
+      Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label, style: GoogleFonts.inter(fontSize: 10, color: AppTheme.textGrey, fontWeight: FontWeight.w700)),
+        Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.primaryNavy)),
+      ]),
+    ]),
+  );
 
-  Widget _buildSettingsSection() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildSectionTitle('Paramètres'),
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                  color: AppTheme.dividerGrey.withValues(alpha: 0.5)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              children: [
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.notifications_outlined,
-                        color: AppTheme.accentBlue, size: 20),
-                  ),
-                  title: Text('Notifications',
-                      style: GoogleFonts.inter(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                  trailing: Switch(
-                    value: true,
-                    onChanged: (value) {},
-                    activeThumbColor: AppTheme.primaryBlue,
-                  ),
-                ),
-                const Divider(height: 1, indent: 56),
-                ListTile(
-                  contentPadding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppTheme.accentBlue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.info_outline,
-                        color: AppTheme.accentBlue, size: 20),
-                  ),
-                  title: Text('À propos',
-                      style: GoogleFonts.inter(
-                          fontSize: 15, fontWeight: FontWeight.w600)),
-                  trailing: const Icon(Icons.chevron_right,
-                      color: AppTheme.textLight),
-                  onTap: () {
-                    showAboutDialog(
-                      context: context,
-                      applicationName: 'ICEM Quality Control',
-                      applicationVersion: '1.0.0',
-                      applicationLegalese: '© 2025 ICEM - Tous droits réservés',
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+  Widget _buildSignatureSection() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Text('Ma Signature Officielle', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy)),
+    const SizedBox(height: 12),
+    Container(
+      width: double.infinity, height: 100,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.borderGris),
       ),
-    );
-  }
+      child: _user!.signatureUrl != null && _user!.signatureUrl!.isNotEmpty
+          ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.network(_user!.signatureUrl!, fit: BoxFit.contain))
+          : Center(child: Text('Signature non configurée', style: GoogleFonts.inter(color: AppTheme.textLight, fontSize: 12))),
+    ),
+  ]);
 
-  Widget _buildLogoutButton() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: SizedBox(
-        width: double.infinity,
-        height: 54,
-        child: OutlinedButton.icon(
-          onPressed: () async {
-            final confirm = await showDialog<bool>(
-              context: context,
-              builder: (context) => AlertDialog(
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
-                title: Text('Déconnexion',
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-                content: Text(
-                  'Voulez-vous vraiment vous déconnecter ?',
-                  style: GoogleFonts.inter(color: AppTheme.textGrey),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text('Annuler',
-                        style: GoogleFonts.inter(color: AppTheme.textGrey)),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.errorRed,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                    ),
-                    child: Text('Déconnexion',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                  ),
-                ],
-              ),
-            );
-
-            if (confirm == true && mounted) {
-              // Use auth provider for proper logout
-              final authProvider =
-                  Provider.of<AuthProvider>(context, listen: false);
-              await authProvider.logout();
-            }
-          },
-          icon: const Icon(Icons.logout_rounded, color: AppTheme.errorRed),
-          label: Text(
-            'Se déconnecter',
-            style: GoogleFonts.inter(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.errorRed,
-            ),
-          ),
-          style: OutlinedButton.styleFrom(
-            side: const BorderSide(color: AppTheme.errorRed, width: 1.5),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14),
-            ),
-            backgroundColor: AppTheme.errorRed.withValues(alpha: 0.05),
-          ),
-        ),
+  Widget _buildLogoutButton(BuildContext context) => Container(
+    width: double.infinity, height: 54,
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFF43F5E), width: 1.5),
+    ),
+    child: Material(
+      color: const Color(0xFFF43F5E).withOpacity(0.04),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Provider.of<AuthProvider>(context, listen: false).logout(),
+        child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+          const Icon(Icons.logout_rounded, color: Color(0xFFF43F5E), size: 20),
+          const SizedBox(width: 10),
+          Text('SE DÉCONNECTER', style: GoogleFonts.inter(color: const Color(0xFFF43F5E), fontWeight: FontWeight.w900, fontSize: 13)),
+        ]),
       ),
-    );
-  }
+    ),
+  );
 }

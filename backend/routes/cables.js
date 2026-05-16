@@ -3,6 +3,16 @@ const router = express.Router();
 const { db } = require('../firebase');
 const { Cable } = require('../models');
 
+// ═══ CACHE MÉMOIRE ══════════════════════════════════════
+const cache = {};
+const CACHE_TTL = 30 * 1000;
+function getCached(key) {
+    const e = cache[key];
+    if (e && Date.now() - e.time < CACHE_TTL) return e.data;
+    return null;
+}
+function setCache(key, data) { cache[key] = { data, time: Date.now() }; }
+
 // Get all cables (optional filter by orderId)
 router.get('/', async (req, res) => {
     try {
@@ -16,7 +26,16 @@ router.get('/', async (req, res) => {
             query = query.where('status', '==', status);
         }
 
-        const snapshot = await query.get();
+        // Tentative de tri + limite (nécessite index si where présent)
+        const limitCount = parseInt(req.query.limit) || 200;
+        let snapshot;
+        try {
+            snapshot = await query.orderBy('inspectionDate', 'desc').limit(limitCount).get();
+        } catch (e) {
+            console.warn("Falling back to unordered query (missing index?):", e.message);
+            snapshot = await query.limit(limitCount).get();
+        }
+        
         const cables = snapshot.docs.map(doc => {
             const cable = Cable.fromJson({ id: doc.id, ...doc.data() });
             return cable.toJson();
@@ -27,23 +46,21 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get cable stats
+// Get cable stats (CACHED)
 router.get('/stats/summary', async (req, res) => {
     try {
+        const cached = getCached('cable_stats');
+        if (cached) return res.status(200).json(cached);
+
         const snapshot = await db.collection('cable').get();
-        const stats = {
-            total: snapshot.size,
-            conforme: 0,
-            nonConforme: 0,
-            enAttente: 0
-        };
+        const stats = { total: snapshot.size, conforme: 0, nonConforme: 0, enAttente: 0 };
         snapshot.forEach(doc => {
-            const cable = Cable.fromJson({ id: doc.id, ...doc.data() });
-            const s = cable.status?.toLowerCase() || '';
+            const s = (doc.data().status || '').toLowerCase();
             if (s === 'conforme') stats.conforme++;
             else if (s === 'non conforme') stats.nonConforme++;
             else stats.enAttente++;
         });
+        setCache('cable_stats', stats);
         res.status(200).json(stats);
     } catch (error) {
         res.status(500).json({ error: error.message });
