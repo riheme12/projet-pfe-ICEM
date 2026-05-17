@@ -37,8 +37,9 @@ router.get('/', async (req, res) => {
         }
         
         const cables = snapshot.docs.map(doc => {
-            const cable = Cable.fromJson({ id: doc.id, ...doc.data() });
-            return cable.toJson();
+            const cable = Cable.fromJson({ id: doc.id, ...doc.data() }).toJson();
+            delete cable.imageUrls; // Optimisation CRITIQUE : ne pas envoyer les images base64 dans la liste
+            return cable;
         });
         res.status(200).json(cables);
     } catch (error) {
@@ -52,14 +53,23 @@ router.get('/stats/summary', async (req, res) => {
         const cached = getCached('cable_stats');
         if (cached) return res.status(200).json(cached);
 
-        const snapshot = await db.collection('cable').get();
-        const stats = { total: snapshot.size, conforme: 0, nonConforme: 0, enAttente: 0 };
-        snapshot.forEach(doc => {
-            const s = (doc.data().status || '').toLowerCase();
-            if (s === 'conforme') stats.conforme++;
-            else if (s === 'non conforme') stats.nonConforme++;
-            else stats.enAttente++;
-        });
+        const [totalSnap, conformeSnap, nonConformeSnap] = await Promise.all([
+            db.collection('cable').count().get(),
+            db.collection('cable').where('status', 'in', ['Conforme', 'conforme', 'OK', 'ok']).count().get(),
+            db.collection('cable').where('status', 'in', ['Non conforme', 'non conforme', 'NOK', 'nok']).count().get()
+        ]);
+        
+        const total = totalSnap.data().count;
+        const conforme = conformeSnap.data().count;
+        const nonConforme = nonConformeSnap.data().count;
+        
+        const stats = { 
+            total, 
+            conforme, 
+            nonConforme, 
+            enAttente: total - conforme - nonConforme 
+        };
+        
         setCache('cable_stats', stats);
         res.status(200).json(stats);
     } catch (error) {

@@ -164,14 +164,23 @@ router.get('/stats/summary', async (req, res) => {
         const cached = getCached('anomaly_stats');
         if (cached) return res.status(200).json(cached);
 
-        const snapshot = await db.collection('anomaly').get();
-        const stats = { total: snapshot.size, critique: 0, majeur: 0, mineur: 0 };
-        snapshot.forEach(doc => {
-            const severity = (doc.data().severity || '').toLowerCase();
-            if (severity === 'critique') stats.critique++;
-            else if (severity === 'majeur') stats.majeur++;
-            else if (severity === 'mineur') stats.mineur++;
-        });
+        const [totalSnap, critiqueSnap, majeurSnap] = await Promise.all([
+            db.collection('anomaly').count().get(),
+            db.collection('anomaly').where('severity', 'in', ['Critique', 'critique']).count().get(),
+            db.collection('anomaly').where('severity', 'in', ['Majeur', 'majeur']).count().get()
+        ]);
+
+        const total = totalSnap.data().count;
+        const critique = critiqueSnap.data().count;
+        const majeur = majeurSnap.data().count;
+        
+        const stats = { 
+            total, 
+            critique, 
+            majeur, 
+            mineur: total - critique - majeur 
+        };
+        
         setCache('anomaly_stats', stats);
         res.status(200).json(stats);
     } catch (error) {

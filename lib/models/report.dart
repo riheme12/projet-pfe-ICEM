@@ -16,6 +16,8 @@ class Report {
   final String? type;              // 'performance' ou 'inspection'
   final String? pdfUrl;             // URL du PDF généré (si disponible)
   final String? notes;              // Notes du technicien
+  final String? signatureUrl;       // Signature du technicien
+  final String? imageUrl;           // Image de l'anomalie
 
   Report({
     required this.id,
@@ -29,6 +31,8 @@ class Report {
     this.type,
     this.pdfUrl,
     this.notes,
+    this.signatureUrl,
+    this.imageUrl,
   });
 
   /// Vérifier si le câble est conforme
@@ -37,21 +41,31 @@ class Report {
   /// Vérifier si le PDF est disponible
   bool get hasPdf => pdfUrl != null && pdfUrl!.isNotEmpty;
 
-  /// Créer depuis Firestore (DocumentSnapshot)
   factory Report.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
+    
+    // Sécurisation de la date: supporte Timestamp, String ISO, ou utilise DateTime.now() en secours
+    DateTime dateToUse = DateTime.now();
+    if (data['generatedAt'] is Timestamp) {
+      dateToUse = (data['generatedAt'] as Timestamp).toDate();
+    } else if (data['generatedAt'] is String) {
+      try { dateToUse = DateTime.parse(data['generatedAt'] as String); } catch (_) {}
+    }
+
     return Report(
       id: doc.id,
       cableId: data['cableId'] as String? ?? '',
       orderId: data['orderId'] as String? ?? '',
       technicianId: data['technicianId'] as String? ?? '',
       technicianName: data['technicianName'] as String?,
-      generatedAt: (data['generatedAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      generatedAt: dateToUse,
       conformityStatus: data['conformityStatus'] as String? ?? 'Inconnu',
       anomaliesCount: data['anomaliesCount'] as int? ?? 0,
       type: data['type'] as String?,
       pdfUrl: data['pdfUrl'] as String?,
       notes: data['notes'] as String?,
+      signatureUrl: data['signatureUrl'] as String?,
+      imageUrl: data['imageUrl'] as String?,
     );
   }
 
@@ -69,6 +83,8 @@ class Report {
       type: json['type'] as String?,
       pdfUrl: json['pdfUrl'] as String?,
       notes: json['notes'] as String?,
+      signatureUrl: json['signatureUrl'] as String?,
+      imageUrl: json['imageUrl'] as String?,
     );
   }
 
@@ -86,6 +102,8 @@ class Report {
       'type': type,
       'pdfUrl': pdfUrl,
       'notes': notes,
+      'signatureUrl': signatureUrl,
+      'imageUrl': imageUrl,
     };
   }
 }

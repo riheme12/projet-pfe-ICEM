@@ -4,7 +4,9 @@ import 'package:projeticem/services/reports_service.dart';
 import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:http/http.dart' as http;
 import '../models/manufacturing_order.dart';
+import '../models/report.dart';
 
 /// Service d'export PDF — Template Unifié ICEM
 ///
@@ -40,6 +42,20 @@ class PdfExportService {
     );
   }
 
+  /// Télécharger une image réseau pour l'inclure dans le PDF
+  static Future<pw.MemoryImage?> _downloadImage(String? url) async {
+    if (url == null || url.isEmpty) return null;
+    try {
+      final response = await http.get(Uri.parse(url));
+      if (response.statusCode == 200) {
+        return pw.MemoryImage(response.bodyBytes);
+      }
+    } catch (e) {
+      print('Erreur téléchargement image PDF: $e');
+    }
+    return null;
+  }
+
   /// Générer un PDF avec le template unifié
   static Future<void> _generatePdf({
     required String title,
@@ -47,10 +63,13 @@ class PdfExportService {
     required String fileName,
     required List<pw.Widget> Function() contentBuilder,
     required _PdfResources res,
+    String? signatureUrl,
   }) async {
     final dateStr = DateFormat('dd/MM/yyyy').format(DateTime.now());
     final heureStr = DateFormat('HH:mm').format(DateTime.now());
     final pdf = pw.Document();
+
+    final signatureImage = signatureUrl != null ? await _downloadImage(signatureUrl) : null;
 
     pdf.addPage(pw.MultiPage(
       pageFormat: PdfPageFormat.a4,
@@ -63,6 +82,22 @@ class PdfExportService {
         _titleBanner(title),
         pw.SizedBox(height: 24),
         ...contentBuilder(),
+        if (signatureImage != null) ...[
+          pw.SizedBox(height: 30),
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.end,
+            children: [
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text('Signature du Technicien :', style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  pw.Image(signatureImage, width: 100, height: 50),
+                ]
+              )
+            ]
+          )
+        ]
       ],
     ));
 
@@ -235,6 +270,7 @@ class PdfExportService {
     required String technicianName,
     required TechnicianStats stats,
     required String period,
+    String? signatureUrl,
   }) async {
     final res = await _loadResources();
     await _generatePdf(
@@ -242,6 +278,7 @@ class PdfExportService {
       userName: 'Technicien : $technicianName',
       fileName: 'Rapport_${technicianName.replaceAll(' ', '_')}_${DateFormat('yyyyMMdd').format(DateTime.now())}',
       res: res,
+      signatureUrl: signatureUrl,
       contentBuilder: () => [
         _section('INDICATEURS CLÉS DE PERFORMANCE'),
         pw.SizedBox(height: 10),
@@ -291,7 +328,7 @@ class PdfExportService {
   // ═══════════════════════════════════════════════════════════════════════
   // TYPE 2 : RAPPORT ORDRE DE FABRICATION (Inspection)
   // ═══════════════════════════════════════════════════════════════════════
-  static Future<void> exportOrderReport(ManufacturingOrder order) async {
+  static Future<void> exportOrderReport(ManufacturingOrder order, {String? signatureUrl}) async {
     final res = await _loadResources();
     final conformRate = order.inspectedCount > 0
         ? (order.conformCount / order.inspectedCount * 100).toStringAsFixed(1)
@@ -302,6 +339,7 @@ class PdfExportService {
       userName: 'Ordre : ${order.reference}',
       fileName: 'Inspection_OF_${order.numeroOF}_${DateFormat('yyyyMMdd').format(DateTime.now())}',
       res: res,
+      signatureUrl: signatureUrl,
       contentBuilder: () => [
         _section('INFORMATIONS GÉNÉRALES'),
         pw.SizedBox(height: 10),
@@ -341,15 +379,64 @@ class PdfExportService {
   }
 
   // ═══════════════════════════════════════════════════════════════════════
-  // TYPE 3 : RAPPORT GLOBAL (Administration / Web)
+  // TYPE 3 : RAPPORT D'INSPECTION DÉTAILLÉ (Individuel)
   // ═══════════════════════════════════════════════════════════════════════
-  static Future<void> exportGlobalStatsReport(GlobalStats stats, Map<String, int> anomaliesByType) async {
+  static Future<void> exportInspectionReport(Report report) async {
+    final res = await _loadResources();
+    final anomalyImage = report.imageUrl != null ? await _downloadImage(report.imageUrl) : null;
+
+    await _generatePdf(
+      title: 'Rapport d\'Inspection Détallé',
+      userName: 'Technicien : ${report.technicianName ?? "N/A"}',
+      fileName: 'Inspection_${report.cableId}_${DateFormat('yyyyMMdd').format(DateTime.now())}',
+      res: res,
+      signatureUrl: report.signatureUrl,
+      contentBuilder: () => [
+        _section('DÉTAILS DE L\'INSPECTION'),
+        pw.SizedBox(height: 10),
+        _infoGrid([
+          ['CÂBLE ID', report.cableId],
+          ['ORDRE ID', report.orderId],
+          ['DATE', DateFormat('dd/MM/yyyy HH:mm').format(report.generatedAt)],
+          ['VERDICT', report.conformityStatus],
+          ['ANOMALIES', '${report.anomaliesCount}'],
+        ]),
+        pw.SizedBox(height: 24),
+        if (report.notes != null && report.notes!.isNotEmpty) ...[
+          _section('OBSERVATIONS TECHNIQUES'),
+          pw.SizedBox(height: 10),
+          pw.Container(
+            padding: const pw.EdgeInsets.all(12),
+            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey200)),
+            child: pw.Text(report.notes!, style: const pw.TextStyle(fontSize: 9)),
+          ),
+          pw.SizedBox(height: 24),
+        ],
+        if (anomalyImage != null) ...[
+          _section('PREUVE VISUELLE'),
+          pw.SizedBox(height: 10),
+          pw.Center(
+            child: pw.Container(
+              height: 200,
+              child: pw.Image(anomalyImage, fit: pw.BoxFit.contain),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════
+  // TYPE 4 : RAPPORT GLOBAL (Administration / Web)
+  // ═══════════════════════════════════════════════════════════════════════
+  static Future<void> exportGlobalStatsReport(GlobalStats stats, Map<String, int> anomaliesByType, {String? signatureUrl}) async {
     final res = await _loadResources();
     await _generatePdf(
       title: 'Rapport Global de Production',
       userName: 'Administration ICEM',
       fileName: 'Rapport_Global_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}',
       res: res,
+      signatureUrl: signatureUrl,
       contentBuilder: () => [
         _section('VUE D\'ENSEMBLE'),
         pw.SizedBox(height: 10),

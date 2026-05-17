@@ -13,39 +13,63 @@ import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestor
 import PageHeader from '../components/PageHeader';
 import toast, { Toaster } from 'react-hot-toast';
 
-/* ─── Stat Card — two variants: filled (hero) and white ─── */
-const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend }) => {
-    if (hero) {
-        return (
-            <div className="card-hero relative overflow-hidden">
-                <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full bg-white/5"></div>
-                <div className="absolute -right-2 bottom-4 w-14 h-14 rounded-full bg-white/8"></div>
-                <div className="flex justify-between items-start mb-3">
-                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-white">
-                        {React.cloneElement(icon, { size: 17 })}
-                    </div>
-                    {trend !== undefined && (
-                        <div className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full bg-white/15 text-white">
-                            {trend >= 0 ? <ArrowUpRight size={11} /> : <ArrowDownRight size={11} />}
-                            {Math.abs(trend)}%
-                        </div>
-                    )}
-                </div>
-                <p className="stat-label text-indigo-200 mb-1">{label}</p>
-                <p className="text-3xl font-extrabold text-white tracking-tight leading-none">
-                    {value}{unit && <span className="text-lg font-semibold text-indigo-200 ml-1">{unit}</span>}
-                </p>
-                {subtitle && <p className="text-[11px] text-indigo-200 mt-2">{subtitle}</p>}
-            </div>
-        );
-    }
+const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend, color = 'indigo' }) => {
+    const colorStyles = {
+        indigo: {
+            bg: "from-indigo-50 to-indigo-100",
+            border: "border-indigo-200 hover:border-indigo-300",
+            iconBg: "bg-indigo-600 text-white shadow-md shadow-indigo-600/30",
+            blob: "bg-indigo-200/50",
+            textAccent: "text-indigo-600",
+            title: "text-indigo-900",
+            value: "text-indigo-950"
+        },
+        rose: {
+            bg: "from-rose-50 to-rose-100",
+            border: "border-rose-200 hover:border-rose-300",
+            iconBg: "bg-rose-500 text-white shadow-md shadow-rose-500/30",
+            blob: "bg-rose-200/50",
+            textAccent: "text-rose-600",
+            title: "text-rose-900",
+            value: "text-rose-950"
+        },
+        emerald: {
+            bg: "from-emerald-50 to-emerald-100",
+            border: "border-emerald-200 hover:border-emerald-300",
+            iconBg: "bg-emerald-500 text-white shadow-md shadow-emerald-500/30",
+            blob: "bg-emerald-200/50",
+            textAccent: "text-emerald-600",
+            title: "text-emerald-900",
+            value: "text-emerald-950"
+        },
+        amber: {
+            bg: "from-amber-50 to-amber-100",
+            border: "border-amber-200 hover:border-amber-300",
+            iconBg: "bg-amber-500 text-white shadow-md shadow-amber-500/30",
+            blob: "bg-amber-200/50",
+            textAccent: "text-amber-600",
+            title: "text-amber-900",
+            value: "text-amber-950"
+        },
+        blue: {
+            bg: "from-blue-50 to-blue-100",
+            border: "border-blue-200 hover:border-blue-300",
+            iconBg: "bg-blue-500 text-white shadow-md shadow-blue-500/30",
+            blob: "bg-blue-200/50",
+            textAccent: "text-blue-600",
+            title: "text-blue-900",
+            value: "text-blue-950"
+        }
+    };
+
+    const theme = colorStyles[color] || colorStyles.indigo;
 
     return (
-        <div className="bg-gradient-to-br from-white to-indigo-50/30 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 group hover:shadow-2xl hover:shadow-indigo-900/10 transition-all duration-500 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-100/20 rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-125 transition-transform duration-700"></div>
+        <div className={`bg-gradient-to-br ${theme.bg} p-8 rounded-[40px] border border-white ${theme.border} shadow-xl shadow-slate-200/40 group hover:shadow-2xl hover:-translate-y-1 transition-all duration-500 relative overflow-hidden`}>
+            <div className={`absolute top-0 right-0 w-24 h-24 ${theme.blob} rounded-full blur-2xl -mr-12 -mt-12 group-hover:scale-125 transition-transform duration-700`}></div>
             <div className="relative z-10">
                 <div className="flex justify-between items-start mb-4">
-                    <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                    <div className={`w-12 h-12 rounded-2xl ${theme.iconBg} flex items-center justify-center group-hover:scale-110 transition-transform duration-500`}>
                         {React.cloneElement(icon, { size: 24 })}
                     </div>
                     {trend !== undefined && (
@@ -56,14 +80,14 @@ const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend }) =
                         </div>
                     )}
                 </div>
-                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</p>
+                <p className={`text-[11px] font-black ${theme.textAccent} uppercase tracking-widest mb-1`}>{label}</p>
                 <div className="flex items-baseline gap-1">
-                    <h3 className="text-3xl font-black text-slate-900 tracking-tight">
+                    <h3 className={`text-3xl font-black ${theme.value} tracking-tight`}>
                         {value}
                     </h3>
-                    {unit && <span className="text-sm font-black text-slate-400 uppercase tracking-widest">{unit}</span>}
+                    {unit && <span className={`text-sm font-black ${theme.textAccent} uppercase tracking-widest`}>{unit}</span>}
                 </div>
-                {subtitle && <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mt-3 opacity-60 group-hover:opacity-100 transition-opacity">{subtitle}</p>}
+                {subtitle && <p className={`text-[10px] font-black ${theme.title} uppercase tracking-widest mt-3 opacity-70 group-hover:opacity-100 transition-opacity`}>{subtitle}</p>}
             </div>
         </div>
     );
@@ -113,33 +137,26 @@ const Dashboard = () => {
     const { canExport, user } = useAuth();
 
     useEffect(() => {
-        const qAnomalies = query(collection(db, 'anomaly'), limit(50));
-        let isFirstLoad = true;
-        const unsubAnomalies = onSnapshot(qAnomalies, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort in memory to avoid missing index errors
-            list.sort((a, b) => new Date(b.detectedAt || 0) - new Date(a.detectedAt || 0));
-            const recent = list.slice(0, 5);
-            setRecentAnomalies(recent);
-            if (!isFirstLoad && snapshot.docChanges().some(c => c.type === 'added')) {
-                const a = list[0];
-                if (a?.type) toast.error(`🚨 ${a.type} détecté — câble #${a.cableId?.substring(0, 8) || 'N/A'}`, {
-                    duration: 5000,
-                    style: { borderRadius: '12px', background: '#1e2035', color: '#fff', fontSize: '13px' }
-                });
+        const fetchRecentData = async () => {
+            try {
+                const [anomRes, cableRes] = await Promise.all([
+                    AnomalyService.getAll({ limit: 10 }),
+                    CableService.getAll({ limit: 10 })
+                ]);
+                
+                // Anomalies
+                const anomalies = anomRes.data || [];
+                anomalies.sort((a, b) => new Date(b.detectedAt || 0) - new Date(a.detectedAt || 0));
+                setRecentAnomalies(anomalies.slice(0, 5));
+                
+                // Cables
+                const cables = cableRes.data || [];
+                cables.sort((a, b) => new Date(b.inspectionDate || 0) - new Date(a.inspectionDate || 0));
+                setRecentInspections(cables.slice(0, 5));
+            } catch (e) {
+                console.error("Error fetching recent data", e);
             }
-            isFirstLoad = false;
-            const crit = list.filter(a => a.severity?.toLowerCase() === 'critique').length;
-            setStats(prev => ({ ...prev, anomalies: { ...prev.anomalies, total: list.length, critique: crit } }));
-        }, console.error);
-
-        const qInspections = query(collection(db, 'cable'), limit(50));
-        const unsubInspections = onSnapshot(qInspections, (snapshot) => {
-            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            // Sort in memory
-            list.sort((a, b) => new Date(b.inspectionDate || 0) - new Date(a.inspectionDate || 0));
-            setRecentInspections(list.slice(0, 5));
-        });
+        };
 
         const fetchStats = async () => {
             try {
@@ -161,9 +178,28 @@ const Dashboard = () => {
                 setLoading(false); 
             }
         };
-        fetchStats();
 
-        return () => { unsubAnomalies(); unsubInspections(); };
+        fetchStats();
+        fetchRecentData();
+
+        let isFirstLoad = true;
+        const qNotifs = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(1));
+        const unsubNotifs = onSnapshot(qNotifs, (snapshot) => {
+            if (!isFirstLoad && snapshot.docChanges().some(c => c.type === 'added')) {
+                fetchStats();
+                fetchRecentData();
+                const newNotif = snapshot.docs[0]?.data();
+                if (newNotif && newNotif.type === 'anomaly_detected') {
+                    toast.error(`🚨 ${newNotif.message || 'Anomalie détectée'}`, {
+                        duration: 5000,
+                        style: { borderRadius: '12px', background: '#1e2035', color: '#fff', fontSize: '13px' }
+                    });
+                }
+            }
+            isFirstLoad = false;
+        });
+
+        return () => unsubNotifs();
     }, []);
 
     const conformityRate = stats.cables.total > 0
@@ -252,13 +288,14 @@ const Dashboard = () => {
                     label="Ordres en cours"
                     value={stats.orders.enCours || 0}
                     subtitle={`${stats.orders.total || 0} au total`}
-                    hero
+                    color="blue"
                 />
                 <StatCard
                     icon={<AlertTriangle />}
                     label="Anomalies Critiques"
                     value={stats.anomalies.critique || 0}
                     subtitle={`${(stats.anomalies.critique || 0) + (stats.anomalies.majeur || 0) + (stats.anomalies.mineur || 0)} total`}
+                    color="rose"
                 />
                 <StatCard
                     icon={<CheckCircle />}
@@ -266,12 +303,14 @@ const Dashboard = () => {
                     value={conformityRate}
                     unit="%"
                     subtitle={`${stats.cables.conforme || 0} câbles OK`}
+                    color="emerald"
                 />
                 <StatCard
                     icon={<TrendingUp />}
                     label="Câbles Inspectés"
                     value={stats.cables.total || 0}
                     subtitle={`${stats.cables.nonConforme || 0} non conformes`}
+                    color="indigo"
                 />
             </div>
 

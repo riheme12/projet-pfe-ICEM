@@ -21,14 +21,23 @@ router.get('/stats/summary', async (req, res) => {
         const cached = getCached('order_stats');
         if (cached) return res.status(200).json(cached);
 
-        const snapshot = await db.collection('manufacturingOrder').get();
-        const stats = { total: snapshot.size, enCours: 0, termine: 0, enAttente: 0 };
-        snapshot.forEach(doc => {
-            const status = doc.data().status || '';
-            if (status === 'En cours' || status === 'en cours') stats.enCours++;
-            else if (status === 'Terminé' || status === 'terminé') stats.termine++;
-            else if (status === 'En attente' || status === 'en attente') stats.enAttente++;
-        });
+        const [totalSnap, enCoursSnap, termineSnap] = await Promise.all([
+            db.collection('manufacturingOrder').count().get(),
+            db.collection('manufacturingOrder').where('status', 'in', ['En cours', 'en cours']).count().get(),
+            db.collection('manufacturingOrder').where('status', 'in', ['Terminé', 'terminé', 'Termine', 'termine']).count().get()
+        ]);
+
+        const total = totalSnap.data().count;
+        const enCours = enCoursSnap.data().count;
+        const termine = termineSnap.data().count;
+
+        const stats = { 
+            total, 
+            enCours, 
+            termine, 
+            enAttente: total - enCours - termine 
+        };
+        
         setCache('order_stats', stats);
         res.status(200).json(stats);
     } catch (error) {

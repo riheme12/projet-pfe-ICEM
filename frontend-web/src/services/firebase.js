@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, setPersistence, browserLocalPersistence, createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, initializeFirestore } from 'firebase/firestore';
 
 /**
  * Configuration Firebase chargée depuis les variables d'environnement
@@ -22,7 +22,10 @@ const auth = getAuth(app);
 setPersistence(auth, browserLocalPersistence)
     .catch((error) => console.error("Erreur persistance session:", error));
 
-const db = getFirestore(app);
+// Force long polling to avoid QUIC protocol errors (ERR_QUIC_PROTOCOL_ERROR)
+const db = initializeFirestore(app, {
+    experimentalForceLongPolling: true,
+});
 
 export { 
     auth, 

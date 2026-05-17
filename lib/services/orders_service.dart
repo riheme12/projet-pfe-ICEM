@@ -103,7 +103,28 @@ class OrdersService {
     }
   }
 
-  /// Sauvegarder un câble après inspection
+  /// Vérifier si un câble a passé la checklist électrique
+  Future<bool> isCableElectricallyChecked(String orderId, String cableCode) async {
+    try {
+      final snapshot = await _db.collection('electrical_checklists').where('orderId', isEqualTo: orderId).get();
+      final cleanCableCode = cableCode.trim().toLowerCase();
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+        final rows = data['cableRows'] as List<dynamic>? ?? [];
+        if (rows.any((r) {
+          final ns = (r['numeroSerie'] as String? ?? '').trim().toLowerCase();
+          return ns == cleanCableCode;
+        })) {
+          return true;
+        }
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// Sauvegarder (ou mettre à jour) un câble après inspection
   Future<String?> saveCable({
     required String reference,
     required String code,
@@ -129,7 +150,23 @@ class OrdersService {
         'anomaliesCount': anomaliesCount,
         if (visualChecklistItems != null) 'visualChecklist': visualChecklistItems,
       };
-      final docRef = await _cablesCollection.add(cableData);
+
+      String docId;
+      // Vérifier si le câble existe déjà pour cet OF
+      final existQuery = await _cablesCollection
+          .where('orderId', isEqualTo: orderId)
+          .where('code', isEqualTo: code)
+          .get();
+
+      if (existQuery.docs.isNotEmpty) {
+        // Mise à jour (Update)
+        docId = existQuery.docs.first.id;
+        await _cablesCollection.doc(docId).update(cableData);
+      } else {
+        // Nouveau câble (Add)
+        final docRef = await _cablesCollection.add(cableData);
+        docId = docRef.id;
+      }
 
       // Créer un rapport d'inspection dans Firestore
       await _db.collection('report').add({
@@ -143,7 +180,7 @@ class OrdersService {
         'anomaliesCount': anomaliesCount,
       });
 
-      return docRef.id;
+      return docId;
     } catch (e) {
       debugPrint('Error saveCable: $e');
       return null;

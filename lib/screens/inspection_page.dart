@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 import 'package:projeticem/providers/auth_provider.dart';
 import 'package:projeticem/services/roboflow_service.dart';
 import 'package:projeticem/screens/anomaly_detail_page.dart';
+import 'package:projeticem/services/imgbb_service.dart';
 
 /// Page d'inspection IA — Dark Premium
 /// Alignée avec le design Corporate Intelligence Suite
@@ -91,11 +92,16 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
       if (_useRealAI && _controller != null && _controller!.value.isInitialized) {
         final xFile = await _controller!.takePicture();
         final bytes = await File(xFile.path).readAsBytes();
-        final String base64Image = 'data:image/jpeg;base64,${base64Encode(bytes)}';
+        
+        // Utilisation de ImgBB pour obtenir un lien direct au lieu du lourd Base64
+        String? uploadedUrl = await ImgBBService.uploadImage(File(xFile.path));
+        
+        // Sécurité si la clé API n'est pas encore mise ou s'il y a un problème de réseau
+        final String finalImageUrl = uploadedUrl ?? 'https://i.ibb.co/placeholder/notfound.png';
         
         result = await _roboflowService.analyzeImage(context, xFile.path);
-        if (result['status'] == 'NOK') await _saveAnomaly(result, imageUrl: base64Image);
-        result['imageUrl'] = base64Image;
+        if (result['status'] == 'NOK') await _saveAnomaly(result, imageUrl: finalImageUrl);
+        result['imageUrl'] = finalImageUrl;
         try { await File(xFile.path).delete(); } catch (_) {}
       } else {
         await Future.delayed(const Duration(milliseconds: 1500));

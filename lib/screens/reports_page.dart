@@ -36,6 +36,10 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
   Future<void> _load() async {
     setState(() => _isLoading = true);
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Rafraîchir le profil pour récupérer la signatureUrl à jour
+    await auth.refreshCurrentUser();
+    
     final userId = auth.currentUser?.id ?? '';
 
     final results = await Future.wait([
@@ -393,15 +397,21 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
   Future<void> _exportPdf() async {
     if (_techStats == null) return;
     final auth = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Rafraîchir le profil pour récupérer la signatureUrl à jour
+    await auth.refreshCurrentUser();
+    
     final name = auth.currentUser?.fullName ?? 'Technicien';
     final uid = auth.currentUser?.id ?? '';
+    final signature = auth.currentUser?.signatureUrl;
 
     try {
-      // 1. Générer le PDF
+      // 1. Générer le PDF avec la signature
       await PdfExportService.exportTechnicianReport(
         technicianName: name,
         stats: _techStats!,
         period: _period,
+        signatureUrl: signature,
       );
 
       // 2. Enregistrer dans Firestore pour que ça apparaisse dans "Mes Rapports"
@@ -491,16 +501,30 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
 
     final dateStr = '${r.generatedAt.day}/${r.generatedAt.month}/${r.generatedAt.year} ${r.generatedAt.hour}:${r.generatedAt.minute.toString().padLeft(2, '0')}';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: accentColor.withOpacity(0.15)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Row(children: [
+    return InkWell(
+      onTap: () async {
+        if (isPerformance) {
+          if (_techStats == null) return;
+          await PdfExportService.exportTechnicianReport(
+            technicianName: r.technicianName ?? 'Technicien',
+            stats: _techStats!,
+            period: r.conformityStatus.replaceAll('Rapport ', ''),
+            signatureUrl: r.signatureUrl,
+          );
+        } else {
+          await PdfExportService.exportInspectionReport(r);
+        }
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: accentColor.withOpacity(0.15)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
+        ),
+        child: Row(children: [
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(color: accentColor.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
@@ -525,7 +549,8 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
             style: GoogleFonts.inter(color: accentColor, fontSize: 10, fontWeight: FontWeight.w900),
           ),
         ),
-      ]),
+        ]),
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:projeticem/models/user.dart';
 import 'package:projeticem/services/auth_service.dart';
 import 'package:projeticem/theme/app_theme.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 /// Page de modification du profil (High-Contrast Light)
 class EditProfilePage extends StatefulWidget {
@@ -19,6 +20,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final AuthService _authService = AuthService();
   bool _isSaving = false;
   String? _photoBase64;
+
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
@@ -42,6 +44,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (mounted && result != null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo mise à jour ✓')));
     }
+  }
+
+  ImageProvider? _getProfileImage() {
+    final source = _photoBase64 ?? widget.user.photoUrl;
+    if (source == null) return null;
+    if (source.startsWith('http')) return NetworkImage(source);
+    if (source.startsWith('data:image')) return MemoryImage(base64Decode(source.split(',').last));
+    return null;
   }
 
   @override
@@ -81,10 +91,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
           decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: AppTheme.accentBlue, width: 3)),
           child: CircleAvatar(
             backgroundColor: AppTheme.divider,
-            backgroundImage: (_photoBase64 ?? widget.user.photoUrl) != null 
-              ? MemoryImage(base64Decode((_photoBase64 ?? widget.user.photoUrl)!.split(',').last)) 
-              : null,
-            child: (_photoBase64 ?? widget.user.photoUrl) == null 
+            backgroundImage: _getProfileImage(),
+            child: _getProfileImage() == null 
               ? Text(widget.user.fullName.substring(0, 1).toUpperCase(), style: GoogleFonts.inter(fontSize: 40, fontWeight: FontWeight.w900, color: AppTheme.primaryBlue))
               : null,
           ),

@@ -119,15 +119,15 @@ class AuthService {
     }
   }
 
-  Future<String?> updateProfilePhoto(String userId, String base64Image) async {
+  Future<String?> updateProfilePhoto(String userId, String imageUrl) async {
     try {
-      await _firestore.collection('users').doc(userId).update({'photoUrl': base64Image});
+      await _firestore.collection('users').doc(userId).update({'photoUrl': imageUrl});
       final currentUser = await getCurrentUser();
       if (currentUser != null && currentUser.id == userId) {
-        final updatedUser = User.fromJson({...currentUser.toJson(), 'photoUrl': base64Image});
+        final updatedUser = User.fromJson({...currentUser.toJson(), 'photoUrl': imageUrl});
         await _saveSession(updatedUser, true);
       }
-      return base64Image;
+      return imageUrl;
     } catch (e) {
       return null;
     }

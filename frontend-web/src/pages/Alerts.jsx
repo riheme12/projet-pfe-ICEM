@@ -68,8 +68,9 @@ const Alerts = () => {
     useEffect(() => { 
         fetchAlerts(); 
         
-        // Real-time listener for new alerts
-        const q = query(collection(db, 'anomaly'), limit(50));
+        // Real-time listener for new alerts via notifications collection
+        // to avoid downloading large Base64 images from anomaly collection
+        const q = query(collection(db, 'notifications'), orderBy('createdAt', 'desc'), limit(1));
         const unsubscribe = onSnapshot(q, (snapshot) => {
             if (!snapshot.empty && !loading) {
                 fetchAlerts();

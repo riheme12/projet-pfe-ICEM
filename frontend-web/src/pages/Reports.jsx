@@ -27,6 +27,7 @@ const Reports = () => {
     const [cables, setCables] = useState([]);
     const [anomalies, setAnomalies] = useState([]);
     const [mobileReports, setMobileReports] = useState([]);
+    const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const dashboardRef = useRef(null);
 
@@ -43,14 +44,16 @@ const Reports = () => {
         const fetchData = async () => {
             try {
                 setLoading(true);
-                const [cablesRes, anomaliesRes, reportsRes] = await Promise.all([
+                const [cablesRes, anomaliesRes, reportsRes, usersRes] = await Promise.all([
                     CableService.getAll({ limit: 300 }),
                     AnomalyService.getAll({ limit: 300 }),
-                    ReportService.getAll() // Fetch mobile reports from shared collection
+                    ReportService.getAll(),
+                    UserService.getAll(),
                 ]);
                 setCables(cablesRes.data || []);
                 setAnomalies(anomaliesRes.data || []);
                 setMobileReports(reportsRes.data || []);
+                setUsers(usersRes.data || []);
                 
                 const end = new Date();
                 const start = new Date();
@@ -372,6 +375,17 @@ const Reports = () => {
             pdf.text('SIGNATURE RESPONSABLE PRODUCTION :', 120, endY);
             pdf.line(120, endY + 2, 185, endY + 2);
 
+            // Add signature if available — check from fresh users list as fallback
+            const adminUser = users.find(u => u.id === user?.id);
+            const adminSignature = user?.signatureUrl || adminUser?.signatureUrl;
+            if (adminSignature) {
+                try {
+                    pdf.addImage(adminSignature, 'PNG', 120, endY + 4, 40, 20);
+                } catch (err) {
+                    console.error("Could not add signature to PDF", err);
+                }
+            }
+
             pdf.setTextColor(148, 163, 184);
             pdf.setFontSize(6);
             pdf.text(`Document généré par ICEM Contrôle Qualité — ID: ${Math.random().toString(36).substring(7).toUpperCase()}`, pageWidth / 2, 285, { align: 'center' });
@@ -384,114 +398,161 @@ const Reports = () => {
         }
     };
 
-    const handleDownloadSingleReport = async (report) => {
-        const toastId = toast.loading("Génération du rapport d'inspection détaillé...");
+    const handleDownloadSingleReport = async (reportListItem) => {
+        const toastId = toast.loading("Génération du certificat d'inspection...");
         try {
+            let report = reportListItem;
+            try {
+                const res = await ReportService.getById(reportListItem.id);
+                if (res.data) report = res.data;
+            } catch (err) {
+                console.warn("Could not fetch full report doc.");
+            }
+
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
             
-            // ─── 1. HEADER & LOGO ───
-            pdf.setFillColor(15, 23, 42);
-            pdf.rect(0, 0, pageWidth, 45, 'F');
-            
-            // Stylized Logo ICEM
-            pdf.setDrawColor(255, 255, 255);
-            pdf.setLineWidth(1);
-            pdf.roundedRect(15, 10, 20, 20, 2, 2, 'D');
-            pdf.setTextColor(255, 255, 255);
+            // ─── 1. HEADER ───
+            pdf.setTextColor(30, 58, 138); // blue-900
             pdf.setFontSize(14);
             pdf.setFont('helvetica', 'bold');
-            pdf.text('ICEM', 25, 23, { align: 'center' });
-            
-            pdf.setFontSize(18);
-            pdf.text('RAPPORT D\'INSPECTION MOBILE', pageWidth / 2 + 10, 22, { align: 'center' });
-            
+            pdf.text('ICEM QUALITY CONTROL', 15, 20);
+            pdf.setTextColor(100, 116, 139); // grey-500
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'normal');
-            pdf.text(`RÉFÉRENCE ARCHIVE: ${report.id.toUpperCase()}`, pageWidth / 2 + 10, 28, { align: 'center' });
-            pdf.text(`GÉNÉRÉ LE : ${new Date().toLocaleString('fr-FR')}`, pageWidth / 2 + 10, 33, { align: 'center' });
+            pdf.text('Système de Surveillance Industrielle IA', 15, 25);
 
-            // ─── 2. INSPECTION DETAILS ───
-            pdf.setTextColor(30, 58, 138);
-            pdf.setFontSize(10);
+            const dateStr = new Date(report.generatedAt).toLocaleString('fr-FR');
+            pdf.text(`Rapport généré le ${dateStr}`, pageWidth - 15, 20, { align: 'right' });
             pdf.setFont('helvetica', 'bold');
-            pdf.text('I. INFORMATIONS GÉNÉRALES', 15, 60);
-            pdf.line(15, 62, 70, 62);
+            pdf.text('REF: FOR QUA 06 / V07', pageWidth - 15, 25, { align: 'right' });
 
-            const infoData = [
-                ['TYPE DE RAPPORT', report.type === 'performance' ? 'PERFORMANCE TECHNIQUE' : 'INSPECTION QUALITÉ'],
-                ['TECHNICIEN', report.technicianName],
-                ['DATE D\'INSPECTION', new Date(report.generatedAt).toLocaleString('fr-FR')],
-                ['STATUT FINAL', report.conformityStatus?.toUpperCase()],
-                ['ID UNIQUE', report.id]
-            ];
+            // ─── 2. TITLE BOX ───
+            pdf.setFillColor(30, 58, 138);
+            pdf.roundedRect(15, 35, pageWidth - 30, 10, 1.5, 1.5, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("CERTIFICAT D'INSPECTION INTELLIGENTE", pageWidth / 2, 41.5, { align: 'center' });
 
-            autoTable(pdf, {
-                startY: 68,
-                body: infoData,
-                theme: 'striped',
-                styles: { fontSize: 9, cellPadding: 4 },
-                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 60 } }
-            });
+            // ─── 3. SUMMARY BOX ───
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(15, 50, pageWidth - 30, 25, 2, 2, 'D');
 
-            // ─── 3. VISUAL EVIDENCE (ANOMALY IMAGE) ───
-            let nextY = pdf.lastAutoTable.finalY + 15;
-            
-            // Try to find anomaly image
-            const relatedAnomaly = anomalies.find(a => a.id === report.anomalyId || (a.technicianName === report.technicianName && Math.abs(new Date(a.detectedAt) - new Date(report.generatedAt)) < 60000));
-            const imgUrl = report.imageUrl || relatedAnomaly?.imageUrl;
-
-            if (imgUrl) {
-                pdf.setTextColor(30, 58, 138);
-                pdf.text('II. PREUVE VISUELLE (ANOMALIE DÉTECTÉE)', 15, nextY);
-                pdf.line(15, nextY + 2, 90, nextY + 2);
-                
-                try {
-                    // We use a proxy or direct link if available
-                    pdf.addImage(imgUrl, 'JPEG', 15, nextY + 8, 100, 75);
-                    pdf.setDrawColor(30, 58, 138);
-                    pdf.rect(15, nextY + 8, 100, 75, 'D');
-                    nextY += 95;
-                } catch (e) {
-                    pdf.setTextColor(153, 27, 27);
-                    pdf.text('[ IMAGE NON DISPONIBLE DANS L\'ARCHIVE HORS-LIGNE ]', 15, nextY + 15);
-                    nextY += 25;
-                }
-            }
-
-            // ─── 4. VERDICT & VALIDATION ───
-            pdf.setTextColor(30, 58, 138);
-            pdf.text('III. DÉCISION FINALE', 15, nextY);
-            pdf.line(15, nextY + 2, 55, nextY + 2);
-
-            const isConforme = report.conformityStatus?.toLowerCase().includes('conforme') && !report.conformityStatus?.toLowerCase().includes('non');
-            pdf.setFillColor(isConforme ? 236 : 254, isConforme ? 253 : 242, isConforme ? 245 : 242);
-            pdf.roundedRect(15, nextY + 8, pageWidth - 30, 20, 2, 2, 'F');
-            
-            pdf.setTextColor(isConforme ? 5 : 153, isConforme ? 150 : 27, isConforme ? 105 : 27);
-            pdf.setFontSize(12);
-            pdf.text(`RÉSULTAT : ${report.conformityStatus?.toUpperCase()}`, pageWidth / 2, nextY + 21, { align: 'center' });
-
-            // Signatures
-            const sigY = nextY + 45;
             pdf.setTextColor(148, 163, 184);
             pdf.setFontSize(7);
-            pdf.text('SIGNATURE DU TECHNICIEN', 30, sigY);
-            pdf.line(15, sigY + 2, 70, sigY + 2);
-            
-            pdf.text('CACHET DIRECTION QUALITÉ', 130, sigY);
-            pdf.line(120, sigY + 2, 185, sigY + 2);
+            pdf.text('TECHNICIEN :', 18, 56);
+            pdf.text('RÉFÉRENCE CÂBLE :', 18, 63);
+            pdf.text('ORDRE DE FABRICATION :', 18, 70);
 
-            // Footer
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(8);
+            pdf.text(report.technicianName || 'Inconnu', 50, 56);
+            pdf.text(report.cableId || 'N/A', 50, 63);
+            pdf.text(report.orderId || 'N/A', 55, 70);
+
+            pdf.setDrawColor(226, 232, 240);
+            pdf.line(pageWidth / 2, 52, pageWidth / 2, 73);
+
+            pdf.setTextColor(148, 163, 184);
+            pdf.setFontSize(7);
+            pdf.text('NB ANOMALIES :', pageWidth / 2 + 5, 56);
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(8);
+            pdf.text(String(report.anomaliesCount || 0), pageWidth / 2 + 30, 56);
+
+            const isConform = report.conformityStatus === 'Conforme';
+            pdf.setFillColor(isConform ? 220 : 254, isConform ? 252 : 226, isConform ? 231 : 226); // green-100 or red-100
+            pdf.roundedRect(pageWidth / 2 + 5, 62, 40, 7, 1, 1, 'F');
+            pdf.setTextColor(isConform ? 20 : 153, isConform ? 83 : 27, isConform ? 45 : 27); // green-900 or red-900
+            pdf.setFontSize(8);
+            pdf.text(isConform ? 'CONFORME' : 'NON CONFORME', pageWidth / 2 + 25, 67, { align: 'center' });
+
+            let nextY = 85;
+
+            // ─── 4. IMAGE ───
+            const relatedAnomaly = anomalies.find(a => a.id === report.anomalyId);
+            const imgUrl = report.imageUrl || relatedAnomaly?.imageUrl;
+
+            if (imgUrl && imgUrl.startsWith('data:image')) {
+                pdf.setTextColor(30, 58, 138);
+                pdf.setFontSize(9);
+                pdf.text("CAPTURE DE L'ANOMALIE (IA)", 15, nextY);
+                nextY += 5;
+                
+                try {
+                    // Center the image
+                    const imgWidth = 100;
+                    const imgHeight = 70;
+                    const xPos = (pageWidth - imgWidth) / 2;
+                    pdf.addImage(imgUrl, 'JPEG', xPos, nextY, imgWidth, imgHeight);
+                    pdf.setDrawColor(203, 213, 225);
+                    pdf.roundedRect(xPos, nextY, imgWidth, imgHeight, 2, 2, 'D');
+                    nextY += imgHeight + 15;
+                } catch (e) {
+                    nextY += 10;
+                }
+            } else {
+                nextY += 5;
+            }
+
+            // ─── 5. DATA TABLE ───
+            pdf.setTextColor(30, 58, 138);
+            pdf.setFontSize(9);
+            pdf.text('DÉTAILS DU CONTRÔLE VISUEL (FOR QUA 06)', 15, nextY);
+            
+            autoTable(pdf, {
+                startY: nextY + 3,
+                head: [['N° SÉRIE', 'DÉFAUT(S)', 'STATUT']],
+                body: [
+                    [report.cableId || 'N/A', report.notes || (isConform ? 'OK' : 'Défaut détecté'), isConform ? 'Conforme' : 'Non conforme']
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 3 },
+                columnStyles: { 2: { fontStyle: 'bold', textColor: isConform ? [21, 128, 61] : [185, 28, 28] } }
+            });
+
+            // ─── 6. SIGNATURES ───
+            const sigY = pdf.lastAutoTable.finalY + 15;
+            pdf.setTextColor(71, 85, 105);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            
+            pdf.text('SIGNATURE TECHNICIEN', 45, sigY, { align: 'center' });
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(15, sigY + 3, 60, 25, 2, 2, 'D');
+
+            const techUser = users.find(u => u.id === report.technicianId);
+            const techSignature = report.signatureUrl || techUser?.signatureUrl || (report.technicianId === user?.id ? user?.signatureUrl : null);
+            if (techSignature && techSignature.startsWith('data:image')) {
+                try {
+                    pdf.addImage(techSignature, 'PNG', 25, sigY + 5, 40, 20);
+                } catch (err) {}
+            } else {
+                pdf.setTextColor(148, 163, 184);
+                pdf.setFont('helvetica', 'italic');
+                pdf.text(report.technicianName || 'Signé', 45, sigY + 16, { align: 'center' });
+            }
+
+            pdf.setTextColor(71, 85, 105);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('SIGNATURE RESPONSABLE QUALITÉ', pageWidth - 45, sigY, { align: 'center' });
+            pdf.roundedRect(pageWidth - 75, sigY + 3, 60, 25, 2, 2, 'D');
+
+            // ─── 7. FOOTER ───
+            pdf.setDrawColor(226, 232, 240);
+            pdf.line(15, 285, pageWidth - 15, 285);
             pdf.setTextColor(148, 163, 184);
             pdf.setFontSize(6);
-            pdf.text('Document certifié conforme aux normes ICEM ISO-9001. © 2026 ICEM Contrôle Qualité.', pageWidth / 2, 285, { align: 'center' });
+            pdf.text('ICEM QA v2.0 — Certification IA Roboflow', 15, 289);
+            pdf.text('Page 1/1', pageWidth - 15, 289, { align: 'right' });
 
-            pdf.save(`ICEM_Inspection_${report.id.substring(0,8)}.pdf`);
-            toast.success("Rapport d'inspection exporté avec succès", { id: toastId });
+            pdf.save(`Rapport_ICEM_${report.cableId || 'N-A'}_${new Date().toISOString().split('T')[0].replace(/-/g, '')}.pdf`);
+            toast.success("Certificat d'inspection exporté avec succès", { id: toastId });
         } catch (e) {
             console.error(e);
-            toast.error("Erreur lors de la génération du rapport", { id: toastId });
+            toast.error("Erreur lors de la génération du certificat", { id: toastId });
         }
     };
 

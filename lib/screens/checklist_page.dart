@@ -192,6 +192,10 @@ class _ChecklistPageState extends State<ChecklistPage> {
     if (validRows.isEmpty) return;
 
     setState(() => _isSaving = true);
+    
+    // Rafraîchir le profil pour récupérer la signatureUrl à jour
+    await auth.refreshCurrentUser();
+    
     Anomaly? lastCreatedAnomaly;
 
     for (final row in validRows) {
@@ -212,20 +216,33 @@ class _ChecklistPageState extends State<ChecklistPage> {
         );
         final id = await AnomalyService().createAnomaly(a);
         lastCreatedAnomaly = a.copyWith(id: id);
-
-        // CRÉER UN ENREGISTREMENT DE RAPPORT (pour le registre "Mes Rapports")
-        await ReportsService().createReportRecord(
-          technicianId: auth.currentUser?.id ?? '',
-          technicianName: auth.currentUser?.fullName ?? '',
-          type: 'inspection',
-          cableId: row.cableCode,
-          orderId: widget.orderId,
-          status: 'Non conforme',
-          anomaliesCount: row.selectedDefects.length,
-          notes: 'Inspection visuelle avec ${row.selectedDefects.length} défaut(s): ${row.selectedDefects.join(", ")}',
-        );
       }
+
+      // CRÉER UN ENREGISTREMENT DE RAPPORT (pour TOUS les câbles, conformes et non conformes)
+      await ReportsService().createReportRecord(
+        technicianId: auth.currentUser?.id ?? '',
+        technicianName: auth.currentUser?.fullName ?? '',
+        type: 'inspection',
+        cableId: row.cableCode,
+        orderId: widget.orderId,
+        status: status, // "Conforme" ou "Non conforme"
+        anomaliesCount: row.selectedDefects.length,
+        notes: row.hasDefect 
+            ? 'Inspection visuelle avec ${row.selectedDefects.length} défaut(s): ${row.selectedDefects.join(", ")}\nCommentaire: ${row.comment}'
+            : 'Inspection visuelle OK. ${row.comment}',
+        signatureUrl: auth.currentUser?.signatureUrl,
+        imageUrl: widget.imageUrl,
+      );
     }
+    
+    if (mounted && _nombreNC > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Rapport d\'anomalie généré automatiquement.'),
+        backgroundColor: AppTheme.successGreen,
+        duration: Duration(seconds: 3),
+      ));
+    }
+
     setState(() => _isSaving = false);
     if (mounted) Navigator.pop(context, {'status': _nombreNC == 0 ? 'Conforme' : 'Non conforme', 'anomaly': lastCreatedAnomaly});
   }

@@ -6,11 +6,23 @@ const { Report } = require('../models');
 // Get all reports
 router.get('/', async (req, res) => {
     try {
-        const snapshot = await db.collection('report').get();
+        const limitCount = parseInt(req.query.limit) || 100;
+        const snapshot = await db.collection('report')
+            .limit(limitCount)
+            .get();
         const reports = snapshot.docs.map(doc => {
-            const report = Report.fromJson({ id: doc.id, ...doc.data() });
-            return report.toJson();
+            const data = doc.data();
+            const report = Report.fromJson({ id: doc.id, ...data }).toJson();
+            // Optimisation: Si imageUrl ou signatureUrl est en base64, on ne l'envoie pas dans la liste
+            if (report.imageUrl && report.imageUrl.startsWith('data:image')) {
+                delete report.imageUrl;
+            }
+            if (report.signatureUrl && report.signatureUrl.startsWith('data:image')) {
+                delete report.signatureUrl;
+            }
+            return report;
         });
+        reports.sort((a, b) => new Date(b.generatedAt) - new Date(a.generatedAt));
         res.status(200).json(reports);
     } catch (error) {
         res.status(500).json({ error: error.message });

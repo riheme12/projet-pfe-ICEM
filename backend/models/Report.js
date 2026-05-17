@@ -6,7 +6,7 @@
  * Il contient toutes les informations de l'inspection
  */
 class Report {
-    constructor({ id, cableId, orderId, technicianId, technicianName = null, type = null, generatedAt, conformityStatus, anomaliesCount = 0, pdfUrl = null, notes = null }) {
+    constructor({ id, cableId, orderId, technicianId, technicianName = null, type = null, generatedAt, conformityStatus, anomaliesCount = 0, pdfUrl = null, notes = null, signatureUrl = null, imageUrl = null }) {
         this.id = id;
         this.cableId = cableId;                  // ID du câble inspecté
         this.orderId = orderId;                  // ID de l'ordre de fabrication
@@ -18,6 +18,8 @@ class Report {
         this.anomaliesCount = anomaliesCount;    // Nombre d'anomalies détectées
         this.pdfUrl = pdfUrl;                    // URL du PDF généré
         this.notes = notes;                      // Notes du technicien
+        this.signatureUrl = signatureUrl;        // Signature du technicien
+        this.imageUrl = imageUrl;                // Image de l'anomalie
     }
 
     /**
@@ -61,6 +63,8 @@ class Report {
             anomaliesCount: Number(json.anomaliesCount) || 0,
             pdfUrl: json.pdfUrl || null,
             notes: json.notes || null,
+            signatureUrl: json.signatureUrl || null,
+            imageUrl: json.imageUrl || null,
         });
     }
 
@@ -80,6 +84,8 @@ class Report {
             anomaliesCount: this.anomaliesCount,
             pdfUrl: this.pdfUrl,
             notes: this.notes,
+            signatureUrl: this.signatureUrl,
+            imageUrl: this.imageUrl,
         };
     }
 }

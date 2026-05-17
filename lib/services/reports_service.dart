@@ -53,27 +53,38 @@ class ReportsService {
   }
 
   /// Récupérer les statistiques globales (agrégées)
-  /// OPTIMISÉ : utilise le nouvel endpoint summary si disponible, sinon filtré
+  /// CLIENT-SIDE filtering to avoid Firestore index/type issues
   Future<GlobalStats> getGlobalStats() async {
     try {
-      // On tente d'abord de récupérer les stats agrégées (beaucoup plus rapide)
-      // Note: Ici on simule l'appel à l'API summary pour la rapidité
       final now = DateTime.now();
       final thirtyDaysAgo = now.subtract(const Duration(days: 30));
 
-      final results = await Future.wait([
-        _db.collection('anomaly').where('detectedAt', '>=', thirtyDaysAgo.toIso8601String()).get(),
-        _db.collection('cable').where('inspectionDate', '>=', Timestamp.fromDate(thirtyDaysAgo)).get(),
-        _db.collection('report').limit(100).get(),
+      final results = await Future.wait<QuerySnapshot>([
+        _db.collection('anomaly').get(),
+        _db.collection('cable').get(),
+        _db.collection('report').get(),
       ]);
 
-      final anomDocs = results[0].docs;
-      final cableDocs = results[1].docs;
+      // Filtrer anomalies par date côté client
+      final anomDocs = results[0].docs.where((d) {
+        final data = d.data() as Map<String, dynamic>;
+        final date = _parseDate(data['detectedAt']);
+        return date != null && date.isAfter(thirtyDaysAgo);
+      }).toList();
+
+      // Filtrer câbles par date côté client
+      final cableDocs = results[1].docs.where((d) {
+        final data = d.data() as Map<String, dynamic>;
+        final date = _parseDate(data['inspectionDate']);
+        return date != null && date.isAfter(thirtyDaysAgo);
+      }).toList();
+
       final reportDocs = results[2].docs;
 
       int conform = 0;
       for (var doc in cableDocs) {
-        final s = (doc.data()['status'] as String? ?? '').toLowerCase();
+        final data = doc.data() as Map<String, dynamic>;
+        final s = (data['status'] as String? ?? '').toLowerCase();
         if (s.contains('conforme') && !s.contains('non')) conform++;
       }
 
@@ -91,7 +102,7 @@ class ReportsService {
   }
 
   /// Statistiques filtrées par technicien et période
-  /// OPTIMISÉ : Filtrage SERVER-SIDE par date pour éviter de charger des milliers de docs
+  /// CLIENT-SIDE filtering to avoid Firestore composite index issues
   Future<TechnicianStats> getTechnicianStats(String technicianId, {String period = 'Ce mois'}) async {
     final cacheKey = '${technicianId}_$period';
     if (_isCacheValid(cacheKey) && _cachedStats != null) return _cachedStats!;
@@ -99,27 +110,39 @@ class ReportsService {
     try {
       final startDate = _startDateForPeriod(period);
 
-      // ═══ REQUÊTES PARALLÈLES AVEC FILTRE DATE SERVER-SIDE ═══
-      final results = await Future.wait([
-        _db.collection('anomaly')
-            .where('technicianId', isEqualTo: technicianId)
-            .where('detectedAt', isGreaterThanOrEqualTo: startDate.toIso8601String())
-            .get(),
-        _db.collection('cable')
-            .where('technicianId', isEqualTo: technicianId)
-            .where('inspectionDate', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate))
-            .get(),
+      // Charger TOUS les docs puis filtrer côté client
+      // (évite les erreurs d'index Firestore composite)
+      final results = await Future.wait<QuerySnapshot>([
+        _db.collection('anomaly').get(),
+        _db.collection('cable').get(),
       ]);
 
-      final myAnomalies = results[0].docs;
-      final myCables = results[1].docs;
+      // Filtrer anomalies par technicien + date côté client
+      final myAnomalies = results[0].docs.where((d) {
+        final data = d.data() as Map<String, dynamic>;
+        if (data['technicianId'] != technicianId) return false;
+        final date = _parseDate(data['detectedAt']);
+        return date != null && date.isAfter(startDate);
+      }).toList();
+
+      // Filtrer câbles par technicien + date côté client
+      final myCables = results[1].docs.where((d) {
+        final data = d.data() as Map<String, dynamic>;
+        if (data['technicianId'] != technicianId) return false;
+        final date = _parseDate(data['inspectionDate']);
+        return date != null && date.isAfter(startDate);
+      }).toList();
 
       // Calculs
       final totalAnom = myAnomalies.length;
-      final resolvedAnom = myAnomalies.where((d) => (d.data()['statut'] as String?) == 'traitee').length;
+      final resolvedAnom = myAnomalies.where((d) {
+        final data = d.data() as Map<String, dynamic>;
+        return (data['statut'] as String?) == 'traitee';
+      }).length;
       final totalCables = myCables.length;
       final conformCables = myCables.where((d) {
-        final s = (d.data()['status'] as String? ?? '').toLowerCase();
+        final data = d.data() as Map<String, dynamic>;
+        final s = (data['status'] as String? ?? '').toLowerCase();
         return s.contains('conforme') && !s.contains('non');
       }).length;
 
@@ -189,19 +212,18 @@ class ReportsService {
   }
 
   /// Récupérer les inspections récentes du technicien
-  /// OPTIMISÉ : .where('technicianId') server-side
+  /// CLIENT-SIDE filtering for consistency
   Future<List<InspectionRecord>> getMyInspections(String technicianId, {int limit = 30, String period = 'Ce mois'}) async {
     try {
       final startDate = _startDateForPeriod(period);
 
-      // Requête server-side filtrée par technicien
-      final cableSnapshot = await _db.collection('cable')
-          .where('technicianId', isEqualTo: technicianId)
-          .get();
+      // Charger tous les câbles puis filtrer côté client
+      final cableSnapshot = await _db.collection('cable').get();
 
       final records = <InspectionRecord>[];
       for (var doc in cableSnapshot.docs) {
-        final data = doc.data();
+        final data = doc.data() as Map<String, dynamic>;
+        if (data['technicianId'] != technicianId) continue;
         final date = _parseDate(data['inspectionDate']);
         if (date == null || date.isBefore(startDate)) continue;
 
@@ -225,20 +247,20 @@ class ReportsService {
   }
 
   /// Récupérer les rapports du technicien
-  /// OPTIMISÉ : .where('technicianId') server-side
+  /// CLIENT-SIDE filtering to avoid Firestore index issues
   Future<List<Report>> getMyReports(String technicianId, {int limit = 50, String period = 'Ce mois'}) async {
     try {
-      final startDate = _startDateForPeriod(period);
+      // Charger TOUS les rapports puis filtrer côté client
+      // (évite les erreurs d'index Firestore composite)
+      final snapshot = await _db.collection('report').get();
 
-      // Requête server-side filtrée par technicien
-      final snapshot = await _db.collection('report')
-          .where('technicianId', isEqualTo: technicianId)
-          .get();
+      final reports = snapshot.docs
+          .map((doc) => Report.fromFirestore(doc))
+          .where((r) => r.technicianId == technicianId)
+          .toList();
 
-      final reports = snapshot.docs.map((doc) => Report.fromFirestore(doc)).toList();
-      final filtered = reports.where((r) => r.generatedAt.isAfter(startDate)).toList();
-      filtered.sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
-      return filtered.take(limit).toList();
+      reports.sort((a, b) => b.generatedAt.compareTo(a.generatedAt));
+      return reports.take(limit).toList();
     } catch (e) {
       debugPrint('Error fetching my reports: $e');
       return [];
@@ -256,6 +278,8 @@ class ReportsService {
     String? status,
     int? anomaliesCount,
     String? notes,
+    String? signatureUrl,
+    String? imageUrl,
   }) async {
     try {
       await _db.collection('report').add({
@@ -268,6 +292,8 @@ class ReportsService {
         'conformityStatus': status ?? 'Rapport $period',
         'anomaliesCount': anomaliesCount ?? 0,
         'notes': notes ?? 'Rapport généré le ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
+        'signatureUrl': signatureUrl,
+        'imageUrl': imageUrl,
       });
     } catch (e) {
       debugPrint('Error creating report record: $e');

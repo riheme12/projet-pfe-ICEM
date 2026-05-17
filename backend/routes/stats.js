@@ -27,49 +27,70 @@ router.get('/summary', async (req, res) => {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-        // On ne compte que les données récentes pour la performance
-        const [cablesSnap, anomaliesSnap, ordersSnap, reportsSnap] = await Promise.all([
-            db.collection('cable').where('inspectionDate', '>=', thirtyDaysAgo).get(),
-            db.collection('anomaly').where('detectedAt', '>=', thirtyDaysAgo.toISOString()).get(),
+        // On récupère TOUS les documents pour assurer la cohérence avec les autres interfaces
+        // (Alertes, Registre, etc.) qui affichent les totaux globaux.
+        const [cablesSnapshot, anomaliesSnapshot, ordersSnapshot, reportsSnap] = await Promise.all([
+            db.collection('cable').get(),
+            db.collection('anomaly').get(),
             db.collection('manufacturingOrder').get(),
-            db.collection('report').get(),
+            db.collection('report').count().get()
         ]);
 
-        // Stats Câbles
-        let conform = 0;
-        let nonConform = 0;
-        cablesSnap.forEach(doc => {
-            const s = (doc.data().status || '').toLowerCase();
-            if (s === 'conforme' || s === 'ok') conform++;
-            else if (s === 'non conforme' || s === 'nok') nonConform++;
+
+        // Agrégation Câbles
+        let totalCables = 0;
+        let conformCount = 0;
+        cablesSnapshot.forEach(doc => {
+            totalCables++;
+            const status = (doc.data().status || '').toLowerCase();
+            if (['conforme', 'ok'].includes(status)) {
+                conformCount++;
+            }
         });
 
-        // Stats Ordres
-        const orderStats = { total: ordersSnap.size, enCours: 0, termine: 0, enAttente: 0 };
-        ordersSnap.forEach(doc => {
-            const s = (doc.data().status || '').toLowerCase();
-            if (s === 'en cours') orderStats.enCours++;
-            else if (s === 'terminé' || s === 'termine') orderStats.termine++;
-            else orderStats.enAttente++;
+        // Agrégation Anomalies
+        let totalAnom = 0;
+        let critiqueAnom = 0;
+        let majeurAnom = 0;
+        anomaliesSnapshot.forEach(doc => {
+            totalAnom++;
+            const severity = (doc.data().severity || '').toLowerCase();
+            if (['critique', 'high', 'haute'].includes(severity)) critiqueAnom++;
+            else if (['majeur', 'medium', 'moyenne'].includes(severity)) majeurAnom++;
         });
 
-        // Stats Anomalies
-        const anomalyStats = { total: anomaliesSnap.size, critique: 0, majeur: 0, mineur: 0 };
-        anomaliesSnap.forEach(doc => {
-            const s = (doc.data().severity || '').toLowerCase();
-            if (s === 'critique') anomalyStats.critique++;
-            else if (s === 'majeur') anomalyStats.majeur++;
-            else anomalyStats.mineur++;
+        // Agrégation Ordres
+        let totalOrders = 0;
+        let enCoursOrders = 0;
+        let termineOrders = 0;
+        ordersSnapshot.forEach(doc => {
+            totalOrders++;
+            const status = (doc.data().status || '').toLowerCase();
+            if (status.includes('cours')) enCoursOrders++;
+            else if (status.includes('termin')) termineOrders++;
         });
 
-        const totalCables = cablesSnap.size;
         const summary = {
             totalInspections: totalCables,
-            conformityRate: totalCables > 0 ? Math.round((conform / totalCables) * 100) : 100,
-            cables: { total: totalCables, conforme: conform, nonConforme: nonConform },
-            orders: orderStats,
-            anomalies: anomalyStats,
-            reportsGenerated: reportsSnap.size,
+            conformityRate: totalCables > 0 ? Math.round((conformCount / totalCables) * 100) : 100,
+            cables: { 
+                total: totalCables, 
+                conforme: conformCount, 
+                nonConforme: totalCables - conformCount 
+            },
+            orders: { 
+                total: totalOrders, 
+                enCours: enCoursOrders, 
+                termine: termineOrders, 
+                enAttente: totalOrders - enCoursOrders - termineOrders 
+            },
+            anomalies: { 
+                total: totalAnom, 
+                critique: critiqueAnom, 
+                majeur: majeurAnom, 
+                mineur: totalAnom - critiqueAnom - majeurAnom 
+            },
+            reportsGenerated: reportsSnap.data().count,
             updatedAt: new Date().toISOString()
         };
 

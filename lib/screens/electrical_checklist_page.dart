@@ -199,6 +199,10 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
     if (validRows.isEmpty) return;
 
     setState(() => _isSaving = true);
+    
+    // Rafraîchir le profil pour récupérer la signatureUrl à jour
+    await auth.refreshCurrentUser();
+    
     final status = _totalDefects == 0 ? 'Conforme' : 'Non conforme';
     
     final checklist = ElectricalChecklist(
@@ -206,31 +210,44 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
       ligneDeProd: widget.order.ligne ?? '', matriculeOperateur: auth.currentUser?.fullName ?? '',
       controleurId: auth.currentUser?.id ?? '', controleurName: auth.currentUser?.fullName ?? '',
       date: DateTime.now(), codeCable: widget.order.reference, revision: '', quantiteCablesControles: validRows.length,
-      cableRows: validRows.map<CableDefectRow>((r) => CableDefectRow(numeroSerie: r.ns, comment: r.comment)).toList(),
+      cableRows: validRows.map<CableDefectRow>((r) => CableDefectRow(numeroSerie: r.ns.trim(), comment: r.comment)).toList(),
       nombreDefauts: _totalDefects, signatureRespLigne: auth.currentUser?.signatureUrl ?? '', signatureRespQualite: '', status: status,
     );
 
     await OrdersService().saveElectricalChecklist(checklist);
 
     // Create anomalies and report records
-    for (final row in validRows.where((r) => r.hasDefect)) {
-      await AnomalyService().createAnomaly(Anomaly(
-        id: '', type: 'Défaut Électrique: ${row.defectLabels.join(", ")}', severity: 'Critique', confidence: 1.0,
-        cableId: row.ns, detectedAt: DateTime.now(), technicianId: auth.currentUser?.id,
-        technicianName: auth.currentUser?.fullName, statut: 'detectee', orderId: widget.order.id,
-      ));
+    for (final row in validRows) {
+      if (row.hasDefect) {
+        await AnomalyService().createAnomaly(Anomaly(
+          id: '', type: 'Défaut Électrique: ${row.defectLabels.join(", ")}', severity: 'Critique', confidence: 1.0,
+          cableId: row.ns, detectedAt: DateTime.now(), technicianId: auth.currentUser?.id,
+          technicianName: auth.currentUser?.fullName, statut: 'detectee', orderId: widget.order.id,
+        ));
+      }
 
-      // CRÉER UN ENREGISTREMENT DE RAPPORT (pour le registre "Mes Rapports")
+      // CRÉER UN ENREGISTREMENT DE RAPPORT (pour tous les câbles inspectés)
       await ReportsService().createReportRecord(
         technicianId: auth.currentUser?.id ?? '',
         technicianName: auth.currentUser?.fullName ?? '',
-        type: 'inspection',
+        type: 'inspection_electrique',
         cableId: row.ns,
         orderId: widget.order.id,
-        status: 'Non conforme',
+        status: row.hasDefect ? 'Non conforme' : 'Conforme',
         anomaliesCount: row.defectCount,
-        notes: 'Contrôle électrique avec ${row.defectCount} défaut(s): ${row.defectLabels.join(", ")}',
+        notes: row.hasDefect 
+            ? 'Contrôle électrique avec ${row.defectCount} défaut(s): ${row.defectLabels.join(", ")}. ${row.comment}'
+            : 'Contrôle électrique OK. ${row.comment}',
+        signatureUrl: auth.currentUser?.signatureUrl,
       );
+    }
+
+    if (mounted && _totalDefects > 0) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Rapport d\'anomalie électrique généré.'),
+        backgroundColor: AppTheme.successGreen,
+        duration: Duration(seconds: 3),
+      ));
     }
 
     setState(() => _isSaving = false);

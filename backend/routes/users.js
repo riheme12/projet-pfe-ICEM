@@ -10,6 +10,9 @@ router.get('/', async (req, res) => {
         const users = snapshot.docs.map(doc => {
             const user = User.fromJson({ id: doc.id, ...doc.data() }).toJson();
             delete user.photoUrl; // Optimisation: ne pas charger les images lourdes dans la liste
+            if (user.signatureUrl && user.signatureUrl.startsWith('data:image')) {
+                delete user.signatureUrl; // Éviter de transférer des Mo de base64 pour tous les users
+            }
             return user;
         });
         res.status(200).json(users);
@@ -197,23 +200,13 @@ router.post('/:id/signature', upload.single('signature'), async (req, res) => {
             return res.status(400).json({ error: 'Aucun fichier de signature fourni' });
         }
 
-        const { bucket } = require('../firebase');
-        const fileName = `signatures/${req.params.id}_${Date.now()}.${req.file.originalname.split('.').pop()}`;
-        const file = bucket.file(fileName);
-
-        await file.save(req.file.buffer, {
-            metadata: { contentType: req.file.mimetype },
-        });
-
-        // Make the file publicly accessible
-        await file.makePublic();
-
-        const signatureUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+        // Firebase Storage est bloqué par le quota, on convertit directement en Base64
+        const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
 
         // Update Firestore
-        await db.collection('users').doc(req.params.id).update({ signatureUrl });
+        await db.collection('users').doc(req.params.id).update({ signatureUrl: base64Image });
 
-        res.status(200).json({ signatureUrl, message: 'Signature uploadée avec succès' });
+        res.status(200).json({ signatureUrl: base64Image, message: 'Signature uploadée avec succès' });
     } catch (error) {
         console.error('Error uploading signature:', error);
         res.status(500).json({ error: error.message });

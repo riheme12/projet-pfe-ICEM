@@ -360,9 +360,60 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
       context, MaterialPageRoute(builder: (_) => QrScannerPage(orderId: widget.order.id, orderReference: widget.order.reference)),
     );
     if (scannedCode == null || !mounted) return;
+
+    // 1. Vérifier si la checklist électrique a été faite pour CE câble précis
+    showDialog(context: context, barrierDismissible: false, builder: (_) => const Center(child: CircularProgressIndicator()));
+    final isElecChecked = await _ordersService.isCableElectricallyChecked(widget.order.id, scannedCode);
+    if (!mounted) return;
+    Navigator.pop(context); // fermer le loader
+
+    if (!isElecChecked) {
+      _showErrorDialog('Checklist Électrique Manquante', 'Vous devez effectuer et valider la checklist électrique pour le câble "$scannedCode" avant de pouvoir passer à l\'inspection visuelle.');
+      return;
+    }
+
+    // 2. Vérifier si l'inspection visuelle a DÉJÀ été faite
+    final isVisuallyChecked = _cables.any((c) => c.code == scannedCode);
+    if (isVisuallyChecked) {
+      final confirm = await _showConfirmDialog('Inspection déjà existante', 'L\'inspection visuelle a déjà été réalisée pour le câble "$scannedCode".\n\nVoulez-vous vraiment refaire l\'inspection ? (Les anciennes données visuelles seront écrasées)');
+      if (confirm != true) return; // L'utilisateur annule
+    }
+
+    // 3. Lancer l'inspection visuelle (IA/Manuel)
     final result = await Navigator.push<Map<String, dynamic>>(
       context, MaterialPageRoute(builder: (_) => InspectionPage(orderId: widget.order.numeroOF, orderReference: widget.order.reference, cableReference: scannedCode)),
     );
     if (result != null && mounted) await _loadData();
+  }
+
+  void _showErrorDialog(String title, String message) {
+    showDialog(context: context, builder: (ctx) => AlertDialog(
+      title: Row(children: [const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed), const SizedBox(width: 8), Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16))]),
+      content: Text(message, style: GoogleFonts.inter(fontSize: 14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      actions: [
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx),
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryNavy),
+          child: const Text('Compris'),
+        ),
+      ],
+    ));
+  }
+
+  Future<bool?> _showConfirmDialog(String title, String message) {
+    return showDialog<bool>(context: context, builder: (ctx) => AlertDialog(
+      title: Row(children: [const Icon(Icons.info_outline_rounded, color: AppTheme.accentBlue), const SizedBox(width: 8), Expanded(child: Text(title, style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 16)))]),
+      content: Text(message, style: GoogleFonts.inter(fontSize: 14)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annuler')),
+        ElevatedButton(
+          onPressed: () => Navigator.pop(ctx, true),
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warningAmber),
+          child: const Text('Oui, refaire', style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ));
   }
 }
