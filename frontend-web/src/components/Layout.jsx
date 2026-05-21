@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import { Bell, ChevronDown, Calendar, Clock, Globe, ShieldCheck } from 'lucide-react';
 import { AnomalyService } from '../services/api';
+import buildingImg from '../assets/building.png';
 
 const PAGE_TITLES = {
     '/': 'Tableau de Bord',
@@ -54,15 +55,29 @@ const Layout = () => {
                 <div className="absolute inset-0 opacity-[0.4] pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:32px_32px] -z-10"></div>
 
                 {/* 🎨 Massive Creative Premium Header */}
-                <header className="sticky top-0 z-40 px-12 py-6 flex items-center justify-between transition-all duration-300 bg-gradient-to-r from-white/90 via-blue-50/80 to-white/90 backdrop-blur-xl border-b border-blue-100/50 shadow-[0_15px_40px_-15px_rgba(30,27,75,0.15)] relative">
+                <header className="sticky top-0 z-40 px-12 py-6 flex items-center justify-between transition-all duration-300 border-b border-blue-100/50 shadow-[0_15px_40px_-15px_rgba(30,27,75,0.15)] relative overflow-hidden">
+                    {/* Background Image behind glass */}
+                    <div 
+                        className="absolute inset-0 z-0 opacity-100" 
+                        style={{ 
+                            backgroundImage: `url(${buildingImg})`, 
+                            backgroundSize: 'cover', 
+                            backgroundPosition: 'top center',
+                        }}
+                    />
+                    <div className="absolute inset-0 z-0 bg-gradient-to-r from-white/95 via-white/80 to-blue-50/90 backdrop-blur-md"></div>
+                    
+                    {/* 🎨 Subtle Blue Fade over background */}
+                    <div className="absolute inset-0 z-0 bg-gradient-to-b from-blue-600/40 via-blue-600/10 to-transparent mix-blend-multiply"></div>
+
                     {/* Top Accent Line */}
-                    <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 opacity-90 shadow-[0_0_15px_rgba(37,99,235,0.4)]"></div>
+                    <div className="absolute top-0 left-0 w-full h-[4px] bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 opacity-90 shadow-[0_0_15px_rgba(37,99,235,0.4)] z-10"></div>
                     
                     {/* Left: Branding & Welcome — INDUSTRIAL CONTROL */}
-                    <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-6 relative z-10">
                         <div className="w-1.5 h-12 bg-gradient-to-b from-blue-600 to-indigo-700 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.4)]"></div>
                         <div className="flex flex-col">
-                            <span className="text-[10px] font-black text-blue-500 uppercase tracking-[0.4em] mb-1.5 drop-shadow-sm">Supervision Industrielle</span>
+                            <span className="text-sm font-black text-blue-500 uppercase tracking-[0.4em] mb-1.5 drop-shadow-sm">Supervision Industrielle</span>
                             <h2 className="text-3xl font-black tracking-tighter flex items-center gap-3">
                                 <span className="bg-gradient-to-r from-[#1e1b4b] to-[#312e81] bg-clip-text text-transparent">ICEM</span>
                                 <span className="text-slate-300 font-light tracking-widest">|</span>
@@ -72,10 +87,10 @@ const Layout = () => {
                     </div>
 
                     {/* Right: Actions & Profile */}
-                    <div className="flex items-center gap-5">
+                    <div className="flex items-center gap-5 relative z-10">
                         {/* Time Widget — Improved Readability */}
                         <div className="hidden lg:flex flex-col items-end mr-6 pr-8 border-r border-slate-200/60 text-indigo-900">
-                            <span className="text-[11px] font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Date Actuelle</span>
+                            <span className="text-sm font-black text-blue-600 uppercase tracking-[0.2em] mb-1">Date Actuelle</span>
                             <span className="text-sm font-black text-slate-800">{currentDate}</span>
                         </div>
 
@@ -106,7 +121,7 @@ const Layout = () => {
                                 <p className="text-base font-black text-[#1e1b4b] tracking-tight group-hover:text-blue-600 transition-colors leading-tight">{user?.fullName || 'Utilisateur'}</p>
                                 <div className="flex items-center gap-2 mt-1">
                                     <ShieldCheck size={12} className="text-blue-500" />
-                                    <p className="text-[11px] font-black text-blue-600 uppercase tracking-widest leading-none">{roleLabel || 'Utilisateur'}</p>
+                                    <p className="text-sm font-black text-blue-600 uppercase tracking-widest leading-none">{roleLabel || 'Utilisateur'}</p>
                                 </div>
                             </div>
                             <ChevronDown size={20} className="text-slate-300 group-hover:text-blue-600 group-hover:translate-y-0.5 transition-all ml-2 relative z-10" />
@@ -116,15 +131,7 @@ const Layout = () => {
 
                 {/* 🚀 Page Content Section */}
                 <div className="flex-1 p-12 overflow-auto relative custom-scrollbar">
-                    <div className="mb-16 animate-[fadeUp_0.4s_ease-out] relative z-10">
-                        <div className="flex items-center gap-5 mb-5">
-                            <div className="h-[2px] w-12 bg-gradient-to-r from-blue-600 to-transparent"></div>
-                            <span className="text-xs font-black text-indigo-900/40 uppercase tracking-[0.6em]">ICEM Contrôle Qualité</span>
-                        </div>
-                        <h1 className="text-5xl font-black tracking-tighter leading-none bg-gradient-to-br from-[#0f172a] via-[#1e1b4b] to-[#312e81] bg-clip-text text-transparent drop-shadow-sm">
-                            {pageTitle}
-                        </h1>
-                    </div>
+
 
                     <div className="relative z-10" style={{ animation: 'fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
                         <Outlet />

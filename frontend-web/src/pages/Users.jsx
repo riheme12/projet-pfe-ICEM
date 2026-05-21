@@ -21,7 +21,7 @@ const Users = () => {
     const signatureInputRef = useRef(null);
     
     const [form, setForm] = useState({
-        fullName: '', username: '', email: '', phone: '', isActive: true
+        fullName: '', username: '', email: '', phone: '', isActive: true, role: 'operator'
     });
 
     const { canResetPassword } = useAuth();
@@ -42,24 +42,46 @@ const Users = () => {
 
     const openCreateUser = () => {
         setEditUser(null);
-        setForm({ fullName: '', username: '', email: '', phone: '', isActive: true });
+        setForm({ fullName: '', username: '', email: '', phone: '', isActive: true, role: 'technician' });
         setSignatureFile(null);
         setSignaturePreview(null);
         setIsModalOpen(true);
     };
 
-    const openEditUser = (user) => {
-        setEditUser(user);
-        setForm({
-            fullName: user.fullName || '',
-            username: user.username || '',
-            email: user.email || '',
-            phone: user.phone || '',
-            isActive: user.isActive !== false,
-        });
-        setSignatureFile(null);
-        setSignaturePreview(user.signatureUrl || null);
-        setIsModalOpen(true);
+    const openEditUser = async (user) => {
+        try {
+            // Fetch complete user data to get the signatureUrl (omitted in getAll)
+            const response = await toast.promise(
+                UserService.getById(user.id),
+                {
+                    loading: 'Chargement des données...',
+                    success: 'Données chargées',
+                    error: 'Erreur de chargement'
+                }
+            );
+            
+            const fullUser = response.data;
+            
+            setEditUser(fullUser);
+            setForm({
+                fullName: fullUser.fullName || '',
+                username: fullUser.username || '',
+                email: fullUser.email || '',
+                phone: fullUser.phone || '',
+                isActive: fullUser.isActive !== false,
+                role: fullUser.role || (fullUser.roles && fullUser.roles.length > 0 ? fullUser.roles[0] : 'technician')
+            });
+            setSignatureFile(null);
+            setSignaturePreview(fullUser.signatureUrl || null);
+            setIsModalOpen(true);
+        } catch (error) {
+            console.error('Erreur openEditUser:', error);
+            if (error.response) {
+                toast.error(`Erreur Serveur: ${error.response.data?.error || error.response.status}`);
+            } else {
+                toast.error(`Erreur: ${error.message}`);
+            }
+        }
     };
 
     const handleSignatureSelect = (e) => {
@@ -88,7 +110,7 @@ const Users = () => {
     const handleUserSubmit = async (e) => {
         e.preventDefault();
         try {
-            const data = { ...form, role: 'admin', roles: ['admin'] }; // Default to admin for everyone
+            const data = { ...form, roles: [form.role] };
             let userId = editUser?.id;
 
             if (editUser) {
@@ -212,7 +234,7 @@ const Users = () => {
                                 <div className="flex items-center gap-3 mb-1">
                                     <h3 className="font-bold text-slate-900 text-base">{user.fullName}</h3>
                                     {user.signatureUrl && (
-                                        <span className="flex items-center gap-1 text-xs font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        <span className="flex items-center gap-1 text-sm font-medium text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
                                             <FileSignature size={12} /> Signature
                                         </span>
                                     )}
@@ -291,6 +313,15 @@ const Users = () => {
                                     <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Professionnel</label>
                                     <input type="email" required className="input-field" placeholder="nom@icem.tn" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                                 </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-700 mb-1.5">Rôle Utilisateur</label>
+                                    <select className="input-field bg-white" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                                        <option value="technician">Technicien</option>
+                                        <option value="manager">Responsable Qualité</option>
+                                        <option value="director">Directeur</option>
+                                        <option value="admin">Administrateur</option>
+                                    </select>
+                                </div>
                             </div>
 
                             {/* Signature Upload Section */}
@@ -316,14 +347,14 @@ const Users = () => {
                                             <button
                                                 type="button"
                                                 onClick={() => signatureInputRef.current?.click()}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-100 hover:bg-indigo-200 rounded-lg transition-colors"
                                             >
                                                 <Upload size={13} /> Remplacer
                                             </button>
                                             <button
                                                 type="button"
                                                 onClick={handleRemoveSignature}
-                                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
+                                                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-red-600 bg-red-100 hover:bg-red-200 rounded-lg transition-colors"
                                             >
                                                 <Trash2 size={13} /> Supprimer
                                             </button>
@@ -338,7 +369,7 @@ const Users = () => {
                                         <p className="text-sm font-medium text-slate-500 group-hover:text-indigo-600 transition-colors">
                                             Cliquez pour ajouter une signature
                                         </p>
-                                        <p className="text-xs text-slate-400 mt-1">PNG, JPG — Max 5 Mo</p>
+                                        <p className="text-sm text-slate-400 mt-1">PNG, JPG — Max 5 Mo</p>
                                     </div>
                                 )}
                                 <input

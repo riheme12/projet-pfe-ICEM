@@ -8,15 +8,15 @@ const UserRole = Object.freeze({
     TECHNICIAN: 'technician',
     MANAGER: 'manager',
     ADMIN: 'admin',
-    OPERATOR: 'operator',
+    DIRECTOR: 'director',
 });
 
 // Noms d'affichage français pour les rôles
 const UserRoleDisplayNames = Object.freeze({
     [UserRole.TECHNICIAN]: 'Technicien',
-    [UserRole.MANAGER]: 'Responsable',
+    [UserRole.MANAGER]: 'Responsable Qualité',
     [UserRole.ADMIN]: 'Administrateur',
-    [UserRole.OPERATOR]: 'Opérateur',
+    [UserRole.DIRECTOR]: 'Directeur',
 });
 
 /**
@@ -26,14 +26,15 @@ function parseUserRole(role) {
     const roleMap = {
         'Technicien': UserRole.TECHNICIAN,
         'technician': UserRole.TECHNICIAN,
+        'Responsable Qualité': UserRole.MANAGER,
         'Responsable': UserRole.MANAGER,
         'manager': UserRole.MANAGER,
         'Administrateur': UserRole.ADMIN,
         'admin': UserRole.ADMIN,
-        'Opérateur': UserRole.OPERATOR,
-        'operator': UserRole.OPERATOR,
+        'Directeur': UserRole.DIRECTOR,
+        'director': UserRole.DIRECTOR,
     };
-    return roleMap[role] || UserRole.OPERATOR;
+    return roleMap[role] || UserRole.TECHNICIAN;
 }
 
 /**
@@ -79,7 +80,7 @@ class User {
         this.username = username || '';
         this.fullName = fullName || '';
         this.email = email || '';
-        this.roles = Array.isArray(roles) ? roles : (role ? [role] : [UserRole.OPERATOR]);
+        this.roles = Array.isArray(roles) ? roles : (role ? [role] : [UserRole.TECHNICIAN]);
         this.role = this.roles[0]; // Compatibility field
         this.photoUrl = photoUrl;
         this.phone = phone;
@@ -111,7 +112,7 @@ class User {
             username: this.username,
             fullName: this.fullName,
             email: this.email,
-            role: this.roles[0] || UserRole.OPERATOR, // Backward compatibility
+            role: this.roles[0] || UserRole.TECHNICIAN, // Backward compatibility
             roles: this.roles,
             photoUrl: this.photoUrl,
             phone: this.phone,

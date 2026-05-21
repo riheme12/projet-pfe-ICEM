@@ -11,11 +11,11 @@ class CustomScaffold extends StatelessWidget {
       extendBodyBehindAppBar: true,
       body: Stack(
         children: [
-          // Dark gradient background
+          // Light gradient background matching the web theme
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
-                colors: [Color(0xFF0A0E1A), Color(0xFF1A2332), Color(0xFF0F2440)],
+                colors: [Color(0xFFF8FAFC), Color(0xFFEFF6FF), Color(0xFFF1F5F9)], // slate-50, blue-50, slate-100
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),

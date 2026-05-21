@@ -119,7 +119,9 @@ router.patch('/:id', async (req, res) => {
         // Send notification for ANY change
         const emailService = require('../services/emailService');
         try {
-            if (req.body.roles || req.body.role) {
+            const rolesChanged = JSON.stringify(existingData.roles) !== JSON.stringify(user.roles) || existingData.role !== user.role;
+            
+            if (rolesChanged) {
                 await emailService.sendRoleUpdate({
                     email: user.email,
                     username: user.username || user.fullName,

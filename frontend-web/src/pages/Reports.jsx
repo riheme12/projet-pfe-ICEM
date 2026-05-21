@@ -597,33 +597,45 @@ const Reports = () => {
     if (loading) return (
         <div className="flex flex-col items-center justify-center py-40 gap-4">
             <Loader2 className="w-12 h-12 text-indigo-600 animate-spin" />
-            <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Analyse des données...</p>
+            <p className="text-slate-400 font-black uppercase tracking-widest text-sm">Analyse des données...</p>
         </div>
     );
 
     return (
         <div className="max-w-[1600px] mx-auto space-y-10 pb-20 animate-in fade-in duration-700">
-            {/* Header */}
-            <div className="bg-gradient-to-br from-white to-slate-50/50 p-12 rounded-[50px] shadow-2xl shadow-indigo-900/10 border border-white flex flex-col lg:flex-row lg:items-center justify-between gap-8 relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                <div className="relative z-10">
-                    <div className="flex items-center gap-3 text-indigo-600 mb-3 font-black text-[11px] uppercase tracking-[0.4em]">
-                        <TrendingUp size={20} /> Corporate Intelligence
+            {/* Premium Light Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8 mb-4 p-10 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/80 backdrop-blur-2xl rounded-[45px] shadow-[0_15px_40px_-10px_rgba(30,27,75,0.05)] border border-white relative overflow-hidden group">
+                <div className="absolute inset-0 opacity-[0.3] pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]"></div>
+                <div className="absolute -top-12 -right-12 w-64 h-64 bg-indigo-300/30 rounded-full blur-[80px] animate-pulse"></div>
+                <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-blue-300/30 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+                
+                <div className="relative z-10 flex items-center gap-6">
+                    <div className="relative group-hover:scale-105 transition-transform duration-500">
+                        <div className="absolute inset-0 bg-blue-400 blur-xl opacity-20"></div>
+                        <div className="w-16 h-16 bg-white border border-blue-100/50 rounded-2xl flex items-center justify-center text-blue-600 relative z-10 shadow-xl group-hover:rotate-6 transition-transform duration-500">
+                            <TrendingUp size={32} strokeWidth={2.5} />
+                        </div>
                     </div>
-                    <h1 className="text-5xl font-black text-slate-900 tracking-tighter">Analytique Stratégique</h1>
+                    <div>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm">Analytique Stratégique</h1>
+                        <div className="flex items-center gap-3 mt-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse"></div>
+                            <p className="text-slate-500 font-bold text-sm tracking-widest uppercase">Corporate Intelligence</p>
+                        </div>
+                    </div>
                 </div>
                 <div className="flex flex-wrap gap-4">
                     {activeTab === 'global' ? (
                         <div className="flex gap-3">
-                            <button onClick={exportGlobalPDF} className="px-8 py-5 bg-indigo-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 transition-all flex items-center gap-3 active:scale-95">
+                            <button onClick={exportGlobalPDF} className="px-8 py-5 bg-indigo-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-2xl shadow-indigo-600/30 hover:bg-indigo-700 transition-all flex items-center gap-3 active:scale-95">
                                 <Download size={18} /> Export PDF
                             </button>
-                            <button onClick={exportGlobalExcel} className="px-8 py-5 bg-emerald-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest shadow-2xl shadow-emerald-600/30 hover:bg-emerald-700 transition-all flex items-center gap-3 active:scale-95">
+                            <button onClick={exportGlobalExcel} className="px-8 py-5 bg-emerald-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest shadow-2xl shadow-emerald-600/30 hover:bg-emerald-700 transition-all flex items-center gap-3 active:scale-95">
                                 <FileText size={18} /> Export Excel
                             </button>
                         </div>
                     ) : activeTab === 'registry' ? (
-                        <button onClick={exportInspectionsExcel} className="px-8 py-5 bg-white text-emerald-600 border-2 border-emerald-100 rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center gap-3 active:scale-95 shadow-xl shadow-emerald-900/5">
+                        <button onClick={exportInspectionsExcel} className="px-8 py-5 bg-white text-emerald-600 border-2 border-emerald-100 rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center gap-3 active:scale-95 shadow-xl shadow-emerald-900/5">
                             <FileText size={18} /> Export Excel
                         </button>
                     ) : null}
@@ -636,7 +648,7 @@ const Reports = () => {
                     { id: 'global', label: 'Rapport Global', icon: LayoutDashboard }, 
                     { id: 'inspection', label: 'Rapports d\'Inspection', icon: FileText }
                 ].map(tab => (
-                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-4 px-10 py-5 rounded-[24px] font-black text-xs uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-xl shadow-indigo-900/5 border border-indigo-50' : 'text-slate-500 hover:text-slate-900'}`}>
+                    <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex items-center gap-4 px-10 py-5 rounded-[24px] font-black text-sm uppercase tracking-widest transition-all ${activeTab === tab.id ? 'bg-white text-indigo-600 shadow-xl shadow-indigo-900/5 border border-indigo-50' : 'text-slate-500 hover:text-slate-900'}`}>
                         <tab.icon size={20} /> {tab.label}
                     </button>
                 ))}
@@ -652,7 +664,7 @@ const Reports = () => {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Période d'analyse</label>
+                                <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-2">Période d'analyse</label>
                                 <CustomSelect
                                     className="w-full"
                                     options={[
@@ -665,7 +677,7 @@ const Reports = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Intervalle de Dates</label>
+                                <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-2">Intervalle de Dates</label>
                                 <div className="flex items-center gap-2">
                                     <input type="date" value={dateStart} onChange={e => setDateStart(e.target.value)} className="flex-1 p-4 bg-white border-2 border-slate-50 rounded-2xl font-bold text-slate-800 outline-none focus:border-indigo-500 shadow-inner" />
                                     <div className="w-2 h-0.5 bg-slate-200"></div>
@@ -673,7 +685,7 @@ const Reports = () => {
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Opérateur</label>
+                                <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-2">Opérateur</label>
                                 <CustomSelect
                                     className="w-full"
                                     options={[
@@ -698,7 +710,7 @@ const Reports = () => {
                                 <div className={`w-14 h-14 bg-${kpi.color}-50 text-${kpi.color}-600 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
                                     <kpi.icon size={28} />
                                 </div>
-                                <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{kpi.label}</p>
+                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">{kpi.label}</p>
                                 <h3 className="text-4xl font-black text-slate-900 tracking-tight">{kpi.value}</h3>
                             </div>
                         ))}
@@ -711,7 +723,7 @@ const Reports = () => {
                             <div className="flex items-center justify-between mb-10">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Analyse des Défauts</h3>
-                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1">Répartition par type d'anomalie</p>
+                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">Répartition par type d'anomalie</p>
                                 </div>
                                 <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center">
                                     <AlertTriangle size={24} />
@@ -749,7 +761,7 @@ const Reports = () => {
                                     {defectDistribution.length === 0 && (
                                         <div className="py-20 text-center opacity-40">
                                             <CheckCircle size={40} className="mx-auto mb-3 text-emerald-500" />
-                                            <p className="text-xs font-black uppercase tracking-widest">Aucun défaut détecté</p>
+                                            <p className="text-sm font-black uppercase tracking-widest">Aucun défaut détecté</p>
                                         </div>
                                     )}
                                 </div>
@@ -761,7 +773,7 @@ const Reports = () => {
                             <div className="flex items-center justify-between mb-10">
                                 <div>
                                     <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Performance Équipe</h3>
-                                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mt-1">Volume d'inspection par opérateur</p>
+                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">Volume d'inspection par opérateur</p>
                                 </div>
                                 <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
                                     <BarChart3 size={24} />
@@ -794,11 +806,11 @@ const Reports = () => {
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50/80 border-b border-slate-100">
                                     <tr>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Opérateur</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Inspections</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Rendement (%)</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-center">Anomalies</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Statut Équipe</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Opérateur</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-center">Inspections</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-center">Rendement (%)</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-center">Anomalies</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-right">Statut Équipe</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -826,7 +838,7 @@ const Reports = () => {
                                             </td>
                                             <td className="px-12 py-8 text-center font-black text-rose-500">{stat.anomalies}</td>
                                             <td className="px-12 py-8 text-right">
-                                                <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${parseFloat(stat.yield) > 85 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                <span className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-widest ${parseFloat(stat.yield) > 85 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                                                     {parseFloat(stat.yield) > 85 ? 'Excellent' : 'À surveiller'}
                                                 </span>
                                             </td>
@@ -845,7 +857,7 @@ const Reports = () => {
                     {/* Search & Filter for Reports */}
                     <div className="bg-gradient-to-br from-white to-slate-50 p-12 rounded-[50px] border border-white shadow-2xl shadow-indigo-900/5 flex flex-col lg:flex-row gap-8 items-end">
                         <div className="flex-1 w-full space-y-3">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-4">Rechercher un rapport</label>
+                            <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-4">Rechercher un rapport</label>
                             <div className="relative">
                                 <Search className="absolute left-8 top-1/2 -translate-y-1/2 text-slate-400" size={24} />
                                 <input 
@@ -858,7 +870,7 @@ const Reports = () => {
                             </div>
                         </div>
                         <div className="w-full lg:w-80 space-y-3">
-                            <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-4">Type de Rapport</label>
+                            <label className="text-sm font-black text-slate-400 uppercase tracking-widest ml-4">Type de Rapport</label>
                             <CustomSelect
                                 className="w-full"
                                 options={[
@@ -877,11 +889,11 @@ const Reports = () => {
                             <table className="w-full text-left">
                                 <thead className="bg-slate-50/80 border-b border-slate-100">
                                     <tr>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Rapport</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Technicien</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Verdict</th>
-                                        <th className="px-12 py-8 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] text-right">Action</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Rapport</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Technicien</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Date</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Verdict</th>
+                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-right">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
@@ -894,7 +906,7 @@ const Reports = () => {
                                                     </div>
                                                     <div>
                                                         <p className="font-black text-slate-900 text-sm">{report.type === 'performance' ? 'Rapport Performance' : 'Rapport Inspection'}</p>
-                                                        <p className="text-[10px] font-black text-slate-400 uppercase">ID: {report.id?.substring(0,8)}</p>
+                                                        <p className="text-sm font-black text-slate-400 uppercase">ID: {report.id?.substring(0,8)}</p>
                                                     </div>
                                                 </div>
                                             </td>
@@ -905,7 +917,7 @@ const Reports = () => {
                                                 <p className="text-sm font-bold text-slate-500">{new Date(report.generatedAt).toLocaleDateString('fr-FR')}</p>
                                             </td>
                                             <td className="px-12 py-8">
-                                                <span className={`px-4 py-2 rounded-xl text-[9px] font-black uppercase tracking-widest ${report.conformityStatus?.includes('Conforme') ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+                                                <span className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-widest ${report.conformityStatus?.includes('Conforme') ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                                                     {report.conformityStatus}
                                                 </span>
                                             </td>
@@ -922,7 +934,7 @@ const Reports = () => {
                         {filteredMobileReports.length === 0 && (
                             <div className="py-20 text-center">
                                 <FileText size={48} className="mx-auto text-slate-200 mb-4" />
-                                <p className="text-slate-400 font-black uppercase tracking-widest text-xs">Aucun rapport d'inspection trouvé</p>
+                                <p className="text-slate-400 font-black uppercase tracking-widest text-sm">Aucun rapport d'inspection trouvé</p>
                             </div>
                         )}
                     </div>

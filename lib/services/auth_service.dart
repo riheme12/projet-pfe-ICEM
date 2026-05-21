@@ -14,12 +14,12 @@ class AuthService {
   final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  /// Authenticate user with username and password
-  Future<User?> login(String username, String password, bool rememberMe) async {
+  /// Authenticate user with email and password
+  Future<User?> login(String email, String password, bool rememberMe) async {
     try {
-      final email = '$username@icem.app';
+      final finalEmail = email.contains('@') ? email.trim() : '${email.trim()}@icem.app';
       final userCredential = await _auth.signInWithEmailAndPassword(
-        email: email,
+        email: finalEmail,
         password: password,
       );
 

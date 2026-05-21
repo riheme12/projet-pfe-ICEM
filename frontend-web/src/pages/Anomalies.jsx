@@ -19,7 +19,7 @@ const SeverityBadge = ({ severity }) => {
     };
     const c = config[s] || config.mineur;
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${c.bg} ${c.text}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold ${c.bg} ${c.text}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`}></span>
             {severity}
         </span>
@@ -131,7 +131,7 @@ const Anomalies = () => {
                 {loading ? (
                     <div className="col-span-full py-24 text-center">
                         <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Analyse des défauts en cours...</p>
+                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Analyse des défauts en cours...</p>
                     </div>
                 ) : filteredAnomalies.length > 0 ? (
                     filteredAnomalies.map((anomaly) => {
@@ -158,10 +158,10 @@ const Anomalies = () => {
                                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-zoom-in"
                                                 onClick={() => setSelectedImage(anomaly.imageUrl)}
                                             />
-                                            <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-white text-[10px] font-black px-3 py-1.5 rounded-xl uppercase tracking-[0.2em] shadow-xl border border-white/10">
+                                            <div className="absolute top-4 left-4 bg-slate-900/80 backdrop-blur-md text-white text-sm font-black px-3 py-1.5 rounded-xl uppercase tracking-[0.2em] shadow-xl border border-white/10">
                                                 ANALYSE IA
                                             </div>
-                                            <div className={`absolute bottom-4 right-4 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/20 text-white text-[11px] font-black shadow-lg
+                                            <div className={`absolute bottom-4 right-4 px-3 py-1.5 rounded-xl backdrop-blur-md border border-white/20 text-white text-sm font-black shadow-lg
                                                 ${anomaly.confidence > 0.8 ? 'bg-emerald-600/80' : anomaly.confidence > 0.5 ? 'bg-amber-600/80' : 'bg-red-600/80'}`}>
                                                 {(anomaly.confidence * 100).toFixed(0)}% CONFIANCE
                                             </div>
@@ -169,7 +169,7 @@ const Anomalies = () => {
                                     ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-2">
                                             <AlertCircle size={44} className="opacity-10" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Aucun visuel disponible</span>
+                                            <span className="text-sm font-black uppercase tracking-widest">Aucun visuel disponible</span>
                                         </div>
                                     )}
                                 </div>
@@ -186,17 +186,17 @@ const Anomalies = () => {
 
                                     <div className="grid grid-cols-2 gap-3 mb-6 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:border-blue-100 transition-all duration-500">
                                         <div className="space-y-1">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Câble / OF</p>
+                                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Câble / OF</p>
                                             <p className="text-sm font-black text-slate-900">#{anomaly.cableId?.substring(0, 10) || '—'}</p>
                                         </div>
                                         <div className="space-y-1 text-right">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Responsable</p>
+                                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Responsable</p>
                                             <p className="text-sm font-black text-blue-700 truncate">{anomaly.technicianName || 'Auto System'}</p>
                                         </div>
                                         <div className="col-span-2 pt-2 border-t border-slate-200/50 flex items-center justify-between">
                                             <div className="flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                                                <span className="text-[11px] font-black text-slate-600 uppercase tracking-widest">
+                                                <span className="text-sm font-black text-slate-600 uppercase tracking-widest">
                                                     {anomaly.detectedAt ? new Date(anomaly.detectedAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'}
                                                 </span>
                                             </div>
@@ -204,12 +204,12 @@ const Anomalies = () => {
                                                 {isTraitee ? (
                                                     <div className="flex items-center gap-1.5 text-emerald-600">
                                                         <CheckCircle size={14} strokeWidth={3} />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">Traitée</span>
+                                                        <span className="text-sm font-black uppercase tracking-widest">Traitée</span>
                                                     </div>
                                                 ) : (
                                                     <div className="flex items-center gap-1.5 text-amber-600">
                                                         <Clock size={14} strokeWidth={3} />
-                                                        <span className="text-[10px] font-black uppercase tracking-widest">En attente</span>
+                                                        <span className="text-sm font-black uppercase tracking-widest">En attente</span>
                                                     </div>
                                                 )}
                                             </div>
@@ -218,7 +218,7 @@ const Anomalies = () => {
 
                                     {anomaly.mesureCorrective && (
                                         <div className="mb-6 p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                            <p className="text-[9px] font-black text-emerald-600 uppercase tracking-widest mb-1">Mesure corrective</p>
+                                            <p className="text-sm font-black text-emerald-600 uppercase tracking-widest mb-1">Mesure corrective</p>
                                             <p className="text-sm font-bold text-emerald-900 italic">"{anomaly.mesureCorrective}"</p>
                                         </div>
                                     )}

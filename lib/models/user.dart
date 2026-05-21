@@ -1,43 +1,28 @@
 /// Rôles utilisateur disponibles dans le système ICEM
 enum UserRole {
-  operator,
-  inspector,
-  supervisor,
-  admin,
   technician,
   manager,
+  admin,
+  director,
 }
 
 /// Extension pour la conversion String <-> UserRole
 extension UserRoleExtension on UserRole {
   String get name {
     switch (this) {
-      case UserRole.operator:
-        return 'Opérateur';
-      case UserRole.inspector:
-        return 'Inspecteur';
-      case UserRole.supervisor:
-        return 'Superviseur';
       case UserRole.admin:
         return 'Administrateur';
       case UserRole.technician:
         return 'Technicien';
       case UserRole.manager:
-        return 'Responsable';
+        return 'Responsable Qualité';
+      case UserRole.director:
+        return 'Directeur';
     }
   }
 
   static UserRole fromString(String role) {
     switch (role.toLowerCase()) {
-      case 'opérateur':
-      case 'operator':
-        return UserRole.operator;
-      case 'inspecteur':
-      case 'inspector':
-        return UserRole.inspector;
-      case 'superviseur':
-      case 'supervisor':
-        return UserRole.supervisor;
       case 'administrateur':
       case 'admin':
         return UserRole.admin;
@@ -45,10 +30,14 @@ extension UserRoleExtension on UserRole {
       case 'technician':
         return UserRole.technician;
       case 'responsable':
+      case 'responsable qualité':
       case 'manager':
         return UserRole.manager;
+      case 'directeur':
+      case 'director':
+        return UserRole.director;
       default:
-        return UserRole.operator;
+        return UserRole.technician;
     }
   }
 }
@@ -93,7 +82,7 @@ class User {
       username: json['username'] as String? ?? '',
       fullName: json['fullName'] as String? ?? json['name'] as String? ?? '',
       email: json['email'] as String? ?? '',
-      role: UserRoleExtension.fromString(json['role'] as String? ?? 'operator'),
+      role: UserRoleExtension.fromString(json['role'] as String? ?? 'technician'),
       photoUrl: json['photoUrl'] as String?,
       phone: json['phone'] as String?,
       signatureUrl: json['signatureUrl'] as String?,

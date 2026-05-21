@@ -30,7 +30,7 @@ const StatusBadge = ({ status }) => {
         'en attente': 'En Attente', 'annulé': 'Annulé', 'suspendu': 'Suspendu',
     };
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${styles[s] || styles['en attente']}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold ${styles[s] || styles['en attente']}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${dots[s] || 'bg-gray-400'}`}></span>
             {labels[s] || status}
         </span>
@@ -232,12 +232,12 @@ const Orders = () => {
                     <table className="w-full text-left border-separate border-spacing-0">
                         <thead>
                             <tr className="bg-slate-50/40">
-                                <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">Référence (OF)</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">Client / Commande</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">GI PROS</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 text-center">Quantité</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">Statut</th>
-                                <th className="px-8 py-5 text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 text-right">Actions</th>
+                                <th className="px-8 py-5 text-sm font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">Référence (OF)</th>
+                                <th className="px-8 py-5 text-sm font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">Client / Commande</th>
+                                <th className="px-8 py-5 text-sm font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">GI PROS</th>
+                                <th className="px-8 py-5 text-sm font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 text-center">Quantité</th>
+                                <th className="px-8 py-5 text-sm font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100">Statut</th>
+                                <th className="px-8 py-5 text-sm font-black text-slate-400 uppercase tracking-[0.2em] border-b border-slate-100 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100/50">
@@ -245,7 +245,7 @@ const Orders = () => {
                                 <tr>
                                     <td colSpan="6" className="px-8 py-24 text-center">
                                         <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto"></div>
-                                        <p className="mt-4 text-xs font-black text-slate-400 uppercase tracking-widest">Synchronisation Firebase...</p>
+                                        <p className="mt-4 text-sm font-black text-slate-400 uppercase tracking-widest">Synchronisation Firebase...</p>
                                     </td>
                                 </tr>
                             ) : filteredOrders.length === 0 ? (
@@ -271,7 +271,7 @@ const Orders = () => {
                                     <td className="px-8 py-6">
                                         <div className="flex flex-col gap-0.5">
                                             <span className="text-[15px] font-black text-slate-800">{order.client}</span>
-                                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-wider bg-slate-50 self-start px-2 py-0.5 rounded-md border border-slate-100">{order.numComd || '—'}</span>
+                                            <span className="text-sm text-slate-400 font-black uppercase tracking-wider bg-slate-50 self-start px-2 py-0.5 rounded-md border border-slate-100">{order.numComd || '—'}</span>
                                         </div>
                                     </td>
                                     <td className="px-8 py-6">
@@ -316,7 +316,7 @@ const Orders = () => {
                                     <h2 className="text-xl font-black text-slate-900 uppercase">
                                         {isCableListView ? 'Détails des Câbles' : 'Dossier de Fabrication'}
                                     </h2>
-                                    <p className="text-xs font-bold text-blue-600 tracking-widest uppercase">RÉF : {selectedOrder.reference}</p>
+                                    <p className="text-sm font-bold text-blue-600 tracking-widest uppercase">RÉF : {selectedOrder.reference}</p>
                                 </div>
                             </div>
                             <button onClick={closeDetails} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
@@ -331,68 +331,68 @@ const Orders = () => {
                                         <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
                                             <div className="flex items-center gap-2 text-blue-600">
                                                 <User size={16} />
-                                                <span className="text-[10px] font-black uppercase tracking-wider">Client</span>
+                                                <span className="text-sm font-black uppercase tracking-wider">Client</span>
                                             </div>
                                             <p className="text-lg font-black text-slate-900">{selectedOrder.client}</p>
                                         </div>
                                         <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
                                             <div className="flex items-center gap-2 text-indigo-600">
                                                 <Hash size={16} />
-                                                <span className="text-[10px] font-black uppercase tracking-wider">N° Commande</span>
+                                                <span className="text-sm font-black uppercase tracking-wider">N° Commande</span>
                                             </div>
                                             <p className="text-lg font-black text-slate-900">{selectedOrder.numComd || '—'}</p>
                                         </div>
                                         <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
                                             <div className="flex items-center gap-2 text-purple-600">
                                                 <Briefcase size={16} />
-                                                <span className="text-[10px] font-black uppercase tracking-wider">GI PROS</span>
+                                                <span className="text-sm font-black uppercase tracking-wider">GI PROS</span>
                                             </div>
                                             <p className="text-lg font-black text-slate-900">{selectedOrder.giPros || '—'}</p>
                                         </div>
                                         <div className="p-5 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-2">
                                             <div className="flex items-center gap-2 text-amber-600">
                                                 <Factory size={16} />
-                                                <span className="text-[10px] font-black uppercase tracking-wider">Ligne de Production</span>
+                                                <span className="text-sm font-black uppercase tracking-wider">Ligne de Production</span>
                                             </div>
                                             <p className="text-lg font-black text-slate-900">{selectedOrder.ligne || '—'}</p>
                                         </div>
                                         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                                             <div className="flex items-center gap-2 text-slate-500">
                                                 <Calendar size={16} />
-                                                <span className="text-[10px] font-black uppercase tracking-wider">Date Lancement</span>
+                                                <span className="text-sm font-black uppercase tracking-wider">Date Lancement</span>
                                             </div>
                                             <p className="text-base font-bold text-slate-900">{new Date(selectedOrder.productionDate).toLocaleDateString()}</p>
                                         </div>
                                         <div className="p-5 bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
                                             <div className="flex items-center gap-2 text-slate-500">
                                                 <Clock size={16} />
-                                                <span className="text-[10px] font-black uppercase tracking-wider">Date Livraison</span>
+                                                <span className="text-sm font-black uppercase tracking-wider">Date Livraison</span>
                                             </div>
                                             <p className="text-base font-bold text-slate-900">{selectedOrder.dateLiv ? new Date(selectedOrder.dateLiv).toLocaleDateString() : '—'}</p>
                                         </div>
                                     </div>
 
                                     <div className="p-6 bg-blue-50/50 rounded-3xl border border-blue-100 shadow-sm">
-                                        <h3 className="text-xs font-black uppercase tracking-[0.2em] text-blue-600 mb-6 flex items-center gap-2">
+                                        <h3 className="text-sm font-black uppercase tracking-[0.2em] text-blue-600 mb-6 flex items-center gap-2">
                                             <CheckCircle2 size={16} className="text-blue-600" />
                                             Performance Qualité Actuelle
                                         </h3>
                                         <div className="grid grid-cols-3 gap-4">
                                             <div className="bg-white p-4 rounded-2xl text-center border border-blue-100/50 shadow-sm">
                                                 <p className="text-2xl font-black text-slate-800">{selectedOrder.inspectedCount || 0}</p>
-                                                <p className="text-[9px] font-bold text-slate-400 uppercase">Total Inspectés</p>
+                                                <p className="text-sm font-bold text-slate-400 uppercase">Total Inspectés</p>
                                             </div>
                                             <div className="bg-emerald-50 p-4 rounded-2xl text-center border border-emerald-100 shadow-sm">
                                                 <p className="text-2xl font-black text-emerald-600">{selectedOrder.conformCount || 0}</p>
-                                                <p className="text-[9px] font-bold text-emerald-700 uppercase">Conformes</p>
+                                                <p className="text-sm font-bold text-emerald-700 uppercase">Conformes</p>
                                             </div>
                                             <div className="bg-red-50 p-4 rounded-2xl text-center border border-red-100 shadow-sm">
                                                 <p className="text-2xl font-black text-red-600">{selectedOrder.nonConformCount || 0}</p>
-                                                <p className="text-[9px] font-bold text-red-700 uppercase">Rejetés</p>
+                                                <p className="text-sm font-bold text-red-700 uppercase">Rejetés</p>
                                             </div>
                                         </div>
                                         <div className="mt-8 space-y-2">
-                                            <div className="flex justify-between text-[10px] font-black uppercase">
+                                            <div className="flex justify-between text-sm font-black uppercase">
                                                 <span className="text-slate-500">Progression Production ({selectedOrder.inspectedCount}/{selectedOrder.quantity})</span>
                                                 <span className="text-blue-600">{((selectedOrder.inspectedCount / selectedOrder.quantity) * 100).toFixed(1)}%</span>
                                             </div>
@@ -440,11 +440,11 @@ const Orders = () => {
                                                         </div>
                                                         <div>
                                                             <p className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{cable.reference}</p>
-                                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{cable.code || 'Sans QR Code'}</p>
+                                                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{cable.code || 'Sans QR Code'}</p>
                                                         </div>
                                                     </div>
                                                     <div className="flex items-center gap-4">
-                                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border
+                                                        <span className={`px-3 py-1 rounded-full text-sm font-black uppercase tracking-widest border
                                                             ${cable.status === 'Conforme' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
                                                               cable.status === 'Non conforme' ? 'bg-red-50 text-red-600 border-red-100' : 
                                                               'bg-amber-50 text-amber-600 border-amber-100'}`}>
@@ -486,39 +486,39 @@ const Orders = () => {
                             <form onSubmit={handleSubmit} className="p-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="md:col-span-2">
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Référence OF (numeroOF)</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Référence OF (numeroOF)</label>
                                         <input type="text" required placeholder="Ex: OF-2026-001" className="input-field" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Client</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Client</label>
                                         <input type="text" required placeholder="Ex: STEG" className="input-field" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">N° Commande (NumComd)</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">N° Commande (NumComd)</label>
                                         <input type="text" placeholder="Ex: CMD-8890" className="input-field" value={form.numComd} onChange={(e) => setForm({ ...form, numComd: e.target.value })} />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">GI PROS</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">GI PROS</label>
                                         <input type="text" placeholder="Responsable ou Processus" className="input-field" value={form.giPros} onChange={(e) => setForm({ ...form, giPros: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Quantité (QTA)</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Quantité (QTA)</label>
                                         <input type="number" required min="1" placeholder="Ex: 500" className="input-field" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Ligne de Production</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Ligne de Production</label>
                                         <input type="text" placeholder="Ex: Ligne 1" className="input-field" value={form.ligne} onChange={(e) => setForm({ ...form, ligne: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Date Lancement</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Date Lancement</label>
                                         <input type="date" required className="input-field" value={form.dateDebut} onChange={(e) => setForm({ ...form, dateDebut: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Date Livraison (DateLiv)</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Date Livraison (DateLiv)</label>
                                         <input type="date" className="input-field" value={form.dateFin} onChange={(e) => setForm({ ...form, dateFin: e.target.value })} />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2">Statut Actuel</label>
+                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Statut Actuel</label>
                                         <CustomSelect
                                             options={[
                                                 { value: 'En attente', label: 'En Attente' },

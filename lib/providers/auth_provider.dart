@@ -103,10 +103,10 @@ class AuthProvider with ChangeNotifier {
     final err = e.toString().toLowerCase();
     if (err.contains('user-not-found')) return 'Compte inexistant.';
     if (err.contains('wrong-password')) return 'Mot de passe incorrect.';
-    if (err.contains('email-already-in-use')) return 'Cet email est déjà utilisé.';
-    if (err.contains('invalid-email')) return 'Email invalide.';
+    if (err.contains('invalid-credential')) return 'Identifiant ou mot de passe incorrect.';
+    if (err.contains('invalid-email')) return 'Adresse email invalide.';
     if (err.contains('weak-password')) return 'Mot de passe trop faible.';
-    return 'Une erreur est survenue. Veuillez réessayer.';
+    return 'Erreur système: ${e.toString().split('] ').last}';
   }
 
   Future<void> logout() async {

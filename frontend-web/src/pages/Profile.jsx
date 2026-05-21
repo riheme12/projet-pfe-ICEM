@@ -68,134 +68,136 @@ const Profile = () => {
 
     return (
         <div className="max-w-[1400px] mx-auto animate-in fade-in zoom-in duration-700 space-y-12 pb-20">
-            {/* 🛸 High-Vibrancy Command Center */}
-            <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/20 via-purple-500/10 to-blue-500/20 blur-[120px] rounded-[60px] -z-10 animate-pulse"></div>
+            {/* 🛸 High-Vibrancy Command Center Light Theme */}
+            <div className="bg-white/70 backdrop-blur-3xl rounded-[40px] border border-white shadow-[0_15px_40px_-15px_rgba(30,27,75,0.1)] overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-100/40 via-indigo-50/30 to-purple-50/20 pointer-events-none"></div>
                 
-                <div className="bg-white/90 backdrop-blur-3xl rounded-[60px] border border-white shadow-2xl shadow-indigo-900/10 overflow-hidden">
-                    <div className="flex flex-col lg:flex-row">
+                <div className="flex flex-col lg:flex-row relative z-10">
+                    
+                    {/* Left Section: User Identity (Vibrant Light Glass) */}
+                    <div className="lg:w-[400px] p-12 flex flex-col items-center justify-center text-center border-b lg:border-b-0 lg:border-r border-indigo-100/50 relative overflow-hidden bg-gradient-to-br from-blue-50/80 via-white/40 to-indigo-50/80">
+                        {/* Soft colorful background orbs */}
+                        <div className="absolute top-0 left-0 w-64 h-64 bg-blue-400/20 blur-[80px] rounded-full -z-10 animate-pulse"></div>
+                        <div className="absolute bottom-0 right-0 w-64 h-64 bg-purple-400/20 blur-[80px] rounded-full -z-10" style={{ animationDelay: '2s' }}></div>
                         
-                        {/* Left Section: Visual Identity (Vibrant Gradient) */}
-                        <div className="lg:w-[450px] p-12 bg-gradient-to-br from-indigo-600 via-blue-700 to-slate-900 text-white relative overflow-hidden flex flex-col items-center justify-center text-center">
-                            {/* Animated Background Orbs */}
-                            <div className="absolute -top-20 -left-20 w-64 h-64 bg-white/10 blur-3xl rounded-full animate-bounce duration-[10s]"></div>
-                            <div className="absolute -bottom-20 -right-20 w-64 h-64 bg-blue-400/20 blur-3xl rounded-full"></div>
-                            
-                            <div className="relative mb-10">
-                                <div className="w-56 h-56 rounded-[56px] border-4 border-white/30 p-2 relative shadow-2xl">
-                                    <div className="absolute inset-0 border-2 border-white/40 rounded-[56px] animate-ping opacity-20"></div>
-                                    <div className="w-full h-full rounded-[48px] overflow-hidden bg-white/10 backdrop-blur-md relative">
-                                        {uploading ? (
-                                            <div className="absolute inset-0 flex items-center justify-center bg-indigo-900/60 z-20">
-                                                <Loader2 size={40} className="text-white animate-spin" />
-                                            </div>
-                                        ) : null}
-                                        <img 
-                                            src={user?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=ffffff&color=4f46e5&bold=true&size=256`}
-                                            alt="Profile" 
-                                            className="w-full h-full object-cover"
-                                        />
-                                    </div>
-                                </div>
-                                
-                                <button 
-                                    onClick={() => fileInputRef.current.click()}
-                                    disabled={uploading}
-                                    className="absolute -bottom-4 -right-4 w-16 h-16 bg-white text-indigo-600 rounded-3xl flex items-center justify-center shadow-2xl border-4 border-indigo-600 hover:scale-110 transition-all z-10 active:scale-95"
-                                >
-                                    <Camera size={24} />
-                                </button>
-                                <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
-                            </div>
-
-                            {/* LEGIBILITY FIX: Ultra-Clear High Contrast Text */}
-                            <div className="space-y-4 mb-8">
-                                <h2 className="text-5xl font-black tracking-tight text-white drop-shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
-                                    {user?.fullName || 'Utilisateur ICEM'}
-                                </h2>
-                                <div className="inline-flex px-6 py-2 bg-white text-indigo-600 rounded-2xl shadow-xl shadow-indigo-900/20">
-                                    <p className="font-black text-[11px] uppercase tracking-[0.3em]">
-                                        {roleLabel || 'Collaborateur'}
-                                    </p>
+                        <div className="relative mb-8 group">
+                            <div className="w-48 h-48 rounded-[2.5rem] p-2 bg-white/60 backdrop-blur-sm shadow-xl shadow-blue-900/10 border-2 border-white relative z-10 transition-transform duration-500 group-hover:scale-105 group-hover:rotate-3">
+                                <div className="w-full h-full rounded-[2rem] overflow-hidden bg-gradient-to-br from-blue-100 to-indigo-100 relative">
+                                    {uploading ? (
+                                        <div className="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-20">
+                                            <Loader2 size={32} className="text-blue-600 animate-spin" />
+                                        </div>
+                                    ) : null}
+                                    <img 
+                                        src={user?.photoUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.fullName || 'U')}&background=e0e7ff&color=4338ca&bold=true&size=256`}
+                                        alt="Profile" 
+                                        className="w-full h-full object-cover"
+                                    />
                                 </div>
                             </div>
                             
-                            <div className="flex gap-3">
-                                <span className="px-4 py-2 bg-white/10 rounded-2xl border border-white/20 text-[10px] font-black uppercase tracking-widest text-white">
-                                    ID: {user?.id?.substring(0, 8).toUpperCase()}
-                                </span>
-                                <span className="px-4 py-2 bg-emerald-400 text-slate-900 rounded-2xl font-black text-[10px] uppercase tracking-widest flex items-center gap-2">
-                                    Vérifié
-                                </span>
-                            </div>
+                            <button 
+                                onClick={() => fileInputRef.current.click()}
+                                disabled={uploading}
+                                className="absolute -bottom-2 -right-2 w-14 h-14 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-[0_10px_20px_-5px_rgba(79,70,229,0.4)] border-4 border-white hover:scale-110 transition-all z-20 active:scale-95 group-hover:-rotate-12"
+                            >
+                                <Camera size={22} />
+                            </button>
+                            <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} accept="image/*" className="hidden" />
                         </div>
 
-                        {/* Right Section: Smart Fields */}
-                        <div className="flex-1 p-12 lg:p-20">
-                            <div className="mb-12">
-                                <div className="flex items-center justify-between mb-8">
-                                    <h3 className="text-xs font-black text-indigo-600 uppercase tracking-[0.3em]">Profil Utilisateur</h3>
-                                    {isEditing ? (
-                                        <div className="flex gap-2">
-                                            <button onClick={() => setIsEditing(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">Annuler</button>
-                                            <button onClick={handleSave} disabled={loading} className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-700 transition-all flex items-center gap-2">
-                                                {loading && <Loader2 size={12} className="animate-spin" />} Enregistrer
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <button onClick={() => setIsEditing(true)} className="px-6 py-3 bg-indigo-50 text-indigo-600 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 hover:text-white transition-all shadow-lg shadow-indigo-200 border border-indigo-100">
-                                            Éditer mon profil
-                                        </button>
-                                    )}
-                                </div>
+                        <div className="space-y-3 mb-8 w-full relative z-10">
+                            <h2 className="text-4xl font-black tracking-tight bg-gradient-to-r from-blue-800 to-indigo-900 bg-clip-text text-transparent drop-shadow-sm">
+                                {user?.fullName || roleLabel || 'Profil Utilisateur'}
+                            </h2>
+                            <div className="inline-flex px-6 py-2 bg-white/80 backdrop-blur-md border border-blue-100/50 shadow-lg shadow-blue-900/5 rounded-2xl">
+                                <p className="font-black text-sm uppercase tracking-[0.25em] bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+                                    {roleLabel || 'Collaborateur'}
+                                </p>
+                            </div>
+                        </div>
+                        
+                        <div className="flex gap-3 justify-center w-full relative z-10">
+                            <span className="px-4 py-2 bg-white/60 backdrop-blur-sm rounded-xl border border-white text-sm font-black uppercase tracking-widest text-indigo-900/60 shadow-sm">
+                                ID: {user?.id?.substring(0, 8).toUpperCase()}
+                            </span>
+                            <span className="px-4 py-2 bg-emerald-50/80 backdrop-blur-sm text-emerald-600 rounded-xl border border-emerald-100/50 font-black text-sm uppercase tracking-widest flex items-center gap-1.5 shadow-sm">
+                                <CheckCircle size={14} /> Vérifié
+                            </span>
+                        </div>
+                    </div>
 
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                            <User size={14} className="text-indigo-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Nom Complet</span>
-                                        </div>
-                                        {isEditing ? (
-                                            <input 
-                                                type="text" 
-                                                value={formData.fullName} 
-                                                onChange={(e) => setFormData({...formData, fullName: e.target.value})}
-                                                className="w-full p-4 bg-slate-50 border-2 border-indigo-100 rounded-2xl focus:border-indigo-500 outline-none font-black text-slate-800"
-                                            />
-                                        ) : (
-                                            <p className="text-2xl font-black text-slate-900">{user?.fullName || '—'}</p>
-                                        )}
+                    {/* Right Section: Smart Fields */}
+                    <div className="flex-1 p-12 lg:p-16 flex flex-col justify-center bg-white/30 backdrop-blur-sm">
+                        <div className="flex items-center justify-between mb-10 pb-6 border-b border-indigo-100/50">
+                            <h3 className="text-sm font-black text-indigo-800/40 uppercase tracking-widest">Informations du Profil</h3>
+                            {isEditing ? (
+                                <div className="flex gap-3">
+                                    <button onClick={() => setIsEditing(false)} className="px-6 py-3 bg-white text-slate-600 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-slate-50 border border-slate-200 shadow-sm transition-all">Annuler</button>
+                                    <button onClick={handleSave} disabled={loading} className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl text-sm font-black uppercase tracking-widest hover:from-blue-700 hover:to-indigo-700 shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 border border-indigo-500/50">
+                                        {loading && <Loader2 size={14} className="animate-spin" />} Enregistrer
+                                    </button>
+                                </div>
+                            ) : (
+                                <button onClick={() => setIsEditing(true)} className="px-6 py-3 bg-white text-blue-600 rounded-2xl text-sm font-black uppercase tracking-widest hover:bg-blue-50 border border-blue-100 shadow-md shadow-blue-900/5 transition-all flex items-center gap-2">
+                                    <Settings size={16} /> Éditer
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-12">
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-indigo-500 mb-2">
+                                    <User size={16} />
+                                    <span className="text-sm font-black uppercase tracking-widest opacity-90">Nom Complet</span>
+                                </div>
+                                {isEditing ? (
+                                    <input 
+                                        type="text" 
+                                        value={formData.fullName} 
+                                        onChange={(e) => setFormData({...formData, fullName: e.target.value})}
+                                        className="w-full p-5 bg-white border-2 border-indigo-100 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-indigo-950 transition-all shadow-sm text-2xl"
+                                    />
+                                ) : (
+                                    <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-2xl border border-white shadow-[0_4px_20px_-5px_rgba(30,27,75,0.05)]">
+                                        <p className="text-2xl font-black bg-gradient-to-r from-indigo-950 to-blue-900 bg-clip-text text-transparent">{user?.fullName || '—'}</p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-slate-400 mb-2">
-                                            <Phone size={14} className="text-blue-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Ligne Directe</span>
-                                        </div>
-                                        {isEditing ? (
-                                            <input 
-                                                type="text" 
-                                                value={formData.phone} 
-                                                onChange={(e) => setFormData({...formData, phone: e.target.value})}
-                                                className="w-full p-4 bg-slate-50 border-2 border-blue-100 rounded-2xl focus:border-blue-500 outline-none font-black text-slate-800"
-                                            />
-                                        ) : (
-                                            <p className="text-2xl font-black text-slate-900">{user?.phone || 'Non renseigné'}</p>
-                                        )}
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-blue-500 mb-2">
+                                    <Phone size={16} />
+                                    <span className="text-sm font-black uppercase tracking-widest opacity-90">Ligne Directe</span>
+                                </div>
+                                {isEditing ? (
+                                    <input 
+                                        type="text" 
+                                        value={formData.phone} 
+                                        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                                        className="w-full p-5 bg-white border-2 border-indigo-100 rounded-2xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none font-black text-indigo-950 transition-all shadow-sm text-2xl"
+                                    />
+                                ) : (
+                                    <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-2xl border border-white shadow-[0_4px_20px_-5px_rgba(30,27,75,0.05)]">
+                                        <p className="text-2xl font-black bg-gradient-to-r from-indigo-950 to-blue-900 bg-clip-text text-transparent tracking-tight">{user?.phone || 'Non renseigné'}</p>
                                     </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-slate-400 mb-1">
-                                            <Mail size={14} className="text-purple-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Email</span>
-                                        </div>
-                                        <p className="text-2xl font-black text-slate-900">{user?.email || '—'}</p>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <div className="flex items-center gap-2 text-slate-400 mb-1">
-                                            <Calendar size={14} className="text-amber-400" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Membre Depuis</span>
-                                        </div>
-                                        <p className="text-2xl font-black text-slate-900">{joinDate}</p>
-                                    </div>
+                                )}
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-purple-500 mb-2">
+                                    <Mail size={16} />
+                                    <span className="text-sm font-black uppercase tracking-widest opacity-90">Email Professionnel</span>
+                                </div>
+                                <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-2xl border border-white shadow-[0_4px_20px_-5px_rgba(30,27,75,0.05)]">
+                                    <p className="text-2xl font-black bg-gradient-to-r from-indigo-950 to-blue-900 bg-clip-text text-transparent">{user?.email || '—'}</p>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-teal-500 mb-2">
+                                    <Calendar size={16} />
+                                    <span className="text-sm font-black uppercase tracking-widest opacity-90">Membre Depuis</span>
+                                </div>
+                                <div className="bg-gradient-to-br from-white to-blue-50/50 p-5 rounded-2xl border border-white shadow-[0_4px_20px_-5px_rgba(30,27,75,0.05)]">
+                                    <p className="text-2xl font-black bg-gradient-to-r from-indigo-950 to-blue-900 bg-clip-text text-transparent">{joinDate}</p>
                                 </div>
                             </div>
                         </div>
@@ -226,16 +228,16 @@ const Profile = () => {
                                 <perm.icon size={28} />
                             </div>
                             <h4 className="text-lg font-black text-slate-900 mb-1">{perm.title}</h4>
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">{perm.desc}</p>
+                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-6">{perm.desc}</p>
                             
                             <div className="flex items-center justify-between pt-6 border-t border-slate-50">
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">Status</span>
+                                <span className="text-sm font-black uppercase tracking-widest text-slate-400">Status</span>
                                 {((perm.check ?? hasPageAccess(perm.access))) ? (
-                                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-100">
+                                    <span className="px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full text-sm font-black uppercase tracking-widest flex items-center gap-1.5 border border-emerald-100">
                                         <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></div> Autorisé
                                     </span>
                                 ) : (
-                                    <span className="px-3 py-1 bg-slate-50 text-slate-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-slate-100">Restreint</span>
+                                    <span className="px-3 py-1 bg-slate-50 text-slate-400 rounded-full text-sm font-black uppercase tracking-widest border border-slate-100">Restreint</span>
                                 )}
                             </div>
                         </div>

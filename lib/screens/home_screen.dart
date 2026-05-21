@@ -65,15 +65,15 @@ class _HomeScreenState extends State<HomeScreen>
                         Container(
                           padding: const EdgeInsets.all(18),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: Colors.white.withValues(alpha: 0.8),
                             borderRadius: BorderRadius.circular(28),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.3),
+                              color: Colors.white,
                               width: 1.5,
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.15),
+                                color: Colors.blue.withValues(alpha: 0.1),
                                 blurRadius: 30,
                                 spreadRadius: -5,
                               ),
@@ -92,7 +92,7 @@ class _HomeScreenState extends State<HomeScreen>
                           style: GoogleFonts.inter(
                             fontSize: 38,
                             fontWeight: FontWeight.w800,
-                            color: Colors.white,
+                            color: const Color(0xFF1E293B), // slate-800
                             height: 1.2,
                             letterSpacing: -1,
                           ),
@@ -105,10 +105,10 @@ class _HomeScreenState extends State<HomeScreen>
                             vertical: 9,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: Colors.white.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.25),
+                              color: Colors.blue.withValues(alpha: 0.2),
                             ),
                           ),
                           child: Text(
@@ -116,20 +116,20 @@ class _HomeScreenState extends State<HomeScreen>
                             textAlign: TextAlign.center,
                             style: GoogleFonts.inter(
                               fontSize: 14,
-                              color: Colors.white.withValues(alpha: 0.95),
-                              fontWeight: FontWeight.w500,
+                              color: const Color(0xFF334155), // slate-700
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ),
                         const SizedBox(height: 28),
                         // Feature pills
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 10,
+                          runSpacing: 10,
                           children: [
                             _buildFeaturePill(Icons.camera_alt_outlined, 'IA Vision'),
-                            const SizedBox(width: 10),
                             _buildFeaturePill(Icons.bar_chart_rounded, 'Rapports'),
-                            const SizedBox(width: 10),
                             _buildFeaturePill(Icons.verified_outlined, 'Qualité'),
                           ],
                         ),
@@ -142,14 +142,14 @@ class _HomeScreenState extends State<HomeScreen>
           ),
           // Bottom buttons
           Padding(
-            padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+            padding: const EdgeInsets.fromLTRB(28, 0, 28, 48),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Sign in button
                 SizedBox(
                   width: double.infinity,
-                  height: 52,
+                  height: 56,
                   child: ElevatedButton(
                     onPressed: () {
                       Navigator.push(
@@ -160,11 +160,12 @@ class _HomeScreenState extends State<HomeScreen>
                       );
                     },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: const Color(0xFF1E3A5F),
-                      elevation: 0,
+                      backgroundColor: const Color(0xFF2563EB), // blue-600
+                      foregroundColor: Colors.white,
+                      elevation: 4,
+                      shadowColor: const Color(0xFF2563EB).withValues(alpha: 0.3),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                     child: Text(
@@ -172,42 +173,18 @@ class _HomeScreenState extends State<HomeScreen>
                       style: GoogleFonts.inter(
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 10),
-                // Sign up button
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: OutlinedButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const SignupScreen(),
-                        ),
-                      );
-                    },
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        width: 1.5,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      'Créer un compte',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                const SizedBox(height: 16),
+                Text(
+                  'Accès réservé aux techniciens et inspecteurs',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: const Color(0xFF64748B), // slate-500
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -220,25 +197,32 @@ class _HomeScreenState extends State<HomeScreen>
 
   Widget _buildFeaturePill(IconData icon, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: const Color(0xFFE2E8F0), // slate-200
         ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF64748B).withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white, size: 14),
-          const SizedBox(width: 5),
+          Icon(icon, color: const Color(0xFF3B82F6), size: 16), // blue-500
+          const SizedBox(width: 6),
           Text(
             label,
             style: GoogleFonts.inter(
-              fontSize: 12,
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
+              fontSize: 13,
+              color: const Color(0xFF475569), // slate-600
+              fontWeight: FontWeight.w600,
             ),
           ),
         ],

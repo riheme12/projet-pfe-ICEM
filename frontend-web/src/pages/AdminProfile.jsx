@@ -26,7 +26,7 @@ const AdminProfile = () => {
                             />
                         </div>
                         <h2 className="text-lg font-bold text-slate-800">{user?.fullName || 'Administrateur'}</h2>
-                        <span className="mt-2 px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-semibold rounded-full uppercase tracking-wider border border-indigo-100">
+                        <span className="mt-2 px-3 py-1 bg-indigo-50 text-indigo-600 text-sm font-semibold rounded-full uppercase tracking-wider border border-indigo-100">
                             {roleLabel}
                         </span>
                     </div>
@@ -47,7 +47,7 @@ const AdminProfile = () => {
                                         <Mail size={18} className="text-slate-400" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Email Professionnel</p>
+                                        <p className="text-sm font-bold text-slate-400 uppercase">Email Professionnel</p>
                                         <p className="text-slate-700 font-semibold">{user?.email || 'non renseigné'}</p>
                                     </div>
                                 </div>
@@ -59,7 +59,7 @@ const AdminProfile = () => {
                                         <Award size={18} className="text-slate-400" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Niveau d'Accès</p>
+                                        <p className="text-sm font-bold text-slate-400 uppercase">Niveau d'Accès</p>
                                         <p className="text-slate-700 font-semibold">Accès Complet (Super-Admin)</p>
                                     </div>
                                 </div>
@@ -71,7 +71,7 @@ const AdminProfile = () => {
                                         <Calendar size={18} className="text-slate-400" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-bold text-slate-400 uppercase">Dernière Connexion</p>
+                                        <p className="text-sm font-bold text-slate-400 uppercase">Dernière Connexion</p>
                                         <p className="text-slate-700 font-semibold">{new Date().toLocaleDateString('fr-FR')}</p>
                                     </div>
                                 </div>
@@ -86,11 +86,11 @@ const AdminProfile = () => {
                         </h3>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100">
-                                <p className="text-xs font-bold text-emerald-600 uppercase">Total Actions</p>
+                                <p className="text-sm font-bold text-emerald-600 uppercase">Total Actions</p>
                                 <p className="text-2xl font-black text-emerald-700">142</p>
                             </div>
                             <div className="p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
-                                <p className="text-xs font-bold text-indigo-500 uppercase">Rapports Validés</p>
+                                <p className="text-sm font-bold text-indigo-500 uppercase">Rapports Validés</p>
                                 <p className="text-2xl font-black text-indigo-600">28</p>
                             </div>
                         </div>

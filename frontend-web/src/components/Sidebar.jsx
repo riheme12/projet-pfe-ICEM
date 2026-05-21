@@ -13,6 +13,7 @@ const Sidebar = () => {
 
     const allMenuItems = [
         { icon: <LayoutDashboard size={22} />, label: 'Tableau de bord', path: '/', page: 'dashboard' },
+        { icon: <TrendingUp size={22} />, label: 'Évolution & Stats', path: '/evolution', page: 'evolution' },
         { icon: <ClipboardList size={22} />, label: 'Ordres Fabrication', path: '/orders', page: 'orders' },
         { icon: <AlertCircle size={22} />, label: 'Anomalies', path: '/anomalies', page: 'anomalies' },
         { icon: <Bell size={22} />, label: 'Alertes', path: '/alerts', page: 'alerts' },
@@ -59,8 +60,12 @@ const Sidebar = () => {
                     backgroundPosition: 'center',
                 }}
             />
-            <div className="absolute inset-0 z-0 bg-gradient-to-b from-indigo-900/10 via-white/40 to-blue-900/10 backdrop-blur-sm"></div>
+            <div className="absolute inset-0 z-0 bg-gradient-to-b from-indigo-900/10 via-white/40 to-transparent backdrop-blur-sm"></div>
             <div className="absolute inset-0 z-0 bg-white/30"></div>
+            
+            {/* 🎨 NEW: Subtle Blue Fade at the bottom */}
+            <div className="absolute bottom-0 left-0 right-0 h-2/3 z-0 bg-gradient-to-t from-blue-600/50 via-blue-600/10 to-transparent mix-blend-multiply"></div>
+
 
             <div className="relative z-10 flex flex-col h-full w-full">
                 
@@ -78,10 +83,6 @@ const Sidebar = () => {
                     </div>
                 </div>
 
-                {/* Section label */}
-                <div className="px-8 mb-6">
-                    <p className="text-[11px] font-black text-slate-400 uppercase tracking-[0.4em]">Navigation Centrale</p>
-                </div>
 
                 {/* Navigation */}
                 <nav className="flex-1 flex flex-col gap-2 px-4 overflow-y-auto pb-6 custom-scrollbar relative z-10">
@@ -108,7 +109,7 @@ const Sidebar = () => {
                                     </span>
                                     <span className={`flex-1 truncate tracking-tight ${isActive ? 'text-white' : 'text-slate-600 group-hover:text-[#1e1b4b]'}`}>{item.label}</span>
                                     {item.page === 'alerts' && activeAlertsCount > 0 && (
-                                        <span className="inline-flex min-w-[24px] h-[24px] px-1.5 items-center justify-center rounded-full bg-red-500 text-white text-[10px] font-black shadow-lg">
+                                        <span className="inline-flex min-w-[24px] h-[24px] px-1.5 items-center justify-center rounded-full bg-red-500 text-white text-sm font-black shadow-lg">
                                             {activeAlertsCount > 99 ? '99+' : activeAlertsCount}
                                         </span>
                                     )}

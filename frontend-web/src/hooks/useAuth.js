@@ -6,7 +6,7 @@
 // Permissions universelles (Admin pour tous)
 const UNIVERSAL_PERMISSIONS = {
     label: 'Utilisateur ICEM',
-    pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users'],
+    pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'evolution'],
     canCreate: ['orders', 'cables', 'users'],
     canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts'],
     canDelete: ['orders', 'cables', 'users'],
@@ -23,7 +23,8 @@ const PATH_TO_PAGE = {
     '/anomalies': 'anomalies',
     '/alerts': 'alerts',
     '/reports': 'reports',
-    '/users': 'users'
+    '/users': 'users',
+    '/evolution': 'evolution'
 };
 
 /**
@@ -50,11 +51,20 @@ export function useAuth() {
     // Tout le monde est considéré comme ayant les permissions maximales
     const permissions = UNIVERSAL_PERMISSIONS;
 
+    let actualRoleLabel = permissions.label;
+    if (user) {
+        if (user.role && typeof user.role === 'string') {
+            actualRoleLabel = user.role;
+        } else if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
+            actualRoleLabel = user.roles[0];
+        }
+    }
+
     return {
         user,
         roles: ['admin'], // Valeur fixe pour la compatibilité
         role: 'admin',
-        roleLabel: permissions.label,
+        roleLabel: actualRoleLabel,
         
         /** Vérifie si l'utilisateur a accès à une page */
         hasPageAccess: (page) => permissions.pages.includes(page),

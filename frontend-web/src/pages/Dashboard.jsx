@@ -73,21 +73,21 @@ const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend, col
                         {React.cloneElement(icon, { size: 24 })}
                     </div>
                     {trend !== undefined && (
-                        <div className={`flex items-center gap-1 text-[11px] font-black px-3 py-1 rounded-xl
+                        <div className={`flex items-center gap-1 text-sm font-black px-3 py-1 rounded-xl
                             ${trend >= 0 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
                             {trend >= 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
                             {Math.abs(trend)}%
                         </div>
                     )}
                 </div>
-                <p className={`text-[11px] font-black ${theme.textAccent} uppercase tracking-widest mb-1`}>{label}</p>
+                <p className={`text-sm font-black ${theme.textAccent} uppercase tracking-widest mb-1`}>{label}</p>
                 <div className="flex items-baseline gap-1">
                     <h3 className={`text-3xl font-black ${theme.value} tracking-tight`}>
                         {value}
                     </h3>
                     {unit && <span className={`text-sm font-black ${theme.textAccent} uppercase tracking-widest`}>{unit}</span>}
                 </div>
-                {subtitle && <p className={`text-[10px] font-black ${theme.title} uppercase tracking-widest mt-3 opacity-70 group-hover:opacity-100 transition-opacity`}>{subtitle}</p>}
+                {subtitle && <p className={`text-sm font-black ${theme.title} uppercase tracking-widest mt-3 opacity-70 group-hover:opacity-100 transition-opacity`}>{subtitle}</p>}
             </div>
         </div>
     );
@@ -100,7 +100,7 @@ const MiniStat = ({ icon, label, value, color }) => (
             {icon}
         </div>
         <div>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
+            <p className="text-sm font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
             <p className="text-xl font-black text-slate-900 tracking-tight">{value}</p>
         </div>
     </div>
@@ -110,7 +110,7 @@ const MiniStat = ({ icon, label, value, color }) => (
 const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload?.length) return null;
     return (
-        <div className="bg-white rounded-xl px-3.5 py-2.5 shadow-xl border border-gray-100 text-xs">
+        <div className="bg-white rounded-xl px-3.5 py-2.5 shadow-xl border border-gray-100 text-sm">
             <p className="font-semibold text-gray-700 mb-1">{label}</p>
             {payload.map((e, i) => (
                 <p key={i} className="flex items-center gap-1.5 text-gray-500">
@@ -265,16 +265,31 @@ const Dashboard = () => {
         <div className="flex flex-col gap-5">
             <Toaster position="top-right" />
 
-            {/* Page Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 p-10 bg-gradient-to-br from-white to-slate-50/50 rounded-[45px] shadow-2xl shadow-indigo-900/5 border border-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-50/30 rounded-full blur-3xl -mr-32 -mt-32"></div>
-                <div className="relative z-10">
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter">Supervision Centrale</h1>
-                    <p className="text-slate-400 font-bold text-sm mt-1">Surveillance des performances en temps réel</p>
+            {/* Premium Light Page Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12 p-10 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/80 backdrop-blur-2xl rounded-[45px] shadow-[0_15px_40px_-10px_rgba(30,27,75,0.05)] border border-white relative overflow-hidden group">
+                <div className="absolute inset-0 opacity-[0.3] pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]"></div>
+                <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-300/30 rounded-full blur-[80px] animate-pulse"></div>
+                <div className="absolute -bottom-12 -left-12 w-64 h-64 bg-indigo-300/30 rounded-full blur-[80px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+                
+                <div className="relative z-10 flex items-center gap-6">
+                    <div className="relative group-hover:scale-105 transition-transform duration-500">
+                        <div className="absolute inset-0 bg-blue-400 blur-xl opacity-20"></div>
+                        <div className="w-16 h-16 bg-white border border-blue-100/50 rounded-2xl flex items-center justify-center text-blue-600 relative z-10 shadow-xl group-hover:rotate-6 transition-transform duration-500">
+                            <Activity size={32} strokeWidth={2.5} />
+                        </div>
+                    </div>
+                    <div>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm">Tableau de Bord</h1>
+                        <div className="flex items-center gap-3 mt-2">
+                            <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse"></div>
+                            <p className="text-slate-500 font-bold text-sm tracking-widest uppercase">Supervision Centrale en Temps Réel</p>
+                        </div>
+                    </div>
                 </div>
+
                 <div className="flex items-center gap-3 relative z-10">
                     {canExport && (
-                        <button onClick={handleExportPDF} className="btn-secondary px-8 py-4 bg-white/80 backdrop-blur-sm border-2 border-slate-100 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-indigo-200 transition-all shadow-xl shadow-indigo-900/5 flex items-center gap-3 active:scale-95">
+                        <button onClick={handleExportPDF} className="px-8 py-4 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-blue-900/20 flex items-center gap-3 active:scale-95">
                             <Download size={18} /> Export Stratégique
                         </button>
                     )}
@@ -323,9 +338,9 @@ const Dashboard = () => {
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-800">Tendances de Conformité</h3>
-                                <p className="text-xs text-gray-400 mt-0.5">14 derniers jours</p>
+                                <p className="text-sm text-gray-400 mt-0.5">14 derniers jours</p>
                             </div>
-                            <div className="flex items-center gap-3 text-[11px]">
+                            <div className="flex items-center gap-3 text-sm">
                                 <span className="flex items-center gap-1.5 text-gray-500 font-medium">
                                     <span className="w-2 h-2 rounded-full bg-indigo-500 inline-block"></span>Inspections
                                 </span>
@@ -362,7 +377,7 @@ const Dashboard = () => {
                 {/* Pie Chart */}
                 <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Anomalies par Gravité</h3>
-                    <p className="text-xs text-gray-400 mb-4">Répartition des défauts</p>
+                    <p className="text-sm text-gray-400 mb-4">Répartition des défauts</p>
                     {pieData.length > 0 ? (
                         <>
                             <div className="h-36">
@@ -383,9 +398,9 @@ const Dashboard = () => {
                                     <div key={d.name} className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <span className="w-2 h-2 rounded-full" style={{ background: PIE_COLORS[i] }}></span>
-                                            <span className="text-xs text-gray-500 font-medium">{d.name}</span>
+                                            <span className="text-sm text-gray-500 font-medium">{d.name}</span>
                                         </div>
-                                        <span className="text-xs font-bold text-gray-700">{d.value}</span>
+                                        <span className="text-sm font-bold text-gray-700">{d.value}</span>
                                     </div>
                                 ))}
                             </div>
@@ -393,7 +408,7 @@ const Dashboard = () => {
                     ) : (
                         <div className="h-36 flex flex-col items-center justify-center text-center">
                             <CheckCircle size={28} className="text-emerald-300 mb-2" />
-                            <p className="text-xs text-gray-400">Aucune anomalie</p>
+                            <p className="text-sm text-gray-400">Aucune anomalie</p>
                         </div>
                     )}
                 </div>
@@ -404,7 +419,7 @@ const Dashboard = () => {
                 {/* Bar Chart */}
                 <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-1">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Production</h3>
-                    <p className="text-xs text-gray-400 mb-4">Par statut</p>
+                    <p className="text-sm text-gray-400 mb-4">Par statut</p>
                     <div className="h-44">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={barData} barGap={3}>
@@ -431,12 +446,12 @@ const Dashboard = () => {
                 <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-1">
                     <div className="flex items-center justify-between mb-4">
                         <h3 className="text-sm font-bold text-gray-800">Activité Récente</h3>
-                        <span className="chip text-[10px]">En direct</span>
+                        <span className="chip text-sm">En direct</span>
                     </div>
                     {loading ? (
                         <div className="flex flex-col items-center py-8">
                             <div className="w-5 h-5 border-2 border-indigo-100 border-t-indigo-500 rounded-full animate-spin mb-2"></div>
-                            <p className="text-xs text-gray-400">Chargement...</p>
+                            <p className="text-sm text-gray-400">Chargement...</p>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2.5">
@@ -462,16 +477,16 @@ const Dashboard = () => {
                                         {item.icon}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-xs font-semibold text-gray-700 truncate">{item.title}</p>
-                                        <p className="text-[11px] text-gray-400 truncate">{item.sub}</p>
+                                        <p className="text-sm font-semibold text-gray-700 truncate">{item.title}</p>
+                                        <p className="text-sm text-gray-400 truncate">{item.sub}</p>
                                     </div>
-                                    <span className="text-[10px] text-gray-300 flex-shrink-0">{item.date}</span>
+                                    <span className="text-sm text-gray-300 flex-shrink-0">{item.date}</span>
                                 </div>
                             ))}
                             {recentInspections.length === 0 && recentAnomalies.length === 0 && (
                                 <div className="py-6 text-center">
                                     <Activity size={24} className="mx-auto text-gray-200 mb-2" />
-                                    <p className="text-xs text-gray-400">Aucune activité récente</p>
+                                    <p className="text-sm text-gray-400">Aucune activité récente</p>
                                 </div>
                             )}
                         </div>

@@ -4,10 +4,13 @@ import { ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Calendar, User, Pa
 import { InspectionService, AnomalyService, OrderService } from '../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { useAuth } from '../hooks/useAuth';
+import toast from 'react-hot-toast';
 
 const InspectionDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [inspection, setInspection] = useState(null);
     const [anomalies, setAnomalies] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -50,117 +53,167 @@ const InspectionDetails = () => {
         }
     };
 
-    const handleExportPDF = () => {
+    const handleExportPDF = async () => {
+        const toastId = toast.loading("Génération du certificat d'inspection...");
         try {
-            const doc = new jsPDF('p', 'pt', 'a4');
-            const pageWidth = doc.internal.pageSize.getWidth();
-            let currentY = 40;
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = pdf.internal.pageSize.getWidth();
             
-            // En-tête avec fond bleu
-            doc.setFillColor(30, 58, 138); // Indigo 900
-            doc.rect(0, 0, pageWidth, 80, 'F');
-            
-            // Logo Texte
-            doc.setTextColor(255, 255, 255);
-            doc.setFontSize(24);
-            doc.setFont('helvetica', 'bold');
-            doc.text("ICEM", 40, 45);
-            
-            doc.setFontSize(16);
-            doc.text("Rapport d'Inspection Détaillé", 120, 45);
+            // ─── 1. HEADER ───
+            pdf.setTextColor(30, 58, 138); // blue-900
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('ICEM QUALITY CONTROL', 15, 20);
+            pdf.setTextColor(100, 116, 139); // grey-500
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('Système de Surveillance Industrielle IA', 15, 25);
 
-            // Metadata de l'inspection
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            doc.setTextColor(70, 70, 70);
             const dateStr = inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR');
-            doc.text(`Câble ID : ${inspection?.reference || id}`, 40, 110);
-            doc.text(`Ordre de Fabrication (OF) : ${inspection?.orderId || 'Global'}`, 40, 125);
-            doc.text(`Technicien : ${inspection?.technicianName || inspection?.technicianId || 'Inconnu'}`, 40, 140);
-            doc.text(`Date et heure d'inspection : ${dateStr}`, 40, 155);
-            doc.text(`Statut final : ${inspection?.status || 'En attente'}`, 40, 170);
+            pdf.text(`Rapport généré le ${dateStr}`, pageWidth - 15, 20, { align: 'right' });
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('REF: FOR QUA 06 / V07', pageWidth - 15, 25, { align: 'right' });
 
-            currentY = 200;
+            // ─── 2. TITLE BOX ───
+            pdf.setFillColor(30, 58, 138);
+            pdf.roundedRect(15, 35, pageWidth - 30, 10, 1.5, 1.5, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("CERTIFICAT D'INSPECTION INTELLIGENTE", pageWidth / 2, 41.5, { align: 'center' });
 
-            if (anomalies.length > 0) {
-                doc.setFontSize(14);
-                doc.setFont('helvetica', 'bold');
-                doc.setTextColor(30, 58, 138);
-                doc.text("Défauts Détectés", 40, currentY);
-                currentY += 20;
+            // ─── 3. SUMMARY BOX ───
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(15, 50, pageWidth - 30, 25, 2, 2, 'D');
 
-                anomalies.forEach((a, index) => {
-                    // Check page break
-                    if (currentY > doc.internal.pageSize.getHeight() - 250) {
-                        doc.addPage();
-                        currentY = 40;
-                    }
+            pdf.setTextColor(148, 163, 184);
+            pdf.setFontSize(7);
+            pdf.text('TECHNICIEN :', 18, 56);
+            pdf.text('RÉFÉRENCE CÂBLE :', 18, 63);
+            pdf.text('ORDRE DE FABRICATION :', 18, 70);
 
-                    // Background for defect
-                    doc.setFillColor(248, 250, 252);
-                    doc.rect(40, currentY, pageWidth - 80, 180, 'F');
-                    doc.setDrawColor(226, 232, 240);
-                    doc.rect(40, currentY, pageWidth - 80, 180, 'S');
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(8);
+            pdf.text(inspection?.technicianName || 'Inconnu', 50, 56);
+            pdf.text(inspection?.reference || id || 'N/A', 50, 63);
+            pdf.text(inspection?.orderId || 'N/A', 55, 70);
 
-                    // Defect Details
-                    doc.setFontSize(12);
-                    doc.setFont('helvetica', 'bold');
-                    doc.setTextColor(0, 0, 0);
-                    doc.text(`Défaut #${index + 1} : ${a.type || 'Inconnu'}`, 50, currentY + 20);
+            pdf.setDrawColor(226, 232, 240);
+            pdf.line(pageWidth / 2, 52, pageWidth / 2, 73);
 
-                    doc.setFontSize(10);
-                    doc.setFont('helvetica', 'normal');
-                    doc.setTextColor(70, 70, 70);
-                    doc.text(`Gravité : ${a.severity || 'Mineur'}`, 50, currentY + 40);
-                    doc.text(`Confiance IA : ${a.confidence ? (a.confidence * 100).toFixed(1) + '%' : 'N/A'}`, 50, currentY + 55);
-                    doc.text(`Statut : ${a.statut || 'détectée'}`, 50, currentY + 70);
-                    if(a.location) doc.text(`Localisation : ${a.location}`, 50, currentY + 85);
+            pdf.setTextColor(148, 163, 184);
+            pdf.setFontSize(7);
+            pdf.text('NB ANOMALIES :', pageWidth / 2 + 5, 56);
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(8);
+            pdf.text(String(anomalies.length || 0), pageWidth / 2 + 30, 56);
 
-                    // Add Image if exists
-                    if (a.imageUrl) {
-                        try {
-                            const isJpeg = a.imageUrl.includes('image/jpeg') || a.imageUrl.includes('jpg');
-                            doc.addImage(a.imageUrl, isJpeg ? 'JPEG' : 'PNG', pageWidth - 240, currentY + 10, 180, 160);
-                        } catch (e) {
-                            console.error("Impossible d'ajouter l'image", e);
-                            doc.text("(Image invalide)", pageWidth - 160, currentY + 90);
-                        }
-                    } else {
-                        doc.text("Pas de photo", pageWidth - 160, currentY + 90);
-                    }
+            const isConform = inspection?.status === 'Conforme';
+            pdf.setFillColor(isConform ? 220 : 254, isConform ? 252 : 226, isConform ? 231 : 226); // green-100 or red-100
+            pdf.roundedRect(pageWidth / 2 + 5, 62, 40, 7, 1, 1, 'F');
+            pdf.setTextColor(isConform ? 20 : 153, isConform ? 83 : 27, isConform ? 45 : 27); // green-900 or red-900
+            pdf.setFontSize(8);
+            pdf.text(isConform ? 'CONFORME' : 'NON CONFORME', pageWidth / 2 + 25, 67, { align: 'center' });
 
-                    currentY += 200;
-                });
+            let nextY = 85;
+
+            // ─── 4. IMAGE ───
+            const imgUrl = anomalies.length > 0 ? anomalies[0].imageUrl : null;
+
+            if (imgUrl && imgUrl.startsWith('data:image')) {
+                pdf.setTextColor(30, 58, 138);
+                pdf.setFontSize(9);
+                pdf.text("CAPTURE DE L'ANOMALIE (IA)", 15, nextY);
+                nextY += 5;
+                
+                try {
+                    // Center the image
+                    const imgWidth = 100;
+                    const imgHeight = 70;
+                    const xPos = (pageWidth - imgWidth) / 2;
+                    pdf.addImage(imgUrl, 'JPEG', xPos, nextY, imgWidth, imgHeight);
+                    pdf.setDrawColor(203, 213, 225);
+                    pdf.roundedRect(xPos, nextY, imgWidth, imgHeight, 2, 2, 'D');
+                    nextY += imgHeight + 15;
+                } catch (e) {
+                    nextY += 10;
+                }
             } else {
-                doc.setFontSize(12);
-                doc.setTextColor(16, 185, 129); // Emerald 500
-                doc.text('Aucune anomalie détectée. Câble conforme.', 40, currentY);
-                currentY += 40;
+                nextY += 5;
             }
 
-            // Signatures
-            if (currentY > doc.internal.pageSize.getHeight() - 100) {
-                doc.addPage();
-                currentY = 40;
-            }
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(0, 0, 0);
-            currentY += 40;
-            doc.text("Signature du Technicien", 40, currentY);
-            doc.text("Signature Responsable Qualité", pageWidth - 200, currentY);
+            // ─── 5. DATA TABLE ───
+            pdf.setTextColor(30, 58, 138);
+            pdf.setFontSize(9);
+            pdf.text('DÉTAILS DU CONTRÔLE VISUEL (FOR QUA 06)', 15, nextY);
+            
+            const tableBody = anomalies.length > 0 
+                ? anomalies.map(a => [inspection?.reference || id || 'N/A', a.type || 'Défaut détecté', 'Non conforme'])
+                : [[inspection?.reference || id || 'N/A', 'OK', 'Conforme']];
 
-            doc.save(`Rapport_Inspection_${inspection?.reference || id}.pdf`);
+            autoTable(pdf, {
+                startY: nextY + 3,
+                head: [['N° SÉRIE', 'DÉFAUT(S)', 'STATUT']],
+                body: tableBody,
+                theme: 'grid',
+                headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8, halign: 'center' },
+                styles: { fontSize: 8, halign: 'center', cellPadding: 3 },
+                columnStyles: { 2: { fontStyle: 'bold' } },
+                didParseCell: (data) => {
+                    if (data.section === 'body' && data.column.index === 2) {
+                        data.cell.styles.textColor = data.cell.raw === 'Conforme' ? [21, 128, 61] : [185, 28, 28];
+                    }
+                }
+            });
+
+            // ─── 6. SIGNATURES ───
+            const sigY = pdf.lastAutoTable.finalY + 15;
+            pdf.setTextColor(71, 85, 105);
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            
+            pdf.text('SIGNATURE TECHNICIEN', 45, sigY, { align: 'center' });
+            pdf.setDrawColor(226, 232, 240);
+            pdf.roundedRect(15, sigY + 3, 60, 25, 2, 2, 'D');
+
+            // Find tech signature
+            const techSignature = inspection?.technicianId === user?.id ? user?.signatureUrl : null; // Basic fallback
+            
+            if (techSignature && techSignature.startsWith('data:image')) {
+                try {
+                    pdf.addImage(techSignature, 'PNG', 25, sigY + 5, 40, 20);
+                } catch (err) {}
+            } else {
+                pdf.setTextColor(148, 163, 184);
+                pdf.setFont('helvetica', 'italic');
+                pdf.text(inspection?.technicianName || 'Signé', 45, sigY + 16, { align: 'center' });
+            }
+
+            pdf.setTextColor(71, 85, 105);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('SIGNATURE RESPONSABLE QUALITÉ', pageWidth - 45, sigY, { align: 'center' });
+            pdf.roundedRect(pageWidth - 75, sigY + 3, 60, 25, 2, 2, 'D');
+
+            // ─── 7. FOOTER ───
+            pdf.setDrawColor(226, 232, 240);
+            pdf.line(15, 285, pageWidth - 15, 285);
+            pdf.setTextColor(148, 163, 184);
+            pdf.setFontSize(6);
+            pdf.text('ICEM QA v2.0 — Certification IA Roboflow', 15, 289);
+            pdf.text('Page 1/1', pageWidth - 15, 289, { align: 'right' });
+
+            pdf.save(`Rapport_Inspection_${inspection?.reference || id}.pdf`);
+            toast.success("Certificat d'inspection exporté avec succès", { id: toastId });
         } catch (err) {
             console.error("Erreur PDF:", err);
-            alert("Impossible de générer le PDF.");
+            toast.error("Impossible de générer le PDF.", { id: toastId });
         }
     };
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
             <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin"></div>
-            <p className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Synchronisation des données ICEM...</p>
+            <p className="text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Synchronisation des données ICEM...</p>
         </div>
     );
 
@@ -173,7 +226,7 @@ const InspectionDetails = () => {
             <div className="flex items-center justify-between mb-10">
                 <button
                     onClick={() => navigate(-1)}
-                    className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-black text-xs uppercase tracking-widest px-5 py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md active:scale-95"
+                    className="flex items-center gap-2 text-slate-500 hover:text-blue-600 transition-all font-black text-sm uppercase tracking-widest px-5 py-2.5 bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md active:scale-95"
                 >
                     <ArrowLeft size={18} />
                     Retour au Suivi
@@ -182,12 +235,12 @@ const InspectionDetails = () => {
                 <div className="flex gap-4">
                     <button 
                         onClick={handleExportPDF}
-                        className="px-6 py-3 bg-white text-indigo-600 font-black text-xs uppercase tracking-widest rounded-2xl border border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm active:scale-95 flex items-center gap-2"
+                        className="px-6 py-3 bg-white text-indigo-600 font-black text-sm uppercase tracking-widest rounded-2xl border border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm active:scale-95 flex items-center gap-2"
                     >
                         <ImageIcon size={16} /> Exporter Rapport
                     </button>
                     <button
-                        className={`px-8 py-3 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2
+                        className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2
                             ${isConforme ? 'bg-emerald-500 text-white cursor-default shadow-emerald-200' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-blue-500/25 shadow-blue-200'}`}
                         onClick={handleValidate}
                         disabled={isConforme}
@@ -207,14 +260,14 @@ const InspectionDetails = () => {
                 <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start gap-12">
                     <div className="flex-1">
                         <div className="flex items-center gap-4 mb-6">
-                            <span className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg
+                            <span className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-[0.2em] shadow-lg
                                 ${isConforme ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 
                                   isNonConforme ? 'bg-red-600 text-white shadow-red-600/20 animate-pulse' : 
                                   'bg-amber-500 text-white shadow-amber-500/20'}`}>
                                 {inspection?.status}
                             </span>
                             <div className="h-[2px] w-12 bg-slate-100"></div>
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Certification Qualité ICEM</span>
+                            <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Certification Qualité ICEM</span>
                         </div>
                         
                         <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-6">
@@ -223,11 +276,11 @@ const InspectionDetails = () => {
                         
                         <div className="flex flex-wrap gap-6">
                             <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Ordre de Fabrication</p>
+                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Ordre de Fabrication</p>
                                 <p className="text-lg font-black text-slate-900 underline decoration-indigo-200 decoration-4 underline-offset-4">{inspection?.orderId}</p>
                             </div>
                             <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
-                                <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Anomalies</p>
+                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Total Anomalies</p>
                                 <p className={`text-lg font-black ${anomalies.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
                                     {anomalies.length} Détectée{anomalies.length > 1 ? 's' : ''}
                                 </p>
@@ -242,7 +295,7 @@ const InspectionDetails = () => {
                                 <User size={20} />
                             </div>
                             <div>
-                                <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1">Contrôleur</p>
+                                <p className="text-sm font-black text-indigo-400 uppercase tracking-widest mb-1">Contrôleur</p>
                                 <p className="text-sm font-black text-slate-900 truncate">
                                     {inspection?.technicianName || (inspection?.technicianId ? `ID:${inspection.technicianId.substring(0, 8)}` : 'System IA')}
                                 </p>
@@ -253,7 +306,7 @@ const InspectionDetails = () => {
                                 <Calendar size={20} />
                             </div>
                             <div>
-                                <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-1">Date du Contrôle</p>
+                                <p className="text-sm font-black text-blue-400 uppercase tracking-widest mb-1">Date du Contrôle</p>
                                 <p className="text-sm font-black text-slate-900">
                                     {inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'En attente'}
                                 </p>
@@ -292,12 +345,12 @@ const InspectionDetails = () => {
                                                 onClick={() => setSelectedImage(anomaly.imageUrl)}
                                             />
                                             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60"></div>
-                                            <div className="absolute top-6 left-8 bg-white/20 backdrop-blur-md text-white text-[9px] font-black px-3 py-1.5 rounded-xl uppercase tracking-[0.2em] shadow-xl border border-white/20">
+                                            <div className="absolute top-6 left-8 bg-white/20 backdrop-blur-md text-white text-sm font-black px-3 py-1.5 rounded-xl uppercase tracking-[0.2em] shadow-xl border border-white/20">
                                                 Visualisation IA
                                             </div>
                                             <button 
                                                 onClick={() => setSelectedImage(anomaly.imageUrl)}
-                                                className="absolute bottom-6 left-8 flex items-center gap-3 text-white text-[10px] font-black uppercase tracking-[0.2em]"
+                                                className="absolute bottom-6 left-8 flex items-center gap-3 text-white text-sm font-black uppercase tracking-[0.2em]"
                                             >
                                                 <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white group-hover:text-indigo-600 transition-all shadow-lg">
                                                     <ImageIcon size={18} />
@@ -308,7 +361,7 @@ const InspectionDetails = () => {
                                     ) : (
                                         <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4">
                                             <ImageIcon size={64} className="opacity-10" />
-                                            <span className="text-[10px] font-black uppercase tracking-widest">Image Indisponible</span>
+                                            <span className="text-sm font-black uppercase tracking-widest">Image Indisponible</span>
                                         </div>
                                     )}
                                 </div>
@@ -321,10 +374,10 @@ const InspectionDetails = () => {
                                                 <h3 className="text-3xl font-black text-slate-900 capitalize tracking-tight mb-2">{anomaly.type}</h3>
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
-                                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Zone: {anomaly.location || "Module-A"}</p>
+                                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Zone: {anomaly.location || "Module-A"}</p>
                                                 </div>
                                             </div>
-                                            <span className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg
+                                            <span className={`px-4 py-2 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg
                                                 ${anomaly.severity === 'Critique' ? 'bg-red-500 text-white shadow-red-200' : 
                                                   anomaly.severity === 'Majeur' ? 'bg-amber-500 text-white shadow-amber-200' : 
                                                   'bg-emerald-500 text-white shadow-emerald-200'}`}>
@@ -338,7 +391,7 @@ const InspectionDetails = () => {
 
                                     <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100 flex items-center justify-between group-hover:bg-indigo-50/50 group-hover:border-indigo-100 transition-all duration-500">
                                         <div className="space-y-1">
-                                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Confiance Systémique</p>
+                                            <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Confiance Systémique</p>
                                             <p className="text-2xl font-black text-indigo-600">{(anomaly.confidence * 100).toFixed(1)}%</p>
                                         </div>
                                         <div className="w-24 h-24 relative flex items-center justify-center">

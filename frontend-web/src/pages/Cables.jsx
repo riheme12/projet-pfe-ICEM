@@ -14,7 +14,7 @@ const StatusBadge = ({ status }) => {
     };
     const c = config[s] || config['en attente'];
     return (
-        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold ${c.bg} ${c.text}`}>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-semibold ${c.bg} ${c.text}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${c.dot}`}></span>
             {status}
         </span>
@@ -163,7 +163,7 @@ const Cables = () => {
                 {loading ? (
                     <div className="bg-white/50 backdrop-blur-sm rounded-[30px] border border-white py-24 text-center">
                         <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-xs font-black text-slate-400 uppercase tracking-widest">Chargement des données câbles...</p>
+                        <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Chargement des données câbles...</p>
                     </div>
                 ) : filteredCables.length > 0 ? (
                     filteredCables.map((cable) => (
