@@ -12,6 +12,7 @@ import InspectionDetails from './pages/InspectionDetails';
 import Profile from './pages/Profile';
 import Cables from './pages/Cables';
 import Evolution from './pages/Evolution';
+import WorkshopDisplay from './pages/WorkshopDisplay';
 import { useAuth } from './hooks/useAuth';
 import { auth, onAuthStateChanged } from './services/firebase';
 import { AuthService } from './services/api';
@@ -75,6 +76,8 @@ function App() {
         }}
       />
       <Routes>
+        {/* Route publique — Écran Atelier IoT (Raspberry Pi / Tablette) */}
+        <Route path="/workshop-display" element={<WorkshopDisplay />} />
         <Route path="/login" element={<Login />} />
         <Route
           path="/"

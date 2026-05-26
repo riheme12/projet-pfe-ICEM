@@ -1,34 +1,59 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Une ligne de câble dans la fiche de contrôle électrique ICEM
-class CableDefectRow {
-  String numeroSerie;
-  String comment; // Ajouté pour observations par câble
+class ElectricalChecklist {
+  final String id;
+  final String orderId;
+  final String orderReference;
+  final String ligneDeProd;
+  final String matriculeOperateur;
+  final String controleurId;
+  final String controleurName;
+  final DateTime date;
+  final String codeCable;
+  final String revision;
+  final int nombreDefauts;
+  final String signatureRespLigne;
+  final String signatureRespQualite;
+  final String status;
+  final String comment;
 
   // Fil mal Inséré
-  String fmiConnecteur;
-  String fmiPos;
+  final String fmiConnecteur;
+  final String fmiPos;
 
   // Fil Inverti
-  String fiConnecteur;
-  String fiPos;
-  String fiMarCoul;
+  final String fiConnecteur;
+  final String fiPos;
+  final String fiMarCoul;
 
   // Étiquette manquante
-  String etiquetteManquanteConnecteur;
+  final String etiquetteManquanteConnecteur;
 
   // Étiquette Invertie
-  String etiquetteInvertieConn1;
-  String etiquetteInvertieConn2;
+  final String etiquetteInvertieConn1;
+  final String etiquetteInvertieConn2;
 
   // Connecteur / Dérivation
-  String connecteurDerivation;
+  final String connecteurDerivation;
 
   // Protection manquante
-  String protectionManquanteConnecteur;
+  final String protectionManquanteConnecteur;
 
-  CableDefectRow({
-    this.numeroSerie = '',
+  ElectricalChecklist({
+    this.id = '',
+    required this.orderId,
+    required this.orderReference,
+    this.ligneDeProd = '',
+    this.matriculeOperateur = '',
+    required this.controleurId,
+    required this.controleurName,
+    required this.date,
+    required this.codeCable,
+    this.revision = '',
+    this.nombreDefauts = 0,
+    this.signatureRespLigne = '',
+    this.signatureRespQualite = '',
+    required this.status,
     this.comment = '',
     this.fmiConnecteur = '',
     this.fmiPos = '',
@@ -54,73 +79,16 @@ class CableDefectRow {
       connecteurDerivation.isNotEmpty ||
       protectionManquanteConnecteur.isNotEmpty;
 
-  Map<String, dynamic> toMap() => {
-        'numeroSerie': numeroSerie,
-        'comment': comment,
-        'fmiConnecteur': fmiConnecteur,
-        'fmiPos': fmiPos,
-        'fiConnecteur': fiConnecteur,
-        'fiPos': fiPos,
-        'fiMarCoul': fiMarCoul,
-        'etiquetteManquanteConnecteur': etiquetteManquanteConnecteur,
-        'etiquetteInvertieConn1': etiquetteInvertieConn1,
-        'etiquetteInvertieConn2': etiquetteInvertieConn2,
-        'connecteurDerivation': connecteurDerivation,
-        'protectionManquanteConnecteur': protectionManquanteConnecteur,
-      };
-
-  factory CableDefectRow.fromMap(Map<String, dynamic> map) => CableDefectRow(
-        numeroSerie: map['numeroSerie'] as String? ?? '',
-        comment: map['comment'] as String? ?? '',
-        fmiConnecteur: map['fmiConnecteur'] as String? ?? '',
-        fmiPos: map['fmiPos'] as String? ?? '',
-        fiConnecteur: map['fiConnecteur'] as String? ?? '',
-        fiPos: map['fiPos'] as String? ?? '',
-        fiMarCoul: map['fiMarCoul'] as String? ?? '',
-        etiquetteManquanteConnecteur: map['etiquetteManquanteConnecteur'] as String? ?? '',
-        etiquetteInvertieConn1: map['etiquetteInvertieConn1'] as String? ?? '',
-        etiquetteInvertieConn2: map['etiquetteInvertieConn2'] as String? ?? '',
-        connecteurDerivation: map['connecteurDerivation'] as String? ?? '',
-        protectionManquanteConnecteur: map['protectionManquanteConnecteur'] as String? ?? '',
-      );
-}
-
-class ElectricalChecklist {
-  final String id;
-  final String orderId;
-  final String orderReference;
-  final String ligneDeProd;
-  final String matriculeOperateur;
-  final String controleurId;
-  final String controleurName;
-  final DateTime date;
-  final String codeCable;
-  final String revision;
-  final int quantiteCablesControles;
-  final List<CableDefectRow> cableRows;
-  final int nombreDefauts;
-  final String signatureRespLigne;
-  final String signatureRespQualite;
-  final String status;
-
-  ElectricalChecklist({
-    this.id = '',
-    required this.orderId,
-    required this.orderReference,
-    this.ligneDeProd = '',
-    this.matriculeOperateur = '',
-    required this.controleurId,
-    required this.controleurName,
-    required this.date,
-    this.codeCable = '',
-    this.revision = '',
-    this.quantiteCablesControles = 0,
-    required this.cableRows,
-    this.nombreDefauts = 0,
-    this.signatureRespLigne = '',
-    this.signatureRespQualite = '',
-    required this.status,
-  });
+  List<String> get defectLabels {
+    final labels = <String>[];
+    if (fmiConnecteur.isNotEmpty || fmiPos.isNotEmpty) labels.add('Fil mal Inséré');
+    if (fiConnecteur.isNotEmpty || fiPos.isNotEmpty || fiMarCoul.isNotEmpty) labels.add('Fil Inverti');
+    if (etiquetteManquanteConnecteur.isNotEmpty) labels.add('Étiquette manquante');
+    if (etiquetteInvertieConn1.isNotEmpty || etiquetteInvertieConn2.isNotEmpty) labels.add('Étiquette Invertie');
+    if (connecteurDerivation.isNotEmpty) labels.add('Connecteur / Dérivation');
+    if (protectionManquanteConnecteur.isNotEmpty) labels.add('Protection manquante');
+    return labels;
+  }
 
   factory ElectricalChecklist.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
@@ -133,16 +101,23 @@ class ElectricalChecklist {
       controleurId: data['controleurId'] as String? ?? '',
       controleurName: data['controleurName'] as String? ?? '',
       date: data['date'] != null ? (data['date'] as Timestamp).toDate() : DateTime.now(),
-      codeCable: data['codeCable'] as String? ?? '',
+      codeCable: data['codeCable'] as String? ?? data['numeroSerie'] as String? ?? '',
       revision: data['revision'] as String? ?? '',
-      quantiteCablesControles: data['quantiteCablesControles'] as int? ?? 0,
-      cableRows: (data['cableRows'] as List<dynamic>?)
-              ?.map((e) => CableDefectRow.fromMap(e as Map<String, dynamic>))
-              .toList() ?? [],
       nombreDefauts: data['nombreDefauts'] as int? ?? 0,
       signatureRespLigne: data['signatureRespLigne'] as String? ?? '',
       signatureRespQualite: data['signatureRespQualite'] as String? ?? '',
       status: data['status'] as String? ?? 'En attente',
+      comment: data['comment'] as String? ?? '',
+      fmiConnecteur: data['fmiConnecteur'] as String? ?? '',
+      fmiPos: data['fmiPos'] as String? ?? '',
+      fiConnecteur: data['fiConnecteur'] as String? ?? '',
+      fiPos: data['fiPos'] as String? ?? '',
+      fiMarCoul: data['fiMarCoul'] as String? ?? '',
+      etiquetteManquanteConnecteur: data['etiquetteManquanteConnecteur'] as String? ?? '',
+      etiquetteInvertieConn1: data['etiquetteInvertieConn1'] as String? ?? '',
+      etiquetteInvertieConn2: data['etiquetteInvertieConn2'] as String? ?? '',
+      connecteurDerivation: data['connecteurDerivation'] as String? ?? '',
+      protectionManquanteConnecteur: data['protectionManquanteConnecteur'] as String? ?? '',
     );
   }
 
@@ -156,11 +131,20 @@ class ElectricalChecklist {
         'date': Timestamp.fromDate(date),
         'codeCable': codeCable,
         'revision': revision,
-        'quantiteCablesControles': quantiteCablesControles,
-        'cableRows': cableRows.map((r) => r.toMap()).toList(),
         'nombreDefauts': nombreDefauts,
         'signatureRespLigne': signatureRespLigne,
         'signatureRespQualite': signatureRespQualite,
         'status': status,
+        'comment': comment,
+        'fmiConnecteur': fmiConnecteur,
+        'fmiPos': fmiPos,
+        'fiConnecteur': fiConnecteur,
+        'fiPos': fiPos,
+        'fiMarCoul': fiMarCoul,
+        'etiquetteManquanteConnecteur': etiquetteManquanteConnecteur,
+        'etiquetteInvertieConn1': etiquetteInvertieConn1,
+        'etiquetteInvertieConn2': etiquetteInvertieConn2,
+        'connecteurDerivation': connecteurDerivation,
+        'protectionManquanteConnecteur': protectionManquanteConnecteur,
       };
 }

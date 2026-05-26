@@ -16,26 +16,6 @@ const _defectCategories = [
 ];
 const _defectKeys = ['fmiC', 'fmiP', 'fiC', 'fiP', 'fiMC', 'emC', 'eiC1', 'eiC2', 'cDer', 'pmC'];
 
-class _ElecRow {
-  String ns;
-  String comment;
-  final Map<String, bool> defects; 
-
-  _ElecRow({this.ns = '', this.comment = ''})
-      : defects = {for (var k in _defectKeys) k: false};
-
-  bool get hasDefect => defects.values.any((v) => v);
-  int get defectCount => defects.values.where((v) => v).length;
-
-  List<String> get defectLabels {
-    final labels = <String>[];
-    for (int i = 0; i < _defectKeys.length; i++) {
-      if (defects[_defectKeys[i]] == true) labels.add(_defectCategories[i]);
-    }
-    return labels;
-  }
-}
-
 class ElectricalChecklistPage extends StatefulWidget {
   final ManufacturingOrder order;
   const ElectricalChecklistPage({super.key, required this.order});
@@ -45,15 +25,26 @@ class ElectricalChecklistPage extends StatefulWidget {
 
 class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
   bool _isSaving = false;
-  final List<_ElecRow> _rows = [];
+  final TextEditingController _serialNumberController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
+  final Map<String, bool> _defects = {for (var k in _defectKeys) k: false};
 
   @override
-  void initState() {
-    super.initState();
-    for (int i = 0; i < 3; i++) _rows.add(_ElecRow());
+  void dispose() {
+    _serialNumberController.dispose();
+    _commentController.dispose();
+    super.dispose();
   }
 
-  int get _totalDefects => _rows.fold(0, (s, r) => s + r.defectCount);
+  int get _totalDefects => _defects.values.where((v) => v).length;
+
+  List<String> get _selectedDefectLabels {
+    final labels = <String>[];
+    for (int i = 0; i < _defectKeys.length; i++) {
+      if (_defects[_defectKeys[i]] == true) labels.add(_defectCategories[i]);
+    }
+    return labels;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,9 +56,7 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
         child: Column(children: [
           _buildInfoCard(),
           const SizedBox(height: 16),
-          ..._rows.asMap().entries.map((e) => _buildRowCard(e.key, e.value)),
-          const SizedBox(height: 12),
-          _buildAddButton(),
+          _buildChecklistCard(),
           const SizedBox(height: 40),
         ]),
       ),
@@ -100,25 +89,25 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
     Text(val, style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w800)),
   ]);
 
-  Widget _buildRowCard(int index, _ElecRow row) {
+  Widget _buildChecklistCard() {
+    final hasDefects = _totalDefects > 0;
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
       decoration: AppTheme.cardDecoration(),
       child: Column(children: [
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(color: AppTheme.primaryNavy.withOpacity(0.03), borderRadius: const BorderRadius.vertical(top: Radius.circular(16))),
           child: Row(children: [
-            CircleAvatar(radius: 12, backgroundColor: AppTheme.primaryNavy, child: Text('${index + 1}', style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900))),
+            const CircleAvatar(radius: 12, backgroundColor: AppTheme.primaryNavy, child: Icon(Icons.tag, color: Colors.white, size: 12)),
             const SizedBox(width: 12),
             Expanded(
               child: TextField(
-                onChanged: (v) => row.ns = v,
-                decoration: const InputDecoration(hintText: 'Saisir N° de série...', border: InputBorder.none, filled: false, contentPadding: EdgeInsets.zero),
+                controller: _serialNumberController,
+                decoration: const InputDecoration(hintText: 'Saisir N° de série du câble...', border: InputBorder.none, filled: false, contentPadding: EdgeInsets.zero),
                 style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 14),
               ),
             ),
-            if (row.hasDefect) const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed, size: 18),
+            if (hasDefects) const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed, size: 18),
           ]),
         ),
         Padding(
@@ -126,12 +115,12 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Grille des Défauts :', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textGrey)),
             const SizedBox(height: 12),
-            _buildDefectGrid(row),
+            _buildDefectGrid(),
             const SizedBox(height: 20),
             Text('Observations / Mesures prises :', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: AppTheme.textGrey)),
             const SizedBox(height: 8),
             TextField(
-              onChanged: (val) => row.comment = val,
+              controller: _commentController,
               decoration: const InputDecoration(hintText: 'Note optionnelle...', contentPadding: EdgeInsets.all(12)),
               style: GoogleFonts.inter(fontSize: 13),
               maxLines: 2,
@@ -142,13 +131,13 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
     );
   }
 
-  Widget _buildDefectGrid(_ElecRow row) => Wrap(
+  Widget _buildDefectGrid() => Wrap(
     spacing: 6, runSpacing: 6,
     children: List.generate(_defectKeys.length, (i) {
       final key = _defectKeys[i];
-      final sel = row.defects[key]!;
+      final sel = _defects[key]!;
       return InkWell(
-        onTap: () => setState(() => row.defects[key] = !sel),
+        onTap: () => setState(() => _defects[key] = !sel),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -167,22 +156,15 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
     }),
   );
 
-  Widget _buildAddButton() => TextButton.icon(
-    onPressed: () => setState(() => _rows.add(_ElecRow())),
-    icon: const Icon(Icons.add_circle_outline),
-    label: const Text('AJOUTER UN CÂBLE'),
-    style: TextButton.styleFrom(foregroundColor: AppTheme.accentBlue),
-  );
-
   Widget _buildBottomSubmit() {
-    final ncCount = _rows.where((r) => r.hasDefect).length;
+    final hasDefects = _totalDefects > 0;
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
       decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: AppTheme.borderGris))),
       child: Row(children: [
         Expanded(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('TOTAL DÉFAUTS: $_totalDefects', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11)),
-          Text('$ncCount CÂBLES NC', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, color: ncCount > 0 ? AppTheme.errorRed : AppTheme.successGreen)),
+          Text(hasDefects ? 'CÂBLE NON CONFORME' : 'CÂBLE CONFORME', style: GoogleFonts.inter(fontWeight: FontWeight.w800, fontSize: 11, color: hasDefects ? AppTheme.errorRed : AppTheme.successGreen)),
         ])),
         Expanded(flex: 2, child: ElevatedButton.icon(
           onPressed: _isSaving ? null : _submit,
@@ -194,10 +176,16 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
   }
 
   Future<void> _submit() async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final validRows = _rows.where((r) => r.ns.trim().isNotEmpty).toList();
-    if (validRows.isEmpty) return;
+    final serialNumber = _serialNumberController.text.trim();
+    if (serialNumber.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Veuillez saisir le numéro de série du câble.'),
+        backgroundColor: AppTheme.errorRed,
+      ));
+      return;
+    }
 
+    final auth = Provider.of<AuthProvider>(context, listen: false);
     setState(() => _isSaving = true);
     
     // Rafraîchir le profil pour récupérer la signatureUrl à jour
@@ -206,41 +194,64 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
     final status = _totalDefects == 0 ? 'Conforme' : 'Non conforme';
     
     final checklist = ElectricalChecklist(
-      orderId: widget.order.id, orderReference: widget.order.reference,
-      ligneDeProd: widget.order.ligne ?? '', matriculeOperateur: auth.currentUser?.fullName ?? '',
-      controleurId: auth.currentUser?.id ?? '', controleurName: auth.currentUser?.fullName ?? '',
-      date: DateTime.now(), codeCable: widget.order.reference, revision: '', quantiteCablesControles: validRows.length,
-      cableRows: validRows.map<CableDefectRow>((r) => CableDefectRow(numeroSerie: r.ns.trim(), comment: r.comment)).toList(),
-      nombreDefauts: _totalDefects, signatureRespLigne: auth.currentUser?.signatureUrl ?? '', signatureRespQualite: '', status: status,
+      orderId: widget.order.id,
+      orderReference: widget.order.reference,
+      ligneDeProd: widget.order.ligne ?? '',
+      matriculeOperateur: auth.currentUser?.fullName ?? '',
+      controleurId: auth.currentUser?.id ?? '',
+      controleurName: auth.currentUser?.fullName ?? '',
+      date: DateTime.now(),
+      codeCable: serialNumber,
+      revision: '',
+      nombreDefauts: _totalDefects,
+      signatureRespLigne: auth.currentUser?.signatureUrl ?? '',
+      signatureRespQualite: '',
+      status: status,
+      comment: _commentController.text.trim(),
+      fmiConnecteur: _defects['fmiC'] == true ? 'Oui' : '',
+      fmiPos: _defects['fmiP'] == true ? 'Oui' : '',
+      fiConnecteur: _defects['fiC'] == true ? 'Oui' : '',
+      fiPos: _defects['fiP'] == true ? 'Oui' : '',
+      fiMarCoul: _defects['fiMC'] == true ? 'Oui' : '',
+      etiquetteManquanteConnecteur: _defects['emC'] == true ? 'Oui' : '',
+      etiquetteInvertieConn1: _defects['eiC1'] == true ? 'Oui' : '',
+      etiquetteInvertieConn2: _defects['eiC2'] == true ? 'Oui' : '',
+      connecteurDerivation: _defects['cDer'] == true ? 'Oui' : '',
+      protectionManquanteConnecteur: _defects['pmC'] == true ? 'Oui' : '',
     );
 
     await OrdersService().saveElectricalChecklist(checklist);
 
     // Create anomalies and report records
-    for (final row in validRows) {
-      if (row.hasDefect) {
-        await AnomalyService().createAnomaly(Anomaly(
-          id: '', type: 'Défaut Électrique: ${row.defectLabels.join(", ")}', severity: 'Critique', confidence: 1.0,
-          cableId: row.ns, detectedAt: DateTime.now(), technicianId: auth.currentUser?.id,
-          technicianName: auth.currentUser?.fullName, statut: 'detectee', orderId: widget.order.id,
-        ));
-      }
-
-      // CRÉER UN ENREGISTREMENT DE RAPPORT (pour tous les câbles inspectés)
-      await ReportsService().createReportRecord(
-        technicianId: auth.currentUser?.id ?? '',
-        technicianName: auth.currentUser?.fullName ?? '',
-        type: 'inspection_electrique',
-        cableId: row.ns,
+    if (_totalDefects > 0) {
+      await AnomalyService().createAnomaly(Anomaly(
+        id: '',
+        type: 'Défaut Électrique: ${_selectedDefectLabels.join(", ")}',
+        severity: 'Critique',
+        confidence: 1.0,
+        cableId: serialNumber,
+        detectedAt: DateTime.now(),
+        technicianId: auth.currentUser?.id,
+        technicianName: auth.currentUser?.fullName,
+        statut: 'detectee',
         orderId: widget.order.id,
-        status: row.hasDefect ? 'Non conforme' : 'Conforme',
-        anomaliesCount: row.defectCount,
-        notes: row.hasDefect 
-            ? 'Contrôle électrique avec ${row.defectCount} défaut(s): ${row.defectLabels.join(", ")}. ${row.comment}'
-            : 'Contrôle électrique OK. ${row.comment}',
-        signatureUrl: auth.currentUser?.signatureUrl,
-      );
+      ));
     }
+
+    // CRÉER UN ENREGISTREMENT DE RAPPORT (pour le câble inspecté)
+    await ReportsService().createReportRecord(
+      technicianId: auth.currentUser?.id ?? '',
+      technicianName: auth.currentUser?.fullName ?? '',
+      type: 'inspection_electrique',
+      cableId: serialNumber,
+      orderId: widget.order.id,
+      status: status,
+      anomaliesCount: _totalDefects,
+      notes: _totalDefects > 0 
+          ? 'Contrôle électrique avec $_totalDefects défaut(s): ${_selectedDefectLabels.join(", ")}. ${checklist.comment}'
+          : 'Contrôle électrique OK. ${checklist.comment}',
+      signatureUrl: auth.currentUser?.signatureUrl,
+    );
 
     if (mounted && _totalDefects > 0) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(

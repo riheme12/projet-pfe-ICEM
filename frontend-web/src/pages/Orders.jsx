@@ -179,6 +179,7 @@ const Orders = () => {
     const filteredOrders = orders.filter(order => {
         const matchesSearch =
             order.reference?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            order.numeroOF?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.client?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.numComd?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             order.giPros?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -265,7 +266,12 @@ const Orders = () => {
                                     <td className="px-8 py-6 font-black text-slate-900 text-[15px] tracking-tight group-hover/row:text-blue-600 transition-colors">
                                         <div className="flex items-center gap-3">
                                             <div className="w-1.5 h-6 bg-blue-100 rounded-full group-hover/row:bg-blue-600 transition-colors"></div>
-                                            {order.reference}
+                                            <div>
+                                                <div>{order.numeroOF || order.reference}</div>
+                                                {order.numeroOF && order.reference && order.numeroOF !== order.reference && (
+                                                    <div className="text-xs text-slate-400 font-bold">Réf: {order.reference}</div>
+                                                )}
+                                            </div>
                                         </div>
                                     </td>
                                     <td className="px-8 py-6">
@@ -316,7 +322,7 @@ const Orders = () => {
                                     <h2 className="text-xl font-black text-slate-900 uppercase">
                                         {isCableListView ? 'Détails des Câbles' : 'Dossier de Fabrication'}
                                     </h2>
-                                    <p className="text-sm font-bold text-blue-600 tracking-widest uppercase">RÉF : {selectedOrder.reference}</p>
+                                    <p className="text-sm font-bold text-blue-600 tracking-widest uppercase">OF : {selectedOrder.numeroOF || selectedOrder.reference}</p>
                                 </div>
                             </div>
                             <button onClick={closeDetails} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
@@ -404,7 +410,7 @@ const Orders = () => {
                                     
                                     <div className="mt-8">
                                         <button 
-                                            onClick={() => fetchCablesForOrder(selectedOrder.id)} 
+                                            onClick={() => fetchCablesForOrder(selectedOrder.numeroOF)} 
                                             disabled={loadingCables}
                                             className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-black flex items-center justify-center gap-3 hover:bg-slate-800 transition-all shadow-2xl shadow-slate-900/20 active:scale-[0.98] disabled:opacity-50"
                                         >

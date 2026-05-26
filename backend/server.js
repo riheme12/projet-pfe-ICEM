@@ -87,6 +87,89 @@ app.get('/', (req, res) => {
 app.use(errorHandler);
 
 const logger = require('./utils/logger');
+const { db, rtdb } = require('./firebase');
+
+// =============================================================================
+// SYNCHRONISATION FIRESTORE <==> REALTIME DATABASE (POUR LE RASPBERRY PI)
+// =============================================================================
+try {
+    // 1. Écouter Firestore (anomaly) et copier les anomalies actives vers la RTDB
+    db.collection('anomaly').onSnapshot(snapshot => {
+        const activeAnomalies = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const status = (data.statut || '').toLowerCase();
+            // Statuts actifs (non résolus)
+            if (!['traitee', 'archivee', 'resolue'].includes(status)) {
+                activeAnomalies[doc.id] = {
+                    id: doc.id,
+                    type: data.type || data.typeDefaut || 'Inconnu',
+                    severity: data.severity || 'Mineur',
+                    confidence: data.confidence || 0,
+                    location: data.location || null,
+                    cableId: data.cableId || '',
+                    detectedAt: data.detectedAt || data.createdAt || new Date().toISOString(),
+                    description: data.description || '',
+                    statut: data.statut || 'detectee',
+                    technicianName: data.technicianName || 'Auto / IA Roboflow'
+                };
+            }
+        });
+
+        // Mettre à jour dans la Realtime Database
+        rtdb.ref('active_anomalies').set(activeAnomalies)
+            .then(() => logger.info(`[RTDB Sync] ${Object.keys(activeAnomalies).length} anomalies actives poussees.`))
+            .catch(err => logger.error('[RTDB Sync Error] Echec ecriture active_anomalies:', err));
+    }, err => {
+        logger.error('[RTDB Sync Error] Echec ecoute Firestore:', err);
+    });
+
+    // 2. Écouter les résolutions depuis la RTDB (/resolutions) et mettre à jour Firestore
+    rtdb.ref('resolutions').on('child_added', async (snapshot) => {
+        const anomalyId = snapshot.key;
+        if (!anomalyId) return;
+
+        logger.info(`[RTDB Sync] Resolution recue pour l'anomalie : ${anomalyId}`);
+
+        try {
+            // Mettre à jour l'anomalie dans Firestore (ce qui va declencher onSnapshot et la retirer de la RTDB)
+            const docRef = db.collection('anomaly').doc(anomalyId);
+            const docSnap = await docRef.get();
+            
+            if (docSnap.exists) {
+                await docRef.update({
+                    statut: 'traitee',
+                    resolvedAt: new Date().toISOString(),
+                    resolvedBy: 'Station Atelier Pyrebase'
+                });
+                
+                // Mettre à jour le statut du câble dans Firestore
+                const data = docSnap.data();
+                const cableRef = data.cableId;
+                if (cableRef) {
+                    let cableSnap = await db.collection('cable').where('reference', '==', cableRef).get();
+                    if (cableSnap.empty) {
+                        cableSnap = await db.collection('cable').where('code', '==', cableRef).get();
+                    }
+                    for (const cableDoc of cableSnap.docs) {
+                        await db.collection('cable').doc(cableDoc.id).update({
+                            status: 'Conforme',
+                            anomaliesCount: 0
+                        });
+                    }
+                }
+            }
+            
+            // Nettoyer la file de resolution de la RTDB
+            await rtdb.ref(`resolutions/${anomalyId}`).remove();
+        } catch (err) {
+            logger.error(`[RTDB Sync Error] Impossible de resoudre l'anomalie ${anomalyId}:`, err);
+        }
+    });
+
+} catch (err) {
+    logger.error('[RTDB Init Error] Echec config sync Realtime DB:', err);
+}
 
 // Start server (Seulement si le fichier est exécuté directement, pas lors des tests)
 if (require.main === module) {

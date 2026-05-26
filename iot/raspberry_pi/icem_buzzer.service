@@ -1,0 +1,18 @@
+[Unit]
+Description=ICEM Quality Control — Service Buzzer Atelier IoT
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Remplacez "pi" par votre nom d'utilisateur Raspberry Pi si différent
+User=icem
+WorkingDirectory=/home/icem/Descktop/maram+riheme
+ExecStart=/usr/bin/python3 /home/icem/Descktop/maram+riheme/icem_buzzer.py
+Restart=on-failure
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -106,19 +106,12 @@ class OrdersService {
   /// Vérifier si un câble a passé la checklist électrique
   Future<bool> isCableElectricallyChecked(String orderId, String cableCode) async {
     try {
-      final snapshot = await _db.collection('electrical_checklists').where('orderId', isEqualTo: orderId).get();
       final cleanCableCode = cableCode.trim().toLowerCase();
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-        final rows = data['cableRows'] as List<dynamic>? ?? [];
-        if (rows.any((r) {
-          final ns = (r['numeroSerie'] as String? ?? '').trim().toLowerCase();
-          return ns == cleanCableCode;
-        })) {
-          return true;
-        }
-      }
-      return false;
+      final snapshot = await _db.collection('electrical_checklists')
+          .where('orderId', isEqualTo: orderId)
+          .where('codeCable', isEqualTo: cleanCableCode)
+          .get();
+      return snapshot.docs.isNotEmpty;
     } catch (e) {
       return false;
     }
@@ -208,6 +201,18 @@ class OrdersService {
       return ElectricalChecklist.fromFirestore(snapshot.docs.first);
     } catch (e) {
       return null;
+    }
+  }
+
+  /// Compter le nombre total de cables controles electriquement pour un OF
+  Future<int> getElectricalChecklistCableCount(String orderId) async {
+    try {
+      final snapshot = await _db.collection('electrical_checklists')
+          .where('orderId', isEqualTo: orderId)
+          .get();
+      return snapshot.docs.length;
+    } catch (e) {
+      return 0;
     }
   }
 }

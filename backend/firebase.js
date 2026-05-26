@@ -17,10 +17,12 @@ console.log('Utilisation du bucket:', process.env.STORAGE_BUCKET);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    storageBucket: process.env.STORAGE_BUCKET
+    storageBucket: process.env.STORAGE_BUCKET,
+    databaseURL: process.env.DATABASE_URL || `https://${serviceAccount.project_id}-default-rtdb.firebaseio.com/`
 });
 
 const db = admin.firestore();
+const rtdb = admin.database();
 const bucket = admin.storage().bucket();
 
-module.exports = { admin, db, bucket };
+module.exports = { admin, db, rtdb, bucket };

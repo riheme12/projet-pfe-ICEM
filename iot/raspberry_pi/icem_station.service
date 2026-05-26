@@ -1,0 +1,24 @@
+[Unit]
+Description=ICEM Quality Control — Station d'Alerte Atelier (Firebase + GUI + Buzzer)
+After=network-online.target graphical.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=icem
+Group=icem
+# Variable d'environnement pour que Tkinter puisse accéder à l'écran HDMI
+Environment=DISPLAY=:0
+Environment=XAUTHORITY=/home/icem/.Xauthority
+
+WorkingDirectory=/home/icem/Descktop/maram+riheme
+ExecStart=/usr/bin/python3 /home/icem/Descktop/maram+riheme/icem_station.py
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=graphical.target

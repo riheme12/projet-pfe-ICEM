@@ -9,12 +9,13 @@
  */
 class ManufacturingOrder {
     constructor({ 
-        id, reference, client, numComd, quantity, 
+        id, reference, numeroOF, client, numComd, quantity, 
         productionDate, dateLiv, status, ligne = null, 
         giPros = '', inspectedCount = 0, conformCount = 0, nonConformCount = 0 
     }) {
         this.id = id;
-        this.reference = reference;                      // numeroOF
+        this.reference = reference;                      // Référence produit (ex: 1111472)
+        this.numeroOF = numeroOF;                        // Numéro OF (ex: OFL26/0391) — utilisé comme orderId des câbles
         this.client = client;                            // client
         this.numComd = numComd;                          // NumComd
         this.giPros = giPros;                            // GI PROS
@@ -69,8 +70,9 @@ class ManufacturingOrder {
 
         return new ManufacturingOrder({
             id: json.id,
-            reference: json.reference || json.numeroOF,
-            client: json.client || 'Inconnu',
+            reference: json.reference || json.numeroOF || '',
+            numeroOF: json.numeroOF || json.reference || '',
+            client: json.client || json.Client || 'Inconnu',
             numComd: json.numComd || json.NumComd || '',
             giPros: json.giPros || json["Gi pros"] || json.gi_pros || '',
             quantity: json.quantity || json.QTA || 0,
@@ -91,8 +93,9 @@ class ManufacturingOrder {
         return {
             id: this.id,
             reference: this.reference,
-            numeroOF: this.reference,
+            numeroOF: this.numeroOF,
             client: this.client,
+            Client: this.client,
             numComd: this.numComd,
             NumComd: this.numComd,
             giPros: this.giPros,

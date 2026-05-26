@@ -118,8 +118,8 @@ const Cables = () => {
     };
 
     const getOrderRef = (orderId) => {
-        const order = orders.find(o => o.id === orderId);
-        return order ? order.reference : '—';
+        const order = orders.find(o => o.numeroOF === orderId || o.id === orderId);
+        return order ? (order.numeroOF || order.reference) : orderId || '—';
     };
 
     const filteredCables = cables.filter(c => {
@@ -271,7 +271,7 @@ const Cables = () => {
                                 >
                                     <option value="">— Sélectionner un ordre —</option>
                                     {orders.map(o => (
-                                        <option key={o.id} value={o.id}>{o.reference} — {o.client || o.cableType}</option>
+                                        <option key={o.id} value={o.numeroOF || o.reference}>{o.numeroOF} — {o.reference} — {o.client}</option>
                                     ))}
                                 </select>
                             </div>
