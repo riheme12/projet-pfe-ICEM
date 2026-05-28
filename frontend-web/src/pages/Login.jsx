@@ -12,6 +12,7 @@ const Login = () => {
     const [password, setPassword] = useState('');
     const [fullName, setFullName] = useState('');
     const [username, setUsername] = useState('');
+    const [role, setRole] = useState('manager');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -54,7 +55,51 @@ const Login = () => {
         } finally { setLoading(false); }
     };
 
+    const handleSignup = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        setError('');
+        try {
+            if (!fullName || !email || !password) {
+                setError('Tous les champs requis doivent être remplis.');
+                setLoading(false);
+                return;
+            }
 
+            // 1. Appeler la route de signup du backend
+            await AuthService.signup({
+                email,
+                password,
+                fullName,
+                username: username || email.split('@')[0],
+                role: role
+            });
+
+            // 2. Automatiquement connecter l'utilisateur après inscription
+            const userCredential = await signInWithEmailAndPassword(auth, email, password);
+            const idToken = await userCredential.user.getIdToken();
+            const loginResponse = await AuthService.login(idToken);
+            
+            const userData = loginResponse.data;
+            const userRole = userData.role || (userData.roles && userData.roles[0]);
+            
+            if (userRole === 'technician') {
+                await auth.signOut();
+                setError('Compte créé, mais l\'accès web est réservé aux administrateurs et responsables.');
+                setLoading(false);
+                return;
+            }
+
+            localStorage.setItem('isAuthenticated', 'true');
+            localStorage.setItem('currentUser', JSON.stringify(userData));
+            navigate('/');
+        } catch (err) {
+            console.error('Signup error:', err);
+            setError(err.response?.data?.error || 'Erreur lors de la création du compte.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     const handleForgotPassword = async (e) => {
         e.preventDefault();
@@ -145,10 +190,10 @@ const Login = () => {
                                 </span>
                             </div>
                             <h2 className="text-6xl font-black text-[#1e1b4b] mb-4 tracking-tighter">
-                                Connexion
+                                {isLogin ? 'Connexion' : 'Inscription'}
                             </h2>
                             <p className="text-xl text-slate-500 font-medium">
-                                Authentification sécurisée au portail ICEM.
+                                {isLogin ? 'Authentification sécurisée au portail ICEM.' : 'Créez votre compte de supervision ICEM.'}
                             </p>
                         </div>
 
@@ -159,8 +204,58 @@ const Login = () => {
                             </div>
                         )}
 
-                        <form onSubmit={handleLogin} className="space-y-8">
+                        <form onSubmit={isLogin ? handleLogin : handleSignup} className="space-y-8">
+                            {!isLogin && (
+                                <>
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-black text-slate-400 uppercase tracking-[0.4em] ml-2">Nom Complet</label>
+                                        <div className="relative group/input">
+                                            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/input:text-blue-600 transition-colors">
+                                                <User size={24} />
+                                            </div>
+                                            <input
+                                                type="text" required value={fullName}
+                                                onChange={e => setFullName(e.target.value)}
+                                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-[24px] pl-16 pr-6 py-5 text-[#1e1b4b] placeholder:text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-lg font-bold"
+                                                placeholder="Jean Dupont"
+                                            />
+                                        </div>
+                                    </div>
 
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-black text-slate-400 uppercase tracking-[0.4em] ml-2">Nom d'utilisateur</label>
+                                        <div className="relative group/input">
+                                            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/input:text-blue-600 transition-colors">
+                                                <UserPlus size={24} />
+                                            </div>
+                                            <input
+                                                type="text" value={username}
+                                                onChange={e => setUsername(e.target.value)}
+                                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-[24px] pl-16 pr-6 py-5 text-[#1e1b4b] placeholder:text-slate-300 focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-lg font-bold"
+                                                placeholder="jdupont"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3">
+                                        <label className="block text-sm font-black text-slate-400 uppercase tracking-[0.4em] ml-2">Rôle sur la Plateforme</label>
+                                        <div className="relative group/input">
+                                            <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/input:text-blue-600 transition-colors">
+                                                <ShieldCheck size={24} />
+                                            </div>
+                                            <select
+                                                value={role}
+                                                onChange={e => setRole(e.target.value)}
+                                                className="w-full bg-slate-50 border-2 border-slate-100 rounded-[24px] pl-16 pr-6 py-5 text-[#1e1b4b] focus:outline-none focus:border-blue-500 focus:bg-white transition-all text-lg font-bold"
+                                            >
+                                                <option value="manager">Responsable Qualité</option>
+                                                <option value="admin">Administrateur</option>
+                                                <option value="director">Directeur</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="space-y-3">
                                 <label className="block text-sm font-black text-slate-400 uppercase tracking-[0.4em] ml-2">Email Professionnel</label>
@@ -180,10 +275,12 @@ const Login = () => {
                             <div className="space-y-3">
                                 <div className="flex justify-between items-center px-2">
                                     <label className="block text-sm font-black text-slate-400 uppercase tracking-[0.4em]">Mot de passe</label>
-                                    <button type="button" onClick={() => setShowForgotPassword(true)}
-                                        className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
-                                        Oublié ?
-                                    </button>
+                                    {isLogin && (
+                                        <button type="button" onClick={() => setShowForgotPassword(true)}
+                                            className="text-sm font-bold text-blue-600 hover:text-blue-800 transition-colors">
+                                            Oublié ?
+                                        </button>
+                                    )}
                                 </div>
                                 <div className="relative group/input">
                                     <div className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within/input:text-blue-600 transition-colors">
@@ -208,12 +305,22 @@ const Login = () => {
                                     <Loader2 size={28} className="animate-spin" /> 
                                 ) : (
                                     <>
-                                        S'authentifier
+                                        {isLogin ? "S'authentifier" : "Créer le compte"}
                                         <Zap size={20} className="fill-white" />
                                     </>
                                 )}
                             </button>
                         </form>
+
+                        <div className="mt-8 text-center">
+                            <button
+                                type="button"
+                                onClick={() => { setIsLogin(!isLogin); setError(''); }}
+                                className="text-base font-bold text-blue-600 hover:text-blue-800 transition-colors"
+                            >
+                                {isLogin ? "Pas encore de compte ? S'inscrire" : "Déjà inscrit ? Se connecter"}
+                            </button>
+                        </div>
 
                         <div className="mt-12 flex flex-col items-center gap-6">
                             <div className="w-16 h-1 bg-slate-100 rounded-full"></div>

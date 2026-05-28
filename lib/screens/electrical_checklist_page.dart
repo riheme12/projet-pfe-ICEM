@@ -233,7 +233,7 @@ class _ElectricalChecklistPageState extends State<ElectricalChecklistPage> {
         detectedAt: DateTime.now(),
         technicianId: auth.currentUser?.id,
         technicianName: auth.currentUser?.fullName,
-        statut: 'detectee',
+        status: 'detectee',
         orderId: widget.order.id,
       ));
     }

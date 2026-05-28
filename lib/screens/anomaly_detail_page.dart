@@ -269,7 +269,7 @@ class _AnomalyDetailPageState extends State<AnomalyDetailPage> {
           Text('MESURE CORRECTIVE APPLIQUÉE', style: GoogleFonts.inter(fontWeight: FontWeight.w900, color: const Color(0xFF10B981), fontSize: 11)),
         ]),
         const SizedBox(height: 12),
-        Text(a.mesureCorrective ?? 'Corrigé sur place', style: GoogleFonts.inter(color: AppTheme.textDark, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(a.correctiveAction ?? 'Corrigé sur place', style: GoogleFonts.inter(color: AppTheme.textDark, fontSize: 14, fontWeight: FontWeight.w600)),
       ]),
     );
   }

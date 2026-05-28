@@ -526,11 +526,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
 
   Widget _filterItem(String label) {
     final sel = _cableFilter == label;
-    final displayLabel = label == 'Non conforme' ? 'NC' : (label == 'Conforme' ? 'OK' : label);
+    final displayLabel = (label.toLowerCase() == 'non conforme' || label.toLowerCase() == 'nc') 
+        ? 'NC' 
+        : ((label.toLowerCase() == 'conforme' || label.toLowerCase() == 'ok') ? 'OK' : label);
     return GestureDetector(
       onTap: () => setState(() => _cableFilter = label),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         alignment: Alignment.center,
         decoration: BoxDecoration(
           gradient: sel ? const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1E293B)]) : null,
@@ -651,7 +653,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           onTap: () => PdfExportService.exportOrderReport(widget.order),
         ),
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: 6),
       // Electrical checklist button
       Flexible(
         child: _bottomIconButton(
@@ -664,7 +666,7 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
           ).then((_) => _loadData()),
         ),
       ),
-      const SizedBox(width: 8),
+      const SizedBox(width: 6),
       // Main scan button
       Expanded(child: Container(
         height: 50,
@@ -681,10 +683,13 @@ class _OrderDetailPageState extends State<OrderDetailPage> {
             onTap: _startVisualInspectionFlow,
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
               const Icon(Icons.qr_code_scanner_rounded, size: 18, color: Colors.white),
-              const SizedBox(width: 10),
-              Text(
-                'SCANNER CABLE',
-                style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 1),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  'SCANNER CABLE',
+                  style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11, letterSpacing: 0.5),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ]),
           ),

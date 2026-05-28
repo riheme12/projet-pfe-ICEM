@@ -202,13 +202,38 @@ router.post('/:id/signature', upload.single('signature'), async (req, res) => {
             return res.status(400).json({ error: 'Aucun fichier de signature fourni' });
         }
 
-        // Firebase Storage est bloqué par le quota, on convertit directement en Base64
-        const base64Image = `data:${req.file.mimetype};base64,${req.file.buffer.toString('base64')}`;
+        // Convert to Base64 and upload to ImgBB
+        const base64Image = req.file.buffer.toString('base64');
+        const imgBBKey = process.env.IMGBB_API_KEY || 'cc5f5821379a3c9ad1eaa066381662d0';
+
+        const params = new URLSearchParams();
+        params.append('key', imgBBKey);
+        params.append('image', base64Image);
+
+        const imgbbResponse = await fetch('https://api.imgbb.com/1/upload', {
+            method: 'POST',
+            body: params,
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        });
+
+        if (!imgbbResponse.ok) {
+            const errText = await imgbbResponse.text();
+            throw new Error(`ImgBB upload failed with status ${imgbbResponse.status}: ${errText}`);
+        }
+
+        const responseData = await imgbbResponse.json();
+        if (!responseData.data || !responseData.data.url) {
+            throw new Error('Invalid response from ImgBB');
+        }
+
+        const imageUrl = responseData.data.url;
 
         // Update Firestore
-        await db.collection('users').doc(req.params.id).update({ signatureUrl: base64Image });
+        await db.collection('users').doc(req.params.id).update({ signatureUrl: imageUrl });
 
-        res.status(200).json({ signatureUrl: base64Image, message: 'Signature uploadée avec succès' });
+        res.status(200).json({ signatureUrl: imageUrl, message: 'Signature uploadée avec succès' });
     } catch (error) {
         console.error('Error uploading signature:', error);
         res.status(500).json({ error: error.message });

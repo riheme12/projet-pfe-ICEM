@@ -49,7 +49,7 @@ class AnomalyService {
       final snapshot = await _anomaliesCollection.get();
       final list = snapshot.docs
           .map((doc) => Anomaly.fromFirestore(doc))
-          .where((a) => a.statut != 'traitee')
+          .where((a) => a.status != 'traitee')
           .toList();
       list.sort((a, b) => b.detectedAt.compareTo(a.detectedAt));
       return list.take(limit).toList();
@@ -96,6 +96,7 @@ class AnomalyService {
         'orderId': extraData?['orderId'],
         'cableId': anomaly.cableId,
         'technicianId': anomaly.technicianId,
+        'status': 'unread',
         'statut': 'unread',
         'createdAt': DateTime.now().toIso8601String(),
       });
@@ -123,7 +124,9 @@ class AnomalyService {
 
       // 2. Mettre à jour l'anomalie comme résolue
       await _anomaliesCollection.doc(anomalyId).update({
+        'status': 'traitee',
         'statut': 'traitee',
+        'correctiveAction': correctiveAction,
         'mesureCorrective': correctiveAction,
         'resolvedAt': Timestamp.fromDate(DateTime.now()),
       });
@@ -141,6 +144,7 @@ class AnomalyService {
         'anomalyId': anomalyId,
         'orderId': orderId,
         'cableId': cableId,
+        'status': 'unread',
         'statut': 'unread',
         'createdAt': DateTime.now().toIso8601String(),
       });

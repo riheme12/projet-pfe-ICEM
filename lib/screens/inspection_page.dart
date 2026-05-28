@@ -137,7 +137,7 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
       technicianId: user?.id,
       technicianName: user?.fullName,
       imageUrl: imageUrl,
-      statut: 'detectee',
+      status: 'detectee',
       orderId: widget.orderId,
     );
     await AnomalyService().createAnomaly(anomaly);

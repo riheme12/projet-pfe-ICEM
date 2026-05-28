@@ -15,9 +15,9 @@ class Anomaly {
   final String? technicianName;     // Nom du technicien
   final DateTime detectedAt;        // Date de détection
   final String? imageUrl;           // URL de l'image capturée dans Firebase Storage
-  final String statut;              // 'detectee', 'en_traitement', 'traitee'
+  final String status;              // 'detectee', 'en_traitement', 'traitee'
   final String? orderId;            // ID de l'ordre de fabrication
-  final String? mesureCorrective;   // Mesure corrective appliquée
+  final String? correctiveAction;   // Mesure corrective appliquée
 
   Anomaly({
     required this.id,
@@ -30,9 +30,9 @@ class Anomaly {
     this.technicianId,
     this.technicianName,
     this.imageUrl,
-    this.statut = 'detectee',
+    this.status = 'detectee',
     this.orderId,
-    this.mesureCorrective,
+    this.correctiveAction,
   });
 
   /// Obtenir la couleur associée à la gravité
@@ -53,8 +53,12 @@ class Anomaly {
   /// Vérifier si l'anomalie est critique
   bool get isCritical => severity == 'Critique';
 
+  // Backward compatibility alias for old French field name
+  String get statut => status;
+  String? get mesureCorrective => correctiveAction;
+
   /// Vérifier si l'anomalie est résolue
-  bool get isResolved => statut == 'traitee';
+  bool get isResolved => status == 'traitee';
 
   /// Créer depuis Firestore
   factory Anomaly.fromFirestore(DocumentSnapshot doc) {
@@ -81,9 +85,9 @@ class Anomaly {
       technicianId: data['technicianId'] as String?,
       technicianName: data['technicianName'] as String?,
       imageUrl: data['imageUrl'] as String?,
-      statut: data['statut'] as String? ?? 'detectee',
+      status: data['status'] as String? ?? data['statut'] as String? ?? 'detectee',
       orderId: data['orderId'] as String?,
-      mesureCorrective: data['mesureCorrective'] as String?,
+      correctiveAction: data['correctiveAction'] as String? ?? data['mesureCorrective'] as String?,
     );
   }
 
@@ -99,9 +103,9 @@ class Anomaly {
       'technicianId': technicianId,
       'technicianName': technicianName,
       'imageUrl': imageUrl,
-      'statut': statut,
+      'status': status,
       'orderId': orderId,
-      'mesureCorrective': mesureCorrective,
+      'correctiveAction': correctiveAction,
     };
   }
 
@@ -126,9 +130,9 @@ class Anomaly {
       technicianId: json['technicianId']?.toString(),
       technicianName: json['technicianName']?.toString() ?? json['technicianFullName']?.toString(),
       imageUrl: json['imageUrl']?.toString(),
-      statut: json['statut']?.toString() ?? 'detectee',
+      status: json['status']?.toString() ?? json['statut']?.toString() ?? 'detectee',
       orderId: json['orderId']?.toString(),
-      mesureCorrective: json['mesureCorrective']?.toString(),
+      correctiveAction: json['correctiveAction']?.toString() ?? json['mesureCorrective']?.toString(),
     );
   }
 
@@ -145,9 +149,9 @@ class Anomaly {
       'technicianId': technicianId,
       'technicianName': technicianName,
       'imageUrl': imageUrl,
-      'statut': statut,
+      'status': status,
       'orderId': orderId,
-      'mesureCorrective': mesureCorrective,
+      'correctiveAction': correctiveAction,
     };
   }
 
@@ -163,9 +167,9 @@ class Anomaly {
     String? technicianId,
     String? technicianName,
     String? imageUrl,
-    String? statut,
+    String? status,
     String? orderId,
-    String? mesureCorrective,
+    String? correctiveAction,
   }) {
     return Anomaly(
       id: id ?? this.id,
@@ -178,9 +182,9 @@ class Anomaly {
       technicianId: technicianId ?? this.technicianId,
       technicianName: technicianName ?? this.technicianName,
       imageUrl: imageUrl ?? this.imageUrl,
-      statut: statut ?? this.statut,
+      status: status ?? this.status,
       orderId: orderId ?? this.orderId,
-      mesureCorrective: mesureCorrective ?? this.mesureCorrective,
+      correctiveAction: correctiveAction ?? this.correctiveAction,
     );
   }
 }

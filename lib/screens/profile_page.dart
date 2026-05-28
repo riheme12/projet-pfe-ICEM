@@ -147,6 +147,26 @@ class _ProfilePageState extends State<ProfilePage> {
     ]),
   );
 
+  Widget _buildSignatureImage(String signatureUrl) {
+    if (signatureUrl.startsWith('data:image/') || signatureUrl.contains(';base64,')) {
+      try {
+        final base64String = signatureUrl.split(',').last;
+        final bytes = base64Decode(base64String);
+        return Image.memory(bytes, fit: BoxFit.contain);
+      } catch (e) {
+        return Center(child: Text('Erreur de décodage de la signature', style: GoogleFonts.inter(color: AppTheme.errorRed, fontSize: 12)));
+      }
+    } else {
+      return Image.network(
+        signatureUrl,
+        fit: BoxFit.contain,
+        errorBuilder: (context, error, stackTrace) {
+          return Center(child: Text('Erreur de chargement de la signature', style: GoogleFonts.inter(color: AppTheme.errorRed, fontSize: 12)));
+        },
+      );
+    }
+  }
+
   Widget _buildSignatureSection() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Text('Ma Signature Officielle', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy)),
     const SizedBox(height: 12),
@@ -158,7 +178,7 @@ class _ProfilePageState extends State<ProfilePage> {
         border: Border.all(color: AppTheme.borderGris),
       ),
       child: _user!.signatureUrl != null && _user!.signatureUrl!.isNotEmpty
-          ? ClipRRect(borderRadius: BorderRadius.circular(16), child: Image.network(_user!.signatureUrl!, fit: BoxFit.contain))
+          ? ClipRRect(borderRadius: BorderRadius.circular(16), child: _buildSignatureImage(_user!.signatureUrl!))
           : Center(child: Text('Signature non configurée', style: GoogleFonts.inter(color: AppTheme.textLight, fontSize: 12))),
     ),
   ]);

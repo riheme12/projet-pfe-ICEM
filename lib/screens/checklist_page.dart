@@ -211,7 +211,7 @@ class _ChecklistPageState extends State<ChecklistPage> {
         final a = Anomaly(
           id: '', type: 'Défauts: ${row.selectedDefects.join(", ")}', severity: 'Majeur', confidence: 1.0,
           cableId: row.cableCode, detectedAt: DateTime.now(), technicianId: auth.currentUser?.id,
-          technicianName: auth.currentUser?.fullName, imageUrl: widget.imageUrl, statut: 'detectee', orderId: widget.orderId,
+          technicianName: auth.currentUser?.fullName, imageUrl: widget.imageUrl, status: 'detectee', orderId: widget.orderId,
           location: 'Inspection Visuelle',
         );
         final id = await AnomalyService().createAnomaly(a);

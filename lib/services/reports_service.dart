@@ -137,7 +137,7 @@ class ReportsService {
       final totalAnom = myAnomalies.length;
       final resolvedAnom = myAnomalies.where((d) {
         final data = d.data() as Map<String, dynamic>;
-        return (data['statut'] as String?) == 'traitee';
+        return (data['status'] as String? ?? data['statut'] as String?) == 'traitee';
       }).length;
       final totalCables = myCables.length;
       final conformCables = myCables.where((d) {

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:projeticem/services/reports_service.dart';
@@ -42,10 +43,14 @@ class PdfExportService {
     );
   }
 
-  /// Télécharger une image réseau pour l'inclure dans le PDF
+  /// Télécharger une image réseau ou décoder du base64 pour l'inclure dans le PDF
   static Future<pw.MemoryImage?> _downloadImage(String? url) async {
     if (url == null || url.isEmpty) return null;
     try {
+      if (url.startsWith('data:image/') || url.contains(';base64,')) {
+        final base64String = url.split(',').last;
+        return pw.MemoryImage(base64Decode(base64String));
+      }
       final response = await http.get(Uri.parse(url));
       if (response.statusCode == 200) {
         return pw.MemoryImage(response.bodyBytes);
