@@ -106,11 +106,11 @@ const Login = () => {
         if (!resetEmail) { setResetError('Veuillez entrer votre email.'); return; }
         setResetLoading(true); setResetError('');
         try {
-            await sendPasswordResetEmail(auth, resetEmail);
+            await AuthService.forgotPassword(resetEmail);
             setResetSent(true);
         } catch (err) {
             console.error('Reset error:', err);
-            setResetError('Erreur : ' + (err.message || 'Impossible d\'envoyer l\'email.'));
+            setResetError(err.response?.data?.error || err.message || 'Impossible d\'envoyer l\'email.');
         } finally { setResetLoading(false); }
     };
 

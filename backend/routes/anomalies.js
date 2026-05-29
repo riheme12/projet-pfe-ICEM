@@ -35,9 +35,8 @@ router.get('/', async (req, res) => {
 
         const snapshot = await query.get();
         const anomalies = snapshot.docs.map(doc => {
-            const anomaly = Anomaly.fromJson({ id: doc.id, ...doc.data() }).toJson();
-            delete anomaly.imageUrl; // Optimisation: ne pas envoyer la Base64 dans la liste
-            return anomaly;
+            // imageUrl est une URL ImgBB (https://i.ibb.co/...) → on la conserve pour l'affichage
+            return Anomaly.fromJson({ id: doc.id, ...doc.data() }).toJson();
         });
         
         // Sort in memory

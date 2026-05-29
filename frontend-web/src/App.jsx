@@ -8,6 +8,7 @@ import Alerts from './pages/Alerts';
 import Reports from './pages/Reports';
 import Users from './pages/Users';
 import Login from './pages/Login';
+import ResetPassword from './pages/ResetPassword';
 import InspectionDetails from './pages/InspectionDetails';
 import Profile from './pages/Profile';
 import Cables from './pages/Cables';
@@ -22,6 +23,12 @@ import { Toaster } from 'react-hot-toast';
 const ProtectedRoute = ({ children }) => {
   const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
   return isAuthenticated ? children : <Navigate to="/login" replace />;
+};
+
+// Composant pour restreindre l'accès selon les privilèges RBAC
+const RoleGuard = ({ page, children }) => {
+  const { hasPageAccess } = useAuth();
+  return hasPageAccess(page) ? children : <Navigate to="/" replace />;
 };
 
 
@@ -79,6 +86,7 @@ function App() {
         {/* Route publique — Écran Atelier IoT (Raspberry Pi / Tablette) */}
         <Route path="/workshop-display" element={<WorkshopDisplay />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route
           path="/"
           element={
@@ -88,13 +96,13 @@ function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="orders" element={<Orders />} />
-          <Route path="anomalies" element={<Anomalies />} />
-          <Route path="alerts" element={<Alerts />} />
-          <Route path="reports" element={<Reports />} />
-          <Route path="evolution" element={<Evolution />} />
-          <Route path="users" element={<Users />} />
-          <Route path="cables" element={<Cables />} />
+          <Route path="orders" element={<RoleGuard page="orders"><Orders /></RoleGuard>} />
+          <Route path="anomalies" element={<RoleGuard page="anomalies"><Anomalies /></RoleGuard>} />
+          <Route path="alerts" element={<RoleGuard page="alerts"><Alerts /></RoleGuard>} />
+          <Route path="reports" element={<RoleGuard page="reports"><Reports /></RoleGuard>} />
+          <Route path="evolution" element={<RoleGuard page="evolution"><Evolution /></RoleGuard>} />
+          <Route path="users" element={<RoleGuard page="users"><Users /></RoleGuard>} />
+          <Route path="cables" element={<RoleGuard page="cables"><Cables /></RoleGuard>} />
           <Route path="inspections/:id" element={<InspectionDetails />} />
           <Route path="profile" element={<Profile />} />
         </Route>

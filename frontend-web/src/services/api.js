@@ -38,6 +38,7 @@ export const AuthService = {
     login: (idToken) => api.post('/auth/login', { idToken }),
     signup: (data) => api.post('/auth/signup', data),
     getMe: () => api.get('/auth/me'),
+    forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
 };
 
 export const OrderService = {

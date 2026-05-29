@@ -96,7 +96,7 @@ class User {
             username: json.username || '',
             fullName: json.fullName || '',
             email: json.email || '',
-            roles: json.roles ? json.roles.map(parseUserRole) : (json.role ? [parseUserRole(json.role)] : [UserRole.OPERATOR]),
+            roles: json.roles ? json.roles.map(parseUserRole) : (json.role ? [parseUserRole(json.role)] : [UserRole.TECHNICIAN]),
             photoUrl: json.photoUrl || null,
             phone: json.phone || null,
             signatureUrl: json.signatureUrl || null,

@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { AlertCircle, Eye, Search, CheckCircle, Clock, X, Download } from 'lucide-react';
+import { AlertCircle, Eye, Search, CheckCircle, Clock, X, Download, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AnomalyService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import PageHeader from '../components/PageHeader';
 import CustomSelect from '../components/CustomSelect';
 import * as XLSX from 'xlsx';
+
+const ITEMS_PER_PAGE = 6;
 
 const SeverityBadge = ({ severity }) => {
     const s = severity?.toLowerCase() || 'mineur';
@@ -26,14 +28,96 @@ const SeverityBadge = ({ severity }) => {
     );
 };
 
+// ── Composant Pagination ──────────────────────────────────────────────────────
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+
+    // Génère les numéros à afficher (max 5 visibles, avec ellipsis)
+    const getPageNumbers = () => {
+        const delta = 2;
+        const pages = [];
+        const left = Math.max(1, currentPage - delta);
+        const right = Math.min(totalPages, currentPage + delta);
+
+        if (left > 1) {
+            pages.push(1);
+            if (left > 2) pages.push('...');
+        }
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < totalPages) {
+            if (right < totalPages - 1) pages.push('...');
+            pages.push(totalPages);
+        }
+        return pages;
+    };
+
+    return (
+        <div className="flex items-center justify-between mt-8 px-1">
+            {/* Info */}
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">
+                Page <span className="text-slate-700">{currentPage}</span> / {totalPages}
+            </p>
+
+            {/* Boutons */}
+            <div className="flex items-center gap-1.5">
+                {/* Flèche gauche */}
+                <button
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500
+                               hover:bg-slate-900 hover:text-white hover:border-slate-900
+                               disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200
+                               transition-all duration-200 shadow-sm"
+                >
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                </button>
+
+                {/* Numéros */}
+                {getPageNumbers().map((page, idx) =>
+                    page === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 font-bold text-sm">
+                            ···
+                        </span>
+                    ) : (
+                        <button
+                            key={page}
+                            onClick={() => onPageChange(page)}
+                            className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-200 shadow-sm border
+                                ${currentPage === page
+                                    ? 'bg-slate-900 text-white border-slate-900 scale-105'
+                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'
+                                }`}
+                        >
+                            {page}
+                        </button>
+                    )
+                )}
+
+                {/* Flèche droite */}
+                <button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500
+                               hover:bg-slate-900 hover:text-white hover:border-slate-900
+                               disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200
+                               transition-all duration-200 shadow-sm"
+                >
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+            </div>
+        </div>
+    );
+};
+
+// ── Page principale ───────────────────────────────────────────────────────────
 const Anomalies = () => {
     const [anomalies, setAnomalies] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('Tous');
-    const [selectedImage, setSelectedImage] = useState(null); // Zoom image
+    const [selectedImage, setSelectedImage] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const navigate = useNavigate();
-
 
     const handleExportExcel = () => {
         const data = filteredAnomalies.map(a => ({
@@ -49,7 +133,6 @@ const Anomalies = () => {
         const ws = XLSX.utils.json_to_sheet(data);
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, 'Anomalies');
-        // Ajuster la largeur des colonnes
         ws['!cols'] = [
             { wch: 20 }, { wch: 12 }, { wch: 15 }, { wch: 15 },
             { wch: 20 }, { wch: 22 }, { wch: 14 }, { wch: 35 },
@@ -72,7 +155,8 @@ const Anomalies = () => {
     useEffect(() => { fetchAnomalies(); }, []);
 
     const { canExport } = useAuth();
-    
+
+    // Filtrage
     const filteredAnomalies = anomalies.filter(a => {
         const matchSearch = searchTerm === '' ||
             a.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -81,9 +165,24 @@ const Anomalies = () => {
         return matchSearch && matchSeverity;
     });
 
+    // Remettre à la page 1 quand le filtre change
+    useEffect(() => { setCurrentPage(1); }, [searchTerm, filterSeverity]);
+
+    // Pagination
+    const totalPages = Math.ceil(filteredAnomalies.length / ITEMS_PER_PAGE);
+    const paginatedAnomalies = filteredAnomalies.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
     return (
         <div className="flex flex-col gap-6">
-            <PageHeader 
+            <PageHeader
                 title="Anomalies Qualité"
                 subtitle={`Suivi des défauts détectés par l'intelligence artificielle — ${anomalies.length} anomalie${anomalies.length !== 1 ? 's' : ''}`}
                 icon={<AlertCircle />}
@@ -133,18 +232,18 @@ const Anomalies = () => {
                         <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Analyse des défauts en cours...</p>
                     </div>
-                ) : filteredAnomalies.length > 0 ? (
-                    filteredAnomalies.map((anomaly) => {
+                ) : paginatedAnomalies.length > 0 ? (
+                    paginatedAnomalies.map((anomaly) => {
                         const isCritical = anomaly.severity?.toLowerCase() === 'critique' || anomaly.severity?.toLowerCase() === 'haute';
                         const isMajor = anomaly.severity?.toLowerCase() === 'majeur' || anomaly.severity?.toLowerCase() === 'moyenne';
                         const isTraitee = anomaly.statut === 'traitee';
-                        
+
                         return (
                             <div key={anomaly.id} className={`group relative bg-white rounded-[32px] border transition-all duration-500 hover:shadow-2xl hover:shadow-blue-900/10 hover:-translate-y-2 flex flex-col h-full overflow-hidden
-                                ${isCritical ? 'border-red-100 bg-gradient-to-b from-red-50/30 to-white' : 
-                                  isMajor ? 'border-amber-100 bg-gradient-to-b from-amber-50/30 to-white' : 
+                                ${isCritical ? 'border-red-100 bg-gradient-to-b from-red-50/30 to-white' :
+                                  isMajor ? 'border-amber-100 bg-gradient-to-b from-amber-50/30 to-white' :
                                   'border-slate-100 hover:border-blue-200'}`}>
-                                
+
                                 {/* Header Color Stripe */}
                                 <div className={`h-1.5 w-full ${isCritical ? 'bg-red-500' : isMajor ? 'bg-amber-500' : 'bg-emerald-500'}`}></div>
 
@@ -152,8 +251,8 @@ const Anomalies = () => {
                                 <div className="relative h-56 m-3 overflow-hidden rounded-[24px] bg-slate-100">
                                     {anomaly.imageUrl ? (
                                         <>
-                                            <img 
-                                                src={anomaly.imageUrl} 
+                                            <img
+                                                src={anomaly.imageUrl}
                                                 alt={anomaly.type}
                                                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-zoom-in"
                                                 onClick={() => setSelectedImage(anomaly.imageUrl)}
@@ -179,7 +278,7 @@ const Anomalies = () => {
                                         <h3 className="text-xl font-black text-slate-900 capitalize tracking-tight group-hover:text-blue-700 transition-colors">{anomaly.type}</h3>
                                         <SeverityBadge severity={anomaly.severity} />
                                     </div>
-                                    
+
                                     <p className="text-sm font-medium text-slate-500 mb-6 line-clamp-2 leading-relaxed italic">
                                         "{anomaly.description || 'Anomalie détectée lors du contrôle automatique par vision artificielle.'}"
                                     </p>
@@ -249,21 +348,30 @@ const Anomalies = () => {
                 )}
             </div>
 
+            {/* Pagination */}
+            {!loading && filteredAnomalies.length > 0 && (
+                <Pagination
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={handlePageChange}
+                />
+            )}
+
             {/* Lightbox Modal (Zoom Image) */}
             {selectedImage && (
-                <div 
+                <div
                     className="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4 md:p-10"
                     onClick={() => setSelectedImage(null)}
                 >
-                    <button 
+                    <button
                         className="absolute top-6 right-6 p-2 bg-white/10 hover:bg-white/20 text-white rounded-full transition-colors"
                         onClick={() => setSelectedImage(null)}
                     >
                         <X size={24} />
                     </button>
-                    <img 
-                        src={selectedImage} 
-                        alt="Zoom anomalie" 
+                    <img
+                        src={selectedImage}
+                        alt="Zoom anomalie"
                         className="max-w-full max-h-full rounded-2xl shadow-2xl border border-white/20 object-contain"
                         onClick={(e) => e.stopPropagation()}
                     />

@@ -1,18 +1,50 @@
 /**
- * Hook d'authentification simplifié (RBAC annulé)
- * Tous les utilisateurs ont désormais accès à toutes les fonctionnalités
+ * Hook d'authentification gérant le contrôle d'accès basé sur les rôles (RBAC)
+ * Permet de définir les accès aux pages et aux actions pour chaque rôle utilisateur
  */
 
-// Permissions universelles (Admin pour tous)
-const UNIVERSAL_PERMISSIONS = {
-    label: 'Utilisateur ICEM',
-    pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'evolution'],
-    canCreate: ['orders', 'cables', 'users'],
-    canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts'],
-    canDelete: ['orders', 'cables', 'users'],
-    canExport: true,
-    canResetPassword: true,
-    canGenerateReport: true,
+// Configurations des permissions par rôle
+const ROLE_PERMISSIONS = {
+    admin: {
+        label: 'Administrateur',
+        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'users', 'evolution'],
+        canCreate: ['orders', 'cables', 'users'],
+        canEdit: ['orders', 'cables', 'users', 'anomalies', 'alerts'],
+        canDelete: ['orders', 'cables', 'users'],
+        canExport: true,
+        canResetPassword: true,
+        canGenerateReport: true,
+    },
+    manager: {
+        label: 'Responsable Qualité',
+        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'alerts', 'reports', 'evolution'],
+        canCreate: ['orders', 'cables'],
+        canEdit: ['orders', 'cables', 'anomalies', 'alerts'],
+        canDelete: ['orders', 'cables'],
+        canExport: true,
+        canResetPassword: false,
+        canGenerateReport: true,
+    },
+    director: {
+        label: 'Directeur',
+        pages: ['dashboard', 'orders', 'cables', 'anomalies', 'reports', 'evolution'],
+        canCreate: [],
+        canEdit: [],
+        canDelete: [],
+        canExport: true,
+        canResetPassword: false,
+        canGenerateReport: true,
+    },
+    technician: {
+        label: 'Technicien',
+        pages: [], // Pas d'accès au portail web
+        canCreate: [],
+        canEdit: [],
+        canDelete: [],
+        canExport: false,
+        canResetPassword: false,
+        canGenerateReport: false,
+    }
 };
 
 // Mapping des paths de routes vers les noms de pages
@@ -43,27 +75,32 @@ export function getCurrentUser() {
 }
 
 /**
- * Hook principal d'authentification (Accès Total)
+ * Hook principal d'authentification (RBAC actif)
  */
 export function useAuth() {
     const user = getCurrentUser();
     
-    // Tout le monde est considéré comme ayant les permissions maximales
-    const permissions = UNIVERSAL_PERMISSIONS;
+    // Déterminer le rôle de l'utilisateur
+    const userRole = user?.role || (user?.roles && user?.roles[0]) || 'technician';
+    const permissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS.technician;
 
     let actualRoleLabel = permissions.label;
     if (user) {
-        if (user.role && typeof user.role === 'string') {
-            actualRoleLabel = user.role;
-        } else if (user.roles && Array.isArray(user.roles) && user.roles.length > 0) {
-            actualRoleLabel = user.roles[0];
+        const rawRole = user.role || (user.roles && user.roles[0]);
+        if (rawRole && typeof rawRole === 'string') {
+            const normalized = rawRole.toLowerCase().trim();
+            if (ROLE_PERMISSIONS[normalized]) {
+                actualRoleLabel = ROLE_PERMISSIONS[normalized].label;
+            } else {
+                actualRoleLabel = rawRole;
+            }
         }
     }
 
     return {
         user,
-        roles: ['admin'], // Valeur fixe pour la compatibilité
-        role: 'admin',
+        roles: user?.roles || (user?.role ? [user.role] : ['technician']),
+        role: userRole,
         roleLabel: actualRoleLabel,
         
         /** Vérifie si l'utilisateur a accès à une page */

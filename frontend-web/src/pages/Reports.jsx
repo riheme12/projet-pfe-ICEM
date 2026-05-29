@@ -7,8 +7,42 @@ import html2canvas from 'html2canvas';
 import { 
     FileText, Download, Search, AlertTriangle, 
     CheckCircle, BarChart3, LayoutDashboard,
-    Activity, Package, User, Loader2, TrendingUp, Users, Calendar, ListFilter
+    Activity, Package, User, Loader2, TrendingUp, Users, Calendar, ListFilter,
+    ChevronLeft, ChevronRight
 } from 'lucide-react';
+
+const REPORTS_PER_PAGE = 8;
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+    const getPageNumbers = () => {
+        const delta = 2, pages = [];
+        const left = Math.max(1, currentPage - delta);
+        const right = Math.min(totalPages, currentPage + delta);
+        if (left > 1) { pages.push(1); if (left > 2) pages.push('...'); }
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < totalPages) { if (right < totalPages - 1) pages.push('...'); pages.push(totalPages); }
+        return pages;
+    };
+    return (
+        <div className="flex items-center justify-between px-12 py-8 border-t border-slate-100">
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Page <span className="text-slate-700">{currentPage}</span> / {totalPages}</p>
+            <div className="flex items-center gap-1.5">
+                <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                </button>
+                {getPageNumbers().map((page, idx) => page === '...' ? (
+                    <span key={`e-${idx}`} className="w-10 h-10 flex items-center justify-center text-slate-400 font-bold text-sm">···</span>
+                ) : (
+                    <button key={page} onClick={() => onPageChange(page)} className={`w-10 h-10 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-200 shadow-sm border ${currentPage === page ? 'bg-slate-900 text-white border-slate-900 scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-indigo-50 hover:border-indigo-300 hover:text-indigo-700'}`}>{page}</button>
+                ))}
+                <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="w-10 h-10 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+            </div>
+        </div>
+    );
+};
 import { CableService, AnomalyService, UserService, ReportService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { 
@@ -29,6 +63,7 @@ const Reports = () => {
     const [mobileReports, setMobileReports] = useState([]);
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [reportsPage, setReportsPage] = useState(1);
     const dashboardRef = useRef(null);
 
     // Filter States
@@ -125,6 +160,16 @@ const Reports = () => {
                              (statusFilter === 'Inspection' && r.type === 'inspection');
         return matchesSearch && matchesStatus;
     });
+
+    // Reset page when filters change
+    useEffect(() => { setReportsPage(1); }, [searchTerm, statusFilter]);
+
+    const reportsTotalPages = Math.ceil(filteredMobileReports.length / REPORTS_PER_PAGE);
+    const paginatedReports = filteredMobileReports.slice(
+        (reportsPage - 1) * REPORTS_PER_PAGE,
+        reportsPage * REPORTS_PER_PAGE
+    );
+    const handleReportsPageChange = (page) => { setReportsPage(page); };
 
     const exportGlobalPDF = async () => {
         const toastId = toast.loading("Génération du rapport exécutif...");
@@ -583,7 +628,7 @@ const Reports = () => {
     };
 
     const exportInspectionsExcel = () => {
-        const data = filteredInspections.map(c => ({
+        const data = filteredCablesGlobal.map(c => ({
             'Référence': c.reference, 'OF': c.orderId, 'Technicien': c.technicianName,
             'Date': new Date(c.inspectionDate || c.createdAt).toLocaleString(), 'Statut': c.status
         }));
@@ -634,7 +679,7 @@ const Reports = () => {
                                 <FileText size={18} /> Export Excel
                             </button>
                         </div>
-                    ) : activeTab === 'registry' ? (
+                    ) : activeTab === 'inspection' ? (
                         <button onClick={exportInspectionsExcel} className="px-8 py-5 bg-white text-emerald-600 border-2 border-emerald-100 rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-emerald-50 transition-all flex items-center gap-3 active:scale-95 shadow-xl shadow-emerald-900/5">
                             <FileText size={18} /> Export Excel
                         </button>
@@ -897,7 +942,7 @@ const Reports = () => {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-50">
-                                    {filteredMobileReports.map((report, idx) => (
+                                    {paginatedReports.map((report, idx) => (
                                         <tr key={idx} className="hover:bg-indigo-50/20 transition-all group">
                                             <td className="px-12 py-8">
                                                 <div className="flex items-center gap-4">
@@ -936,6 +981,13 @@ const Reports = () => {
                                 <FileText size={48} className="mx-auto text-slate-200 mb-4" />
                                 <p className="text-slate-400 font-black uppercase tracking-widest text-sm">Aucun rapport d'inspection trouvé</p>
                             </div>
+                        )}
+                        {filteredMobileReports.length > 0 && (
+                            <Pagination
+                                currentPage={reportsPage}
+                                totalPages={reportsTotalPages}
+                                onPageChange={handleReportsPageChange}
+                            />
                         )}
                     </div>
                 </div>

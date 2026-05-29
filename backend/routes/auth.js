@@ -104,4 +104,90 @@ router.post('/signup', async (req, res) => {
     }
 });
 
+// Forgot Password — generate and send reset link using local emailService
+router.post('/forgot-password', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ error: 'Email est requis' });
+        }
+
+        // Check if user exists in Firestore
+        const userQuery = await db.collection('users').where('email', '==', email).get();
+        if (userQuery.empty) {
+            // Return success even if email is not found to prevent user enumeration attacks
+            return res.status(200).json({ message: 'Si l\'adresse email est valide, un lien a été envoyé.' });
+        }
+
+        const userDoc = userQuery.docs[0];
+        const userData = userDoc.data();
+
+        // Get request origin to form the reset link
+        const referer = req.headers.referer || 'http://localhost:5173/';
+        const origin = new URL(referer).origin;
+
+        // Generate password reset link using Firebase Admin SDK
+        const actionCodeSettings = {
+            url: `${origin}/login`,
+        };
+        const firebaseResetLink = await admin.auth().generatePasswordResetLink(email, actionCodeSettings);
+
+        // Parse oobCode from the firebaseResetLink
+        const linkUrl = new URL(firebaseResetLink);
+        const oobCode = linkUrl.searchParams.get('oobCode');
+
+        // Form our own custom link that points to our reset-password page
+        const customResetLink = `${origin}/reset-password?oobCode=${oobCode}`;
+
+        // Send email via local EmailService
+        const emailService = require('../services/emailService');
+        await emailService.transporter.sendMail({
+            from: `"ICEM Quality Control" <${emailService.fromAddress}>`,
+            to: email,
+            subject: '🔑 ICEM — Réinitialisation de votre mot de passe',
+            html: `
+                <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px; border-radius: 24px;">
+                    <div style="background: linear-gradient(135deg, #1e1b4b, #312e81, #4338ca); padding: 32px; border-radius: 20px; text-align: center; color: white;">
+                        <h1 style="margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.025em;">ICEM Quality Control</h1>
+                        <p style="margin: 8px 0 0 0; font-size: 14px; font-weight: 500; color: rgba(255,255,255,0.7);">Système Intelligent de Contrôle Qualité</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 32px; border-radius: 20px; margin-top: 16px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+                        <h2 style="margin: 0 0 16px 0; font-size: 18px; font-weight: 800; color: #0f172a;">Demande de réinitialisation</h2>
+                        <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                            Bonjour <strong>${userData.fullName || userData.username || email}</strong>,
+                        </p>
+                        <p style="margin: 0 0 24px 0; font-size: 14px; line-height: 1.6; color: #475569;">
+                            Nous avons reçu une demande de réinitialisation de mot de passe pour votre compte de supervision ICEM. Cliquez sur le bouton ci-dessous pour configurer un nouveau mot de passe :
+                        </p>
+                        
+                        <div style="text-align: center; margin: 32px 0;">
+                            <a href="${customResetLink}" style="background: linear-gradient(135deg, #312e81, #4338ca); color: white; padding: 16px 36px; border-radius: 14px; text-decoration: none; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 10px 15px -3px rgba(67,56,202,0.3);">
+                                Réinitialiser le mot de passe
+                            </a>
+                        </div>
+                        
+                        <p style="margin: 0 0 16px 0; font-size: 13px; line-height: 1.6; color: #64748b;">
+                            Si le bouton ci-dessus ne fonctionne pas, copiez-collez le lien suivant dans votre navigateur :
+                        </p>
+                        <p style="margin: 0; font-size: 12px; line-height: 1.5; color: #6366f1; word-break: break-all; font-family: monospace;">
+                            ${customResetLink}
+                        </p>
+                    </div>
+                    
+                    <div style="text-align: center; margin-top: 24px; color: #94a3b8; font-size: 11px;">
+                        <p style="margin: 0 0 4px 0;">Ce lien est valable pour une durée limitée. Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail.</p>
+                        <p style="margin: 0;">© 2026 ICEM Quality Control System. Tous droits réservés.</p>
+                    </div>
+                </div>
+            `
+        });
+
+        res.status(200).json({ message: 'Si l\'adresse email est valide, un lien a été envoyé.' });
+    } catch (error) {
+        console.error('Error generating forgot password link:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 module.exports = router;

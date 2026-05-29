@@ -1,5 +1,38 @@
 import React, { useState, useEffect } from 'react';
-import { Bell, AlertTriangle, CheckCircle, Search, Filter, Clock, Shield, ChevronDown, X, Zap } from 'lucide-react';
+import { Bell, AlertTriangle, CheckCircle, Search, Filter, Clock, Shield, ChevronDown, X, Zap, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 8;
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+    const getPageNumbers = () => {
+        const delta = 2, pages = [];
+        const left = Math.max(1, currentPage - delta);
+        const right = Math.min(totalPages, currentPage + delta);
+        if (left > 1) { pages.push(1); if (left > 2) pages.push('...'); }
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < totalPages) { if (right < totalPages - 1) pages.push('...'); pages.push(totalPages); }
+        return pages;
+    };
+    return (
+        <div className="flex items-center justify-between mt-4 px-1">
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Page <span className="text-slate-700">{currentPage}</span> / {totalPages}</p>
+            <div className="flex items-center gap-1.5">
+                <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                </button>
+                {getPageNumbers().map((page, idx) => page === '...' ? (
+                    <span key={`e-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 font-bold text-sm">···</span>
+                ) : (
+                    <button key={page} onClick={() => onPageChange(page)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-200 shadow-sm border ${currentPage === page ? 'bg-slate-900 text-white border-slate-900 scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'}`}>{page}</button>
+                ))}
+                <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+            </div>
+        </div>
+    );
+};
 import { AnomalyService } from '../services/api';
 import { db } from '../services/firebase';
 import { collection, query, orderBy, onSnapshot, limit } from 'firebase/firestore';
@@ -47,6 +80,7 @@ const Alerts = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [filterSeverity, setFilterSeverity] = useState('Tous');
     const [selectedAlert, setSelectedAlert] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
 
     const fetchAlerts = async () => {
         try {
@@ -86,6 +120,15 @@ const Alerts = () => {
     const activeCount = filteredAlerts.filter(a => a.statut !== 'traitee' && a.statut !== 'archivee').length;
     const criticalCount = filteredAlerts.filter(a => ['critique', 'haute'].includes(a.severity?.toLowerCase())).length;
 
+    useEffect(() => { setCurrentPage(1); }, []);
+
+    const totalPages = Math.ceil(filteredAlerts.length / ITEMS_PER_PAGE);
+    const paginatedAlerts = filteredAlerts.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+    const handlePageChange = (page) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
     return (
         <div className="flex flex-col gap-6">
             <PageHeader 
@@ -113,8 +156,8 @@ const Alerts = () => {
                         <div className="w-10 h-10 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Surveillance ICEM en cours...</p>
                     </div>
-                ) : filteredAlerts.length > 0 ? (
-                    filteredAlerts.map((alert, index) => {
+                ) : paginatedAlerts.length > 0 ? (
+                    paginatedAlerts.map((alert, index) => {
                         const isCritical = ['critique', 'haute'].includes(alert.severity?.toLowerCase());
                         const isTraitee = alert.statut === 'traitee';
                         
@@ -200,6 +243,11 @@ const Alerts = () => {
                     </div>
                 )}
             </div>
+
+            {/* Pagination */}
+            {!loading && filteredAlerts.length > 0 && (
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+            )}
 
             {/* Details Modal */}
             {selectedAlert && (

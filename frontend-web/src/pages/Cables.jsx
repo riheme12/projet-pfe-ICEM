@@ -1,7 +1,41 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Cable as CableIcon, Plus, Search, QrCode, Eye, Pencil, Trash2, X, CheckCircle, AlertCircle, Clock, ClipboardList } from 'lucide-react';
+import { Cable as CableIcon, Plus, Search, QrCode, Eye, Pencil, Trash2, X, CheckCircle, AlertCircle, Clock, ClipboardList, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 8;
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+    const getPageNumbers = () => {
+        const delta = 2, pages = [];
+        const left = Math.max(1, currentPage - delta);
+        const right = Math.min(totalPages, currentPage + delta);
+        if (left > 1) { pages.push(1); if (left > 2) pages.push('...'); }
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < totalPages) { if (right < totalPages - 1) pages.push('...'); pages.push(totalPages); }
+        return pages;
+    };
+    return (
+        <div className="flex items-center justify-between mt-6 px-1">
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Page <span className="text-slate-700">{currentPage}</span> / {totalPages}</p>
+            <div className="flex items-center gap-1.5">
+                <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                </button>
+                {getPageNumbers().map((page, idx) => page === '...' ? (
+                    <span key={`e-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 font-bold text-sm">···</span>
+                ) : (
+                    <button key={page} onClick={() => onPageChange(page)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-200 shadow-sm border ${currentPage === page ? 'bg-slate-900 text-white border-slate-900 scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'}`}>{page}</button>
+                ))}
+                <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+            </div>
+        </div>
+    );
+};
 import { CableService, OrderService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 import PageHeader from '../components/PageHeader';
 import toast from 'react-hot-toast';
 
@@ -22,6 +56,7 @@ const StatusBadge = ({ status }) => {
 };
 
 const Cables = () => {
+    const { canCreate, canEdit, canDelete } = useAuth();
     const [cables, setCables] = useState([]);
     const [orders, setOrders] = useState([]);
     const location = useLocation();
@@ -30,6 +65,7 @@ const Cables = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editCable, setEditCable] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
     const [form, setForm] = useState({
         reference: '',
         code: '',
@@ -130,6 +166,15 @@ const Cables = () => {
                orderRef.includes(search);
     });
 
+    useEffect(() => { setCurrentPage(1); }, [searchTerm]);
+
+    const totalPages = Math.ceil(filteredCables.length / ITEMS_PER_PAGE);
+    const paginatedCables = filteredCables.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+    const handlePageChange = (page) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
     return (
         <div className="flex flex-col gap-6">
             <PageHeader 
@@ -137,10 +182,12 @@ const Cables = () => {
                 subtitle="Traçabilité unitaire et contrôle qualité par QR Code"
                 icon={<CableIcon />}
                 actions={
-                    <button onClick={openCreate} className="btn-primary flex items-center gap-2 px-6 py-3 rounded-2xl shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
-                        <Plus size={20} />
-                        Enregistrer un Câble
-                    </button>
+                    canCreate('cables') && (
+                        <button onClick={openCreate} className="btn-primary flex items-center gap-2 px-6 py-3 rounded-2xl shadow-xl shadow-blue-600/20 active:scale-95 transition-all">
+                            <Plus size={20} />
+                            Enregistrer un Câble
+                        </button>
+                    )
                 }
             />
 
@@ -165,8 +212,8 @@ const Cables = () => {
                         <div className="w-12 h-12 border-4 border-slate-100 border-t-blue-600 rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Chargement des données câbles...</p>
                     </div>
-                ) : filteredCables.length > 0 ? (
-                    filteredCables.map((cable) => (
+                ) : paginatedCables.length > 0 ? (
+                    paginatedCables.map((cable) => (
                         <div key={cable.id} className="group bg-white/70 backdrop-blur-md rounded-[30px] border border-white/60 p-5 flex flex-col lg:flex-row lg:items-center gap-6 transition-all duration-300 hover:shadow-2xl hover:shadow-blue-900/5 hover:-translate-y-1 overflow-hidden">
                             
                             <div className="flex items-center gap-5 flex-1">
@@ -196,20 +243,26 @@ const Cables = () => {
                                     </span>
                                 </div>
 
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => openEdit(cable)}
-                                        className="w-11 h-11 bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white transition-all active:scale-90"
-                                    >
-                                        <Pencil size={16} strokeWidth={2.5} />
-                                    </button>
-                                    <button
-                                        onClick={() => setDeleteConfirm(cable)}
-                                        className="w-11 h-11 bg-white text-red-500 rounded-xl border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white transition-all active:scale-90"
-                                    >
-                                        <Trash2 size={16} strokeWidth={2.5} />
-                                    </button>
-                                </div>
+                                {(canEdit('cables') || canDelete('cables')) && (
+                                    <div className="flex gap-2">
+                                        {canEdit('cables') && (
+                                            <button
+                                                onClick={() => openEdit(cable)}
+                                                className="w-11 h-11 bg-white text-amber-500 rounded-xl border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white transition-all active:scale-90"
+                                            >
+                                                <Pencil size={16} strokeWidth={2.5} />
+                                            </button>
+                                        )}
+                                        {canDelete('cables') && (
+                                            <button
+                                                onClick={() => setDeleteConfirm(cable)}
+                                                className="w-11 h-11 bg-white text-red-500 rounded-xl border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white transition-all active:scale-90"
+                                            >
+                                                <Trash2 size={16} strokeWidth={2.5} />
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     ))
@@ -224,75 +277,117 @@ const Cables = () => {
                 )}
             </div>
 
+            {/* Pagination */}
+            {!loading && filteredCables.length > 0 && (
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+            )}
+
             {/* Create/Edit Modal */}
             {isModalOpen && (
                 <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
-                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <h2 className="text-lg font-bold text-slate-800">
-                                {editCable ? 'Modifier le câble' : 'Nouveau Câble'}
-                            </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-                                <X size={20} className="text-slate-400" />
+                    <div className="modal-content !max-w-xl" onClick={(e) => e.stopPropagation()}>
+
+                        {/* ── Header gradient ── */}
+                        <div
+                            style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)' }}
+                            className="relative px-8 py-6 overflow-hidden flex-shrink-0"
+                        >
+                            {/* decorative circles */}
+                            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white opacity-5" />
+                            <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white opacity-5" />
+
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all z-10"
+                            >
+                                <X size={15} strokeWidth={2.5} />
                             </button>
-                        </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Référence du câble</label>
-                                <input
-                                    type="text"
-                                    required
-                                    placeholder="Ex: CAB-2026-001"
-                                    className="input-field"
-                                    value={form.reference}
-                                    onChange={(e) => setForm({ ...form, reference: e.target.value })}
-                                />
+
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                                    {editCable ? <Pencil size={22} /> : <QrCode size={22} />}
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-white tracking-tight" style={{color: 'white'}}>
+                                        {editCable ? 'Modifier le câble' : 'Nouveau Câble'}
+                                    </h2>
+                                    <p className="text-sm font-semibold mt-0.5" style={{color: 'rgba(255,255,255,0.6)'}}>
+                                        {editCable ? 'Mise à jour des informations' : 'Enregistrement d\'une nouvelle unité'}
+                                    </p>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Code QR / Code-barres</label>
-                                <div className="relative">
-                                    <QrCode className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        </div>
+
+                        {/* ── Body ── */}
+                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Référence du câble</label>
                                     <input
                                         type="text"
                                         required
-                                        placeholder="Scannez ou saisissez le code"
-                                        className="input-field pl-10"
-                                        value={form.code}
-                                        onChange={(e) => setForm({ ...form, code: e.target.value })}
+                                        placeholder="Ex: CAB-2026-001"
+                                        className="input-field"
+                                        value={form.reference}
+                                        onChange={(e) => setForm({ ...form, reference: e.target.value })}
                                     />
                                 </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Code QR / Code-barres</label>
+                                    <div className="relative">
+                                        <QrCode className="absolute left-4 top-1/2 -translate-y-1/2 text-indigo-400" size={18} />
+                                        <input
+                                            type="text"
+                                            required
+                                            placeholder="Scannez ou saisissez le code"
+                                            className="input-field pl-12"
+                                            value={form.code}
+                                            onChange={(e) => setForm({ ...form, code: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Ordre de fabrication</label>
+                                    <select
+                                        className="select-field"
+                                        value={form.orderId}
+                                        onChange={(e) => setForm({ ...form, orderId: e.target.value })}
+                                    >
+                                        <option value="">— Sélectionner un ordre —</option>
+                                        {orders.map(o => (
+                                            <option key={o.id} value={o.numeroOF || o.reference}>{o.numeroOF} — {o.reference} — {o.client}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Statut</label>
+                                    <select
+                                        className="select-field"
+                                        value={form.status}
+                                        onChange={(e) => setForm({ ...form, status: e.target.value })}
+                                    >
+                                        <option value="En attente">En attente</option>
+                                        <option value="Conforme">Conforme</option>
+                                        <option value="Non conforme">Non conforme</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Ordre de fabrication</label>
-                                <select
-                                    className="input-field"
-                                    value={form.orderId}
-                                    onChange={(e) => setForm({ ...form, orderId: e.target.value })}
+
+                            {/* ── Footer buttons ── */}
+                            <div className="flex gap-3 px-8 py-5 border-t border-slate-100 flex-shrink-0 bg-slate-50/50">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="flex-1 py-3.5 px-6 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-black text-sm hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
                                 >
-                                    <option value="">— Sélectionner un ordre —</option>
-                                    {orders.map(o => (
-                                        <option key={o.id} value={o.numeroOF || o.reference}>{o.numeroOF} — {o.reference} — {o.client}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-700 mb-1.5">Statut</label>
-                                <select
-                                    className="input-field"
-                                    value={form.status}
-                                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                                >
-                                    <option value="En attente">En attente</option>
-                                    <option value="Conforme">Conforme</option>
-                                    <option value="Non conforme">Non conforme</option>
-                                </select>
-                            </div>
-                            <div className="flex gap-3 pt-3">
-                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 btn-secondary">
                                     Annuler
                                 </button>
-                                <button type="submit" className="flex-1 btn-primary">
-                                    {editCable ? 'Enregistrer' : 'Créer le câble'}
+                                <button
+                                    type="submit"
+                                    className="flex-2 flex-1 py-3.5 px-6 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 transition-all active:scale-95"
+                                    style={{ background: 'linear-gradient(135deg, #312e81 0%, #4338ca 100%)', boxShadow: '0 8px 20px -4px rgba(67,56,202,0.4)' }}
+                                >
+                                    {editCable ? 'Enregistrer les modifications' : 'Créer le câble'}
                                 </button>
                             </div>
                         </form>
@@ -303,17 +398,46 @@ const Cables = () => {
             {/* Delete Confirmation */}
             {deleteConfirm && (
                 <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
-                    <div className="modal-content !max-w-sm" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 text-center">
-                            <div className="w-14 h-14 bg-red-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                                <Trash2 size={24} className="text-red-600" />
+                    <div className="modal-content !max-w-md" onClick={(e) => e.stopPropagation()}>
+                        <div
+                            style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)' }}
+                            className="relative px-8 py-6 overflow-hidden flex-shrink-0"
+                        >
+                            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white opacity-5" />
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all z-10"
+                            >
+                                <X size={15} />
+                            </button>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                                    <Trash2 size={22} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-white tracking-tight" style={{color: 'white'}}>Supprimer le câble ?</h2>
+                                    <p className="text-sm font-semibold mt-0.5" style={{color: 'rgba(255,255,255,0.6)'}}>Action irréversible</p>
+                                </div>
                             </div>
-                            <h3 className="text-lg font-bold text-slate-800 mb-2">Supprimer le câble ?</h3>
-                            <p className="text-sm text-slate-500 mb-6">Cette action est irréversible. Le câble <strong>{deleteConfirm.reference}</strong> sera supprimé définitivement.</p>
-                            <div className="flex gap-3">
-                                <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">Annuler</button>
-                                <button onClick={handleDelete} className="flex-1 btn-danger">Supprimer</button>
-                            </div>
+                        </div>
+                        <div className="px-8 py-6">
+                            <p className="text-slate-600 font-semibold text-base leading-relaxed">
+                                Le câble <strong className="text-slate-900">{deleteConfirm.reference}</strong> sera supprimé définitivement de la base de données.
+                            </p>
+                        </div>
+                        <div className="flex gap-3 px-8 py-5 border-t border-slate-100 flex-shrink-0 bg-slate-50/50">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 py-3.5 px-6 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-black text-sm hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
+                            >
+                                Annuler
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="flex-1 py-3.5 px-6 rounded-2xl font-black text-sm text-white bg-red-600 hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-500/20"
+                            >
+                                Supprimer
+                            </button>
                         </div>
                     </div>
                 </div>

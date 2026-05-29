@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 const InspectionDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, canEdit } = useAuth();
     const [inspection, setInspection] = useState(null);
     const [anomalies, setAnomalies] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -239,15 +239,25 @@ const InspectionDetails = () => {
                     >
                         <ImageIcon size={16} /> Exporter Rapport
                     </button>
-                    <button
-                        className={`px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2
-                            ${isConforme ? 'bg-emerald-500 text-white cursor-default shadow-emerald-200' : 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-blue-500/25 shadow-blue-200'}`}
-                        onClick={handleValidate}
-                        disabled={isConforme}
-                    >
-                        {isConforme ? <CheckCircle2 size={16} /> : <ShieldCheck size={16} />}
-                        {isConforme ? 'Inspection Validée' : 'Valider le Dossier'}
-                    </button>
+                    {isConforme ? (
+                        <button
+                            className="px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg bg-emerald-500 text-white cursor-default shadow-emerald-200 flex items-center gap-2"
+                            disabled
+                        >
+                            <CheckCircle2 size={16} />
+                            Inspection Validée
+                        </button>
+                    ) : (
+                        canEdit('cables') && (
+                            <button
+                                className="px-8 py-3 rounded-2xl font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white hover:shadow-blue-500/25 shadow-blue-200"
+                                onClick={handleValidate}
+                            >
+                                <ShieldCheck size={16} />
+                                Valider le Dossier
+                            </button>
+                        )
+                    )}
                 </div>
             </div>
 

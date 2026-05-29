@@ -1,6 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Plus, Search, Eye, Pencil, Trash2, X, CheckCircle2, Clock, Hash, User, Factory, Calendar, Settings, Briefcase, ChevronDown } from 'lucide-react';
+import { Package, Plus, Search, Eye, Pencil, Trash2, X, CheckCircle2, Clock, Hash, User, Factory, Calendar, Settings, Briefcase, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+
+const ITEMS_PER_PAGE = 10;
+
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
+    if (totalPages <= 1) return null;
+    const getPageNumbers = () => {
+        const delta = 2, pages = [];
+        const left = Math.max(1, currentPage - delta);
+        const right = Math.min(totalPages, currentPage + delta);
+        if (left > 1) { pages.push(1); if (left > 2) pages.push('...'); }
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < totalPages) { if (right < totalPages - 1) pages.push('...'); pages.push(totalPages); }
+        return pages;
+    };
+    return (
+        <div className="flex items-center justify-between mt-6 px-1">
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">Page <span className="text-slate-700">{currentPage}</span> / {totalPages}</p>
+            <div className="flex items-center gap-1.5">
+                <button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage === 1} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronLeft size={16} strokeWidth={2.5} />
+                </button>
+                {getPageNumbers().map((page, idx) => page === '...' ? (
+                    <span key={`e-${idx}`} className="w-9 h-9 flex items-center justify-center text-slate-400 font-bold text-sm">···</span>
+                ) : (
+                    <button key={page} onClick={() => onPageChange(page)} className={`w-9 h-9 flex items-center justify-center rounded-xl text-sm font-black transition-all duration-200 shadow-sm border ${currentPage === page ? 'bg-slate-900 text-white border-slate-900 scale-105' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700'}`}>{page}</button>
+                ))}
+                <button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage === totalPages} className="w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-500 hover:bg-slate-900 hover:text-white hover:border-slate-900 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-slate-500 disabled:hover:border-slate-200 transition-all duration-200 shadow-sm">
+                    <ChevronRight size={16} strokeWidth={2.5} />
+                </button>
+            </div>
+        </div>
+    );
+};
 import { OrderService, CableService } from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import PageHeader from '../components/PageHeader';
@@ -50,6 +83,7 @@ const Orders = () => {
     const [loadingCables, setLoadingCables] = useState(false);
     const [editOrder, setEditOrder] = useState(null);
     const [deleteConfirm, setDeleteConfirm] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
     
     const [form, setForm] = useState({
         reference: '', client: '', numComd: '', giPros: '',
@@ -187,6 +221,15 @@ const Orders = () => {
         return matchesSearch && matchesStatus;
     });
 
+    useEffect(() => { setCurrentPage(1); }, [searchTerm, statusFilter]);
+
+    const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+    const paginatedOrders = filteredOrders.slice(
+        (currentPage - 1) * ITEMS_PER_PAGE,
+        currentPage * ITEMS_PER_PAGE
+    );
+    const handlePageChange = (page) => { setCurrentPage(page); window.scrollTo({ top: 0, behavior: 'smooth' }); };
+
     return (
         <div className="flex flex-col gap-6">
             <PageHeader 
@@ -259,7 +302,7 @@ const Orders = () => {
                                         <p className="text-sm text-slate-400 font-bold">Ajustez vos filtres ou lancez une nouvelle recherche</p>
                                     </td>
                                 </tr>
-                            ) : filteredOrders.map((order) => (
+                            ) : paginatedOrders.map((order) => (
                                 <tr key={order.id} 
                                     onClick={() => openDetails(order)}
                                     className="hover:bg-blue-50/40 transition-all cursor-pointer group/row">
@@ -293,14 +336,20 @@ const Orders = () => {
                                     </td>
                                     <td className="px-8 py-6"><StatusBadge status={order.statusDisplay || order.status} /></td>
                                     <td className="px-8 py-6" onClick={(e) => e.stopPropagation()}>
-                                        <div className="flex justify-end gap-3 opacity-40 group-hover/row:opacity-100 transition-all translate-x-4 group-hover/row:translate-x-0">
-                                            <button onClick={() => openEdit(order)} className="w-10 h-10 bg-white text-amber-500 rounded-[14px] border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white hover:shadow-lg hover:shadow-amber-200 transition-all active:scale-90">
-                                                <Pencil size={16} strokeWidth={2.5} />
-                                            </button>
-                                            <button onClick={() => setDeleteConfirm(order)} className="w-10 h-10 bg-white text-red-500 rounded-[14px] border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-200 transition-all active:scale-90">
-                                                <Trash2 size={16} strokeWidth={2.5} />
-                                            </button>
-                                        </div>
+                                        {(canEdit('orders') || canDelete('orders')) && (
+                                            <div className="flex justify-end gap-3 opacity-40 group-hover/row:opacity-100 transition-all translate-x-4 group-hover/row:translate-x-0">
+                                                {canEdit('orders') && (
+                                                    <button onClick={() => openEdit(order)} className="w-10 h-10 bg-white text-amber-500 rounded-[14px] border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white hover:shadow-lg hover:shadow-amber-200 transition-all active:scale-90">
+                                                        <Pencil size={16} strokeWidth={2.5} />
+                                                    </button>
+                                                )}
+                                                {canDelete('orders') && (
+                                                    <button onClick={() => setDeleteConfirm(order)} className="w-10 h-10 bg-white text-red-500 rounded-[14px] border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-200 transition-all active:scale-90">
+                                                        <Trash2 size={16} strokeWidth={2.5} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
                                     </td>
                                 </tr>
                             ))}
@@ -309,25 +358,45 @@ const Orders = () => {
                 </div>
             </div>
 
+            {/* Pagination */}
+            {!loading && filteredOrders.length > 0 && (
+                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={handlePageChange} />
+            )}
+
             {/* Details Modal */}
             {isDetailsOpen && selectedOrder && (
                 <div className="modal-overlay" onClick={closeDetails}>
                     <div className="modal-content !max-w-4xl" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-                            <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
-                                    <Package size={24} />
+                        
+                        {/* ── Header gradient ── */}
+                        <div
+                            style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)' }}
+                            className="relative px-8 py-6 overflow-hidden flex-shrink-0"
+                        >
+                            {/* decorative circles */}
+                            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white opacity-5" />
+                            <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white opacity-5" />
+
+                            <button
+                                onClick={closeDetails}
+                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all z-10"
+                            >
+                                <X size={15} strokeWidth={2.5} />
+                            </button>
+
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                                    <Package size={22} />
                                 </div>
                                 <div>
-                                    <h2 className="text-xl font-black text-slate-900 uppercase">
+                                    <h2 className="text-xl font-black text-white tracking-tight" style={{color: 'white'}}>
                                         {isCableListView ? 'Détails des Câbles' : 'Dossier de Fabrication'}
                                     </h2>
-                                    <p className="text-sm font-bold text-blue-600 tracking-widest uppercase">OF : {selectedOrder.numeroOF || selectedOrder.reference}</p>
+                                    <p className="text-sm font-semibold mt-0.5" style={{color: 'rgba(255,255,255,0.6)'}}>
+                                        OF : {selectedOrder.numeroOF || selectedOrder.reference}
+                                    </p>
                                 </div>
                             </div>
-                            <button onClick={closeDetails} className="p-2 hover:bg-slate-200 rounded-xl transition-colors">
-                                <X size={20} className="text-slate-500" />
-                            </button>
                         </div>
                         
                         <div className="p-8 overflow-y-auto custom-scrollbar max-h-[80vh]">
@@ -480,51 +549,76 @@ const Orders = () => {
             {isModalOpen && (
                 <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
                     <div className="modal-content !max-w-2xl" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-                            <h2 className="text-lg font-black text-slate-800 uppercase tracking-tight">
-                                {editOrder ? 'Mise à jour de l\'Ordre' : 'Nouvel Ordre de Fabrication'}
-                            </h2>
-                            <button onClick={() => setIsModalOpen(false)} className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
-                                <X size={20} className="text-slate-400" />
+
+                        {/* ── Header gradient ── */}
+                        <div
+                            style={{ background: 'linear-gradient(135deg, #1e1b4b 0%, #312e81 60%, #4338ca 100%)' }}
+                            className="relative px-8 py-6 overflow-hidden flex-shrink-0"
+                        >
+                            {/* decorative circles */}
+                            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white opacity-5" />
+                            <div className="absolute -bottom-8 -left-8 w-28 h-28 rounded-full bg-white opacity-5" />
+
+                            <button
+                                onClick={() => setIsModalOpen(false)}
+                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all z-10"
+                            >
+                                <X size={15} strokeWidth={2.5} />
                             </button>
+
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                                    {editOrder ? <Pencil size={22} /> : <Package size={22} />}
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-white tracking-tight" style={{color: 'white'}}>
+                                        {editOrder ? 'Mise à jour de l\'Ordre' : 'Nouvel Ordre de Fabrication'}
+                                    </h2>
+                                    <p className="text-sm font-semibold mt-0.5" style={{color: 'rgba(255,255,255,0.6)'}}>
+                                        {editOrder ? 'Modifier les informations du dossier' : 'Lancer un nouveau cycle de production'}
+                                    </p>
+                                </div>
+                            </div>
                         </div>
-                        <div className="overflow-y-auto custom-scrollbar max-h-[80vh]">
-                            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+
+                        {/* ── Body ── */}
+                        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+                            <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Référence OF (numeroOF)</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Référence OF (numeroOF)</label>
                                         <input type="text" required placeholder="Ex: OF-2026-001" className="input-field" value={form.reference} onChange={(e) => setForm({ ...form, reference: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Client</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Client</label>
                                         <input type="text" required placeholder="Ex: STEG" className="input-field" value={form.client} onChange={(e) => setForm({ ...form, client: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">N° Commande (NumComd)</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">N° Commande (NumComd)</label>
                                         <input type="text" placeholder="Ex: CMD-8890" className="input-field" value={form.numComd} onChange={(e) => setForm({ ...form, numComd: e.target.value })} />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">GI PROS</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">GI PROS</label>
                                         <input type="text" placeholder="Responsable ou Processus" className="input-field" value={form.giPros} onChange={(e) => setForm({ ...form, giPros: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Quantité (QTA)</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Quantité (QTA)</label>
                                         <input type="number" required min="1" placeholder="Ex: 500" className="input-field" value={form.quantity} onChange={(e) => setForm({ ...form, quantity: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Ligne de Production</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Ligne de Production</label>
                                         <input type="text" placeholder="Ex: Ligne 1" className="input-field" value={form.ligne} onChange={(e) => setForm({ ...form, ligne: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Date Lancement</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Date Lancement</label>
                                         <input type="date" required className="input-field" value={form.dateDebut} onChange={(e) => setForm({ ...form, dateDebut: e.target.value })} />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Date Livraison (DateLiv)</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Date Livraison (DateLiv)</label>
                                         <input type="date" className="input-field" value={form.dateFin} onChange={(e) => setForm({ ...form, dateFin: e.target.value })} />
                                     </div>
                                     <div className="md:col-span-2">
-                                        <label className="block text-sm font-black text-slate-500 uppercase tracking-widest mb-2">Statut Actuel</label>
+                                        <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Statut Actuel</label>
                                         <CustomSelect
                                             options={[
                                                 { value: 'En attente', label: 'En Attente' },
@@ -537,12 +631,26 @@ const Orders = () => {
                                         />
                                     </div>
                                 </div>
-                                <div className="flex gap-4 pt-4 border-t border-slate-100">
-                                    <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 btn-secondary py-3">Annuler</button>
-                                    <button type="submit" className="flex-1 btn-primary py-3 shadow-lg shadow-blue-200">{editOrder ? 'Mettre à jour' : 'Lancer la Production'}</button>
-                                </div>
-                            </form>
-                        </div>
+                            </div>
+
+                            {/* ── Footer buttons ── */}
+                            <div className="flex gap-3 px-8 py-5 border-t border-slate-100 flex-shrink-0 bg-slate-50/50">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsModalOpen(false)}
+                                    className="flex-1 py-3.5 px-6 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-black text-sm hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
+                                >
+                                    Annuler
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="flex-2 flex-1 py-3.5 px-6 rounded-2xl font-black text-sm text-white flex items-center justify-center gap-2 transition-all active:scale-95"
+                                    style={{ background: 'linear-gradient(135deg, #312e81 0%, #4338ca 100%)', boxShadow: '0 8px 20px -4px rgba(67,56,202,0.4)' }}
+                                >
+                                    {editOrder ? 'Enregistrer les modifications' : 'Lancer la Production'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
@@ -550,19 +658,46 @@ const Orders = () => {
             {/* Delete Confirmation */}
             {deleteConfirm && (
                 <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
-                    <div className="modal-content !max-w-sm" onClick={(e) => e.stopPropagation()}>
-                        <div className="p-8 text-center">
-                            <div className="w-16 h-16 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                                <Trash2 size={32} />
+                    <div className="modal-content !max-w-md" onClick={(e) => e.stopPropagation()}>
+                        <div
+                            style={{ background: 'linear-gradient(135deg, #7f1d1d 0%, #b91c1c 100%)' }}
+                            className="relative px-8 py-6 overflow-hidden flex-shrink-0"
+                        >
+                            <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white opacity-5" />
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 text-white border border-white/15 transition-all z-10"
+                            >
+                                <X size={15} />
+                            </button>
+                            <div className="flex items-center gap-4 relative z-10">
+                                <div className="w-12 h-12 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-white">
+                                    <Trash2 size={22} />
+                                </div>
+                                <div>
+                                    <h2 className="text-xl font-black text-white tracking-tight" style={{color: 'white'}}>Supprimer l'ordre ?</h2>
+                                    <p className="text-sm font-semibold mt-0.5" style={{color: 'rgba(255,255,255,0.6)'}}>Action irréversible</p>
+                                </div>
                             </div>
-                            <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">Supprimer l'ordre ?</h3>
-                            <p className="text-sm text-slate-500 mb-8 leading-relaxed">
-                                Cette action est irréversible. L'ordre <strong>{deleteConfirm.reference}</strong> sera effacé définitivement.
+                        </div>
+                        <div className="px-8 py-6">
+                            <p className="text-slate-600 font-semibold text-base leading-relaxed">
+                                L'ordre <strong className="text-slate-900">{deleteConfirm.reference}</strong> sera supprimé définitivement ainsi que toutes les données associées.
                             </p>
-                            <div className="flex gap-3">
-                                <button onClick={() => setDeleteConfirm(null)} className="flex-1 btn-secondary">Conserver</button>
-                                <button onClick={handleDelete} className="flex-1 btn-danger">Supprimer OF</button>
-                            </div>
+                        </div>
+                        <div className="flex gap-3 px-8 py-5 border-t border-slate-100 flex-shrink-0 bg-slate-50/50">
+                            <button
+                                onClick={() => setDeleteConfirm(null)}
+                                className="flex-1 py-3.5 px-6 rounded-2xl border-2 border-slate-200 bg-white text-slate-700 font-black text-sm hover:border-slate-300 hover:bg-slate-50 transition-all active:scale-95"
+                            >
+                                Conserver
+                            </button>
+                            <button
+                                onClick={handleDelete}
+                                className="flex-1 py-3.5 px-6 rounded-2xl font-black text-sm text-white bg-red-600 hover:bg-red-700 transition-all active:scale-95 shadow-lg shadow-red-500/20"
+                            >
+                                Supprimer OF
+                            </button>
                         </div>
                     </div>
                 </div>

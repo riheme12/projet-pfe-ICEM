@@ -7,10 +7,10 @@ describe('User Model', () => {
         expect(parseUserRole('Technicien')).toBe('technician');
     });
 
-    it('should default to operator for invalid roles', () => {
-        expect(parseUserRole('invalid_role')).toBe('operator');
-        expect(parseUserRole('')).toBe('operator');
-        expect(parseUserRole(null)).toBe('operator');
+    it('should default to technician for invalid roles', () => {
+        expect(parseUserRole('invalid_role')).toBe('technician');
+        expect(parseUserRole('')).toBe('technician');
+        expect(parseUserRole(null)).toBe('technician');
     });
 
     it('should create a User object from JSON', () => {
