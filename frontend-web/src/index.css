@@ -46,7 +46,7 @@ body {
   color: #0f172a;
 }
 
-h1, h2, h3, h4 { color: #0f172a; margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+h1, h2, h3, h4 { color: #0f172a; margin: 0; font-weight: 800; letter-spacing: 0.03em; word-spacing: 0.18em; }
 p, span, td, th, label, li { color: #1e293b; } /* Dark slate for secondary text */
 
 /* ═══════════════════════════════════════════

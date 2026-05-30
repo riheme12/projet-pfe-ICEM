@@ -237,7 +237,7 @@ const InspectionDetails = () => {
                         onClick={handleExportPDF}
                         className="px-6 py-3 bg-white text-indigo-600 font-black text-sm uppercase tracking-widest rounded-2xl border border-indigo-100 hover:bg-indigo-50 transition-all shadow-sm active:scale-95 flex items-center gap-2"
                     >
-                        <ImageIcon size={16} /> Exporter Rapport
+                        <ImageIcon size={16} /> Exporter les détails
                     </button>
                     {isConforme ? (
                         <button
@@ -280,8 +280,8 @@ const InspectionDetails = () => {
                             <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Certification Qualité ICEM</span>
                         </div>
                         
-                        <h1 className="text-5xl font-black text-slate-900 tracking-tighter mb-6">
-                            Rapport d'Inspection <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">#{inspection?.reference || id.substring(0, 8)}</span>
+                        <h1 className="text-5xl font-black text-slate-900 tracking-normal mb-6">
+                            {anomalies.length > 0 ? "Détails de l'anomalie" : "Détails de l'inspection"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">#{inspection?.reference || id.substring(0, 8)}</span>
                         </h1>
                         
                         <div className="flex flex-wrap gap-6">
@@ -330,7 +330,7 @@ const InspectionDetails = () => {
             <div className="space-y-8">
                 <div className="flex items-center gap-4 px-4">
                     <div className="w-1.5 h-8 bg-indigo-600 rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)]"></div>
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tight">Analyse Diagnostique</h2>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-normal">Analyse Diagnostique</h2>
                 </div>
 
                 {anomalies.length > 0 ? (
@@ -381,7 +381,7 @@ const InspectionDetails = () => {
                                     <div>
                                         <div className="flex justify-between items-start gap-4 mb-8">
                                             <div>
-                                                <h3 className="text-3xl font-black text-slate-900 capitalize tracking-tight mb-2">{anomaly.type}</h3>
+                                                <h3 className="text-3xl font-black text-slate-900 capitalize tracking-normal mb-2">{anomaly.type}</h3>
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
                                                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Zone: {anomaly.location || "Module-A"}</p>
@@ -422,7 +422,7 @@ const InspectionDetails = () => {
                             <ShieldCheck size={56} strokeWidth={2.5} />
                         </div>
                         <div className="space-y-3">
-                            <h3 className="text-4xl font-black text-slate-900 uppercase tracking-tight">Conformité Absolue</h3>
+                            <h3 className="text-4xl font-black text-slate-900 uppercase tracking-normal">Conformité Absolue</h3>
                             <p className="text-lg font-bold text-slate-500 max-w-md mx-auto leading-relaxed">
                                 Le cycle d'inspection est terminé. Aucune déviation par rapport aux standards ICEM n'a été identifiée.
                             </p>

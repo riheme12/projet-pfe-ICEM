@@ -82,7 +82,7 @@ const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend, col
                 </div>
                 <p className={`text-sm font-black ${theme.textAccent} uppercase tracking-widest mb-1`}>{label}</p>
                 <div className="flex items-baseline gap-1">
-                    <h3 className={`text-3xl font-black ${theme.value} tracking-tight`}>
+                    <h3 className={`text-3xl font-black ${theme.value} tracking-normal`}>
                         {value}
                     </h3>
                     {unit && <span className={`text-sm font-black ${theme.textAccent} uppercase tracking-widest`}>{unit}</span>}
@@ -101,7 +101,7 @@ const MiniStat = ({ icon, label, value, color }) => (
         </div>
         <div>
             <p className="text-sm font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{label}</p>
-            <p className="text-xl font-black text-slate-900 tracking-tight">{value}</p>
+            <p className="text-xl font-black text-slate-900 tracking-normal">{value}</p>
         </div>
     </div>
 );
@@ -279,7 +279,7 @@ const Dashboard = () => {
                         </div>
                     </div>
                     <div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm">Tableau de Bord</h1>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-normal drop-shadow-sm">Tableau de Bord</h1>
                         <div className="flex items-center gap-3 mt-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse"></div>
                             <p className="text-slate-500 font-bold text-sm tracking-widest uppercase">Supervision Centrale en Temps Réel</p>

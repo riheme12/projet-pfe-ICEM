@@ -184,7 +184,7 @@ const Alerts = () => {
 
                                     <div className="min-w-0 flex-1">
                                         <div className="flex items-center gap-3 mb-2 flex-wrap">
-                                            <h3 className="text-[19px] font-black text-slate-900 capitalize tracking-tight group-hover:text-blue-600 transition-colors">{alert.type}</h3>
+                                            <h3 className="text-[19px] font-black text-slate-900 capitalize tracking-normal group-hover:text-blue-600 transition-colors">{alert.type}</h3>
                                             {isTraitee ? (
                                                 <span className="px-3 py-1 bg-emerald-500 text-white text-sm font-black uppercase rounded-lg shadow-sm shadow-emerald-200 tracking-widest border border-emerald-400/20">RÉSOLU</span>
                                             ) : isCritical && (
@@ -238,7 +238,7 @@ const Alerts = () => {
                         <div className="w-24 h-24 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-500 mb-6 shadow-inner">
                             <Shield size={48} />
                         </div>
-                        <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-tight">Système de Surveillance OK</h3>
+                        <h3 className="text-xl font-black text-slate-900 mb-2 uppercase tracking-normal">Système de Surveillance OK</h3>
                         <p className="text-slate-400 font-bold max-w-sm mx-auto">Aucune anomalie détectée pour le moment. Votre chaîne de production est conforme aux standards qualité.</p>
                     </div>
                 )}
@@ -274,7 +274,7 @@ const Alerts = () => {
                                             Confiance {selectedAlert.confidence ? (selectedAlert.confidence * 100).toFixed(0) : 100}%
                                         </span>
                                     </div>
-                                    <h2 className="text-4xl font-black capitalize leading-[1.1] tracking-tight text-white drop-shadow-lg">
+                                    <h2 className="text-4xl font-black capitalize leading-[1.1] tracking-normal text-white drop-shadow-lg">
                                         {selectedAlert.type}
                                     </h2>
                                 </div>
@@ -303,7 +303,7 @@ const Alerts = () => {
                                                 Testeur Automatique
                                             </span>
                                         </div>
-                                        <h2 className="text-4xl font-black capitalize leading-[1.1] tracking-tight text-slate-900 pr-16 drop-shadow-sm">
+                                        <h2 className="text-4xl font-black capitalize leading-[1.1] tracking-normal text-slate-900 pr-16 drop-shadow-sm">
                                             {selectedAlert.type}
                                         </h2>
                                         
@@ -346,7 +346,7 @@ const Alerts = () => {
                                                 <div className="w-12 h-12 rounded-2xl bg-white shadow-sm border border-blue-100 flex items-center justify-center text-blue-600 font-black text-lg">
                                                     {(selectedAlert.technicianName || 'IA').substring(0, 1).toUpperCase()}
                                                 </div>
-                                                <p className="text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-tight drop-shadow-sm">{selectedAlert.technicianName || 'Surveillance IA Automatique'}</p>
+                                                <p className="text-2xl font-black bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent tracking-normal drop-shadow-sm">{selectedAlert.technicianName || 'Surveillance IA Automatique'}</p>
                                             </div>
                                         </div>
                                     </div>

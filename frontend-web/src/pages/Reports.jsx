@@ -662,7 +662,7 @@ const Reports = () => {
                         </div>
                     </div>
                     <div>
-                        <h1 className="text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm">Analytique Stratégique</h1>
+                        <h1 className="text-4xl font-black text-slate-900 tracking-normal drop-shadow-sm">Rapports</h1>
                         <div className="flex items-center gap-3 mt-2">
                             <div className="w-2 h-2 rounded-full bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.6)] animate-pulse"></div>
                             <p className="text-slate-500 font-bold text-sm tracking-widest uppercase">Corporate Intelligence</p>
@@ -705,7 +705,7 @@ const Reports = () => {
                     <div className="bg-gradient-to-br from-white via-white to-indigo-50/20 p-10 rounded-[45px] border border-white shadow-2xl shadow-indigo-900/5">
                         <div className="flex items-center gap-3 mb-8 border-b border-slate-50 pb-6">
                             <ListFilter className="text-indigo-600" size={24} />
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Console de Filtrage Stratégique</h3>
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Console de Filtrage Stratégique</h3>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                             <div className="space-y-2">
@@ -756,7 +756,7 @@ const Reports = () => {
                                     <kpi.icon size={28} />
                                 </div>
                                 <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-2">{kpi.label}</p>
-                                <h3 className="text-4xl font-black text-slate-900 tracking-tight">{kpi.value}</h3>
+                                <h3 className="text-4xl font-black text-slate-900 tracking-normal">{kpi.value}</h3>
                             </div>
                         ))}
                     </div>
@@ -767,7 +767,7 @@ const Reports = () => {
                         <div className="bg-gradient-to-br from-white via-white to-indigo-50/20 p-12 rounded-[50px] border border-white shadow-2xl shadow-indigo-900/5">
                             <div className="flex items-center justify-between mb-10">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Analyse des Défauts</h3>
+                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Analyse des Défauts</h3>
                                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">Répartition par type d'anomalie</p>
                                 </div>
                                 <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center">
@@ -817,7 +817,7 @@ const Reports = () => {
                         <div className="bg-gradient-to-br from-white via-white to-indigo-50/20 p-12 rounded-[50px] border border-white shadow-2xl shadow-indigo-900/5">
                             <div className="flex items-center justify-between mb-10">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Performance Équipe</h3>
+                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Performance Équipe</h3>
                                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">Volume d'inspection par opérateur</p>
                                 </div>
                                 <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
@@ -844,7 +844,7 @@ const Reports = () => {
                     {/* Workforce Leaderboard Table */}
                     <div className="bg-gradient-to-br from-white to-slate-50/30 rounded-[50px] border border-white shadow-2xl shadow-indigo-900/10 overflow-hidden">
                         <div className="p-10 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Matrice de Performance Individuelle</h3>
+                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Matrice de Performance Individuelle</h3>
                             <Users className="text-slate-300" size={24} />
                         </div>
                         <div className="overflow-x-auto">

@@ -193,7 +193,7 @@ const Anomalies = () => {
                             className="flex items-center gap-2 px-6 py-2.5 text-sm font-black text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all shadow-sm"
                         >
                             <Download size={18} />
-                            Exporter Rapport
+                            Exporter les détails
                         </button>
                     )
                 }
@@ -275,7 +275,7 @@ const Anomalies = () => {
 
                                 <div className="px-6 pb-6 flex-1 flex flex-col">
                                     <div className="flex justify-between items-start gap-4 mb-3">
-                                        <h3 className="text-xl font-black text-slate-900 capitalize tracking-tight group-hover:text-blue-700 transition-colors">{anomaly.type}</h3>
+                                        <h3 className="text-xl font-black text-slate-900 capitalize tracking-normal group-hover:text-blue-700 transition-colors">{anomaly.type}</h3>
                                         <SeverityBadge severity={anomaly.severity} />
                                     </div>
 
@@ -328,7 +328,7 @@ const Anomalies = () => {
                                             className="w-full flex items-center justify-center gap-2 py-3.5 text-[13px] font-black text-slate-700 bg-white hover:bg-slate-900 hover:text-white rounded-2xl transition-all border border-slate-200 shadow-sm active:scale-95"
                                         >
                                             <Eye size={18} />
-                                            Détails de l'inspection
+                                            Détails de l'anomalie
                                         </button>
                                     </div>
                                 </div>
@@ -341,7 +341,7 @@ const Anomalies = () => {
                             <CheckCircle size={40} />
                         </div>
                         <div>
-                            <h3 className="text-2xl font-black text-slate-900 mb-1 uppercase tracking-tight">Zone de Sécurité</h3>
+                            <h3 className="text-2xl font-black text-slate-900 mb-1 uppercase tracking-normal">Zone de Sécurité</h3>
                             <p className="text-slate-500 font-bold max-w-xs mx-auto">Aucune anomalie détectée. La qualité de production est conforme aux standards ICEM.</p>
                         </div>
                     </div>

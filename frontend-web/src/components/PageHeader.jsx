@@ -24,7 +24,7 @@ const PageHeader = ({ title, subtitle, icon, actions, badge }) => {
                     
                     <div className="flex flex-col">
                         <div className="flex items-center gap-5 mb-2">
-                            <h1 className="text-4xl font-black text-slate-900 tracking-tighter drop-shadow-sm">{title}</h1>
+                            <h1 className="text-4xl font-black text-slate-900 tracking-normal drop-shadow-sm">{title}</h1>
                             {badge && (
                                 <span className={`text-sm font-black px-4 py-2 rounded-2xl uppercase tracking-[0.2em] shadow-sm ${badge.color || 'bg-blue-100 text-blue-600 border border-blue-200'}`}>
                                     {badge.label}

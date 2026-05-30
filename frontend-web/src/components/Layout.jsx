@@ -12,7 +12,7 @@ const PAGE_TITLES = {
     '/orders': 'Suivi de Production',
     '/anomalies': 'Contrôle Qualité',
     '/alerts': 'Centre d\'Alertes',
-    '/reports': 'Rapports Analytiques',
+    '/reports': 'Rapports',
     '/users': 'Gestion d\'Équipe',
     '/profile': 'Profil Utilisateur',
 };
@@ -78,7 +78,7 @@ const Layout = () => {
                         <div className="w-1.5 h-12 bg-gradient-to-b from-blue-600 to-indigo-700 rounded-full shadow-[0_0_20px_rgba(37,99,235,0.4)]"></div>
                         <div className="flex flex-col">
                             <span className="text-sm font-black text-blue-500 uppercase tracking-[0.4em] mb-1.5 drop-shadow-sm">Supervision Industrielle</span>
-                            <h2 className="text-3xl font-black tracking-tighter flex items-center gap-3">
+                            <h2 className="text-3xl font-black tracking-normal flex items-center gap-3">
                                 <span className="bg-gradient-to-r from-[#1e1b4b] to-[#312e81] bg-clip-text text-transparent">ICEM</span>
                                 <span className="text-slate-300 font-light tracking-widest">|</span>
                                 <span className="bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Contrôle Qualité</span>
