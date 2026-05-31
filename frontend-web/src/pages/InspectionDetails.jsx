@@ -1,11 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Calendar, User, Package, Image as ImageIcon, X, ChevronDown } from 'lucide-react';
-import { InspectionService, AnomalyService, OrderService } from '../services/api';
+import { InspectionService, AnomalyService, OrderService, UserService } from '../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '../hooks/useAuth';
 import toast from 'react-hot-toast';
+import logo from '../assets/logo.png';
+
+const urlToBase64 = async (url) => {
+    if (!url) return null;
+    if (url.startsWith('data:image')) return url;
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (err) {
+        console.error("Erreur conversion image base64:", err);
+        return null;
+    }
+};
+
 
 const InspectionDetails = () => {
     const { id } = useParams();
@@ -13,6 +33,7 @@ const InspectionDetails = () => {
     const { user, canEdit } = useAuth();
     const [inspection, setInspection] = useState(null);
     const [anomalies, setAnomalies] = useState([]);
+    const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(null);
 
@@ -20,11 +41,14 @@ const InspectionDetails = () => {
         const fetchDetails = async () => {
             try {
                 // Inspection in web context is actually a Cable object
-                const insRes = await InspectionService.getById(id);
+                const [insRes, anomRes, usersRes] = await Promise.all([
+                    InspectionService.getById(id),
+                    AnomalyService.getByCable(id),
+                    UserService.getAll(),
+                ]);
                 setInspection(insRes.data);
-
-                const anomRes = await AnomalyService.getByCable(id);
                 setAnomalies(anomRes.data || []);
+                setUsers(usersRes.data || []);
             } catch (error) {
                 console.error("Erreur détails", error);
             } finally {
@@ -58,149 +82,225 @@ const InspectionDetails = () => {
         try {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
+            const pageHeight = pdf.internal.pageSize.getHeight();
             
             // ─── 1. HEADER ───
-            pdf.setTextColor(30, 58, 138); // blue-900
-            pdf.setFontSize(14);
+            const logoBase64 = await urlToBase64(logo);
+            if (logoBase64) {
+                pdf.addImage(logoBase64, 'PNG', 15, 12, 11, 11);
+            }
+            const headerTextX = logoBase64 ? 28 : 15;
+            pdf.setTextColor(15, 23, 42); // slate-900
+            pdf.setFontSize(18);
             pdf.setFont('helvetica', 'bold');
-            pdf.text('ICEM QUALITY CONTROL', 15, 20);
-            pdf.setTextColor(100, 116, 139); // grey-500
+            pdf.text('ICEM', headerTextX, 18);
+            
+            pdf.setTextColor(100, 116, 139); // slate-500
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('Smart Quality Control System', headerTextX, 22.5);
+
+            // Right side of header
+            const techName = inspection?.technicianName || 'Inconnu';
+            const generatedDate = inspection?.inspectionDate || new Date();
+            const dateObj = new Date(generatedDate);
+            const dateText = dateObj.toLocaleDateString('fr-FR');
+            const timeText = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`Technicien : ${techName}`, pageWidth - 15, 15, { align: 'right' });
+            
+            pdf.setTextColor(100, 116, 139);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Date : ${dateText}`, pageWidth - 15, 19, { align: 'right' });
+            pdf.text(`Heure : ${timeText}`, pageWidth - 15, 23, { align: 'right' });
+
+            // Blue horizontal line under header
+            pdf.setDrawColor(37, 99, 235); // blue-600
+            pdf.setLineWidth(0.6);
+            pdf.line(15, 26, pageWidth - 15, 26);
+
+            // ─── 2. TITLE BANNER ───
+            pdf.setFillColor(15, 23, 42); // slate-900
+            pdf.rect(15, 31, pageWidth - 30, 9, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text("RAPPORT D'INSPECTION DÉTAILLÉ", pageWidth / 2, 36.8, { align: 'center' });
+
+            // Helper to draw section header
+            const drawSectionHeader = (title, y) => {
+                pdf.setFillColor(37, 99, 235); // blue-600
+                pdf.rect(15, y, 1.5, 7, 'F');
+                
+                pdf.setFillColor(239, 246, 255); // blue-50
+                pdf.rect(16.5, y, pageWidth - 31.5, 7, 'F');
+                
+                pdf.setTextColor(15, 23, 42);
+                pdf.setFontSize(8.5);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(title, 20, y + 4.8);
+            };
+
+            // ─── 3. SECTION 1: DÉTAILS DE L'INSPECTION ───
+            let currentY = 46;
+            drawSectionHeader("DÉTAILS DE L'INSPECTION", currentY);
+            currentY += 7;
+
+            // Details Container Box
+            const detailsHeight = 35;
+            pdf.setDrawColor(226, 232, 240); // slate-200
+            pdf.setLineWidth(0.3);
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(15, currentY + 3, pageWidth - 30, detailsHeight, 'FD');
+            
+            // Content inside Details Box
+            pdf.setTextColor(100, 116, 139);
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'bold');
+            
+            let fieldY = currentY + 9;
+            pdf.text('CÂBLE ID :', 20, fieldY);
+            pdf.text('ORDRE ID :', 20, fieldY + 6);
+            pdf.text('DATE :', 20, fieldY + 12);
+            pdf.text('VERDICT :', 20, fieldY + 18);
+            pdf.text('ANOMALIES :', 20, fieldY + 24);
+
+            const cleanText = (str) => {
+                if (!str) return 'N/A';
+                return str.replace(/&#x2F;/g, '/').replace(/&amp;/g, '&');
+            };
+
+            const cableIdVal = inspection?.reference || id || 'N/A';
+            const orderIdVal = cleanText(inspection?.orderId);
+            const dateVal = `${dateText} ${timeText}`;
+            const verdictVal = inspection?.status || 'Inconnu';
+            const anomaliesVal = String(anomalies.length || 0);
+
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(cableIdVal, 55, fieldY);
+            pdf.text(orderIdVal, 55, fieldY + 6);
+            pdf.text(dateVal, 55, fieldY + 12);
+            
+            const isConform = verdictVal === 'Conforme';
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(isConform ? 21 : 185, isConform ? 128 : 28, isConform ? 61 : 28);
+            pdf.text(verdictVal.toUpperCase(), 55, fieldY + 18);
+
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(anomaliesVal, 55, fieldY + 24);
+
+            currentY += detailsHeight + 8;
+
+            // ─── 4. SECTION 2: OBSERVATIONS TECHNIQUES ───
+            drawSectionHeader("OBSERVATIONS TECHNIQUES", currentY);
+            currentY += 7;
+
+            const obsHeight = 15;
+            pdf.setDrawColor(226, 232, 240);
+            pdf.setFillColor(255, 255, 255);
+            pdf.rect(15, currentY + 3, pageWidth - 30, obsHeight, 'FD');
+
+            pdf.setTextColor(15, 23, 42);
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'normal');
-            pdf.text('Système de Surveillance Industrielle IA', 15, 25);
+            
+            const noteText = inspection?.notes || (isConform 
+                ? "Inspection visuelle : aucune anomalie détectée."
+                : `Inspection visuelle avec ${anomaliesVal} défaut(s) détecté(s).`);
+            pdf.text(noteText, 20, currentY + 11);
 
-            const dateStr = inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString('fr-FR') : new Date().toLocaleString('fr-FR');
-            pdf.text(`Rapport généré le ${dateStr}`, pageWidth - 15, 20, { align: 'right' });
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('REF: FOR QUA 06 / V07', pageWidth - 15, 25, { align: 'right' });
+            currentY += obsHeight + 8;
 
-            // ─── 2. TITLE BOX ───
-            pdf.setFillColor(30, 58, 138);
-            pdf.roundedRect(15, 35, pageWidth - 30, 10, 1.5, 1.5, 'F');
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(11);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text("CERTIFICAT D'INSPECTION INTELLIGENTE", pageWidth / 2, 41.5, { align: 'center' });
+            // ─── 5. SECTION 3: PREUVE VISUELLE ───
+            const rawImgUrl = anomalies.length > 0 ? anomalies[0].imageUrl : null;
+            const imgUrl = await urlToBase64(rawImgUrl);
 
-            // ─── 3. SUMMARY BOX ───
-            pdf.setDrawColor(226, 232, 240);
-            pdf.roundedRect(15, 50, pageWidth - 30, 25, 2, 2, 'D');
+            if (imgUrl) {
+                drawSectionHeader("PREUVE VISUELLE", currentY);
+                currentY += 7;
 
-            pdf.setTextColor(148, 163, 184);
-            pdf.setFontSize(7);
-            pdf.text('TECHNICIEN :', 18, 56);
-            pdf.text('RÉFÉRENCE CÂBLE :', 18, 63);
-            pdf.text('ORDRE DE FABRICATION :', 18, 70);
+                const imgBoxHeight = 65;
+                pdf.setDrawColor(226, 232, 240);
+                pdf.setFillColor(255, 255, 255);
+                pdf.rect(15, currentY + 3, pageWidth - 30, imgBoxHeight, 'FD');
 
-            pdf.setTextColor(15, 23, 42);
-            pdf.setFontSize(8);
-            pdf.text(inspection?.technicianName || 'Inconnu', 50, 56);
-            pdf.text(inspection?.reference || id || 'N/A', 50, 63);
-            pdf.text(inspection?.orderId || 'N/A', 55, 70);
-
-            pdf.setDrawColor(226, 232, 240);
-            pdf.line(pageWidth / 2, 52, pageWidth / 2, 73);
-
-            pdf.setTextColor(148, 163, 184);
-            pdf.setFontSize(7);
-            pdf.text('NB ANOMALIES :', pageWidth / 2 + 5, 56);
-            pdf.setTextColor(15, 23, 42);
-            pdf.setFontSize(8);
-            pdf.text(String(anomalies.length || 0), pageWidth / 2 + 30, 56);
-
-            const isConform = inspection?.status === 'Conforme';
-            pdf.setFillColor(isConform ? 220 : 254, isConform ? 252 : 226, isConform ? 231 : 226); // green-100 or red-100
-            pdf.roundedRect(pageWidth / 2 + 5, 62, 40, 7, 1, 1, 'F');
-            pdf.setTextColor(isConform ? 20 : 153, isConform ? 83 : 27, isConform ? 45 : 27); // green-900 or red-900
-            pdf.setFontSize(8);
-            pdf.text(isConform ? 'CONFORME' : 'NON CONFORME', pageWidth / 2 + 25, 67, { align: 'center' });
-
-            let nextY = 85;
-
-            // ─── 4. IMAGE ───
-            const imgUrl = anomalies.length > 0 ? anomalies[0].imageUrl : null;
-
-            if (imgUrl && imgUrl.startsWith('data:image')) {
-                pdf.setTextColor(30, 58, 138);
-                pdf.setFontSize(9);
-                pdf.text("CAPTURE DE L'ANOMALIE (IA)", 15, nextY);
-                nextY += 5;
-                
                 try {
-                    // Center the image
-                    const imgWidth = 100;
-                    const imgHeight = 70;
+                    const imgWidth = 85;
+                    const imgHeight = 55;
                     const xPos = (pageWidth - imgWidth) / 2;
-                    pdf.addImage(imgUrl, 'JPEG', xPos, nextY, imgWidth, imgHeight);
-                    pdf.setDrawColor(203, 213, 225);
-                    pdf.roundedRect(xPos, nextY, imgWidth, imgHeight, 2, 2, 'D');
-                    nextY += imgHeight + 15;
+                    pdf.addImage(imgUrl, 'JPEG', xPos, currentY + 8, imgWidth, imgHeight);
                 } catch (e) {
-                    nextY += 10;
+                    console.error("Error adding anomaly image", e);
                 }
-            } else {
-                nextY += 5;
+
+                currentY += imgBoxHeight + 8;
             }
 
-            // ─── 5. DATA TABLE ───
-            pdf.setTextColor(30, 58, 138);
-            pdf.setFontSize(9);
-            pdf.text('DÉTAILS DU CONTRÔLE VISUEL (FOR QUA 06)', 15, nextY);
-            
-            const tableBody = anomalies.length > 0 
-                ? anomalies.map(a => [inspection?.reference || id || 'N/A', a.type || 'Défaut détecté', 'Non conforme'])
-                : [[inspection?.reference || id || 'N/A', 'OK', 'Conforme']];
+            // ─── 6. SECTION 4: SIGNATURES ───
+            drawSectionHeader("SIGNATURES DES RESPONSABLES", currentY);
+            currentY += 7;
 
-            autoTable(pdf, {
-                startY: nextY + 3,
-                head: [['N° SÉRIE', 'DÉFAUT(S)', 'STATUT']],
-                body: tableBody,
-                theme: 'grid',
-                headStyles: { fillColor: [241, 245, 249], textColor: [15, 23, 42], fontStyle: 'bold', fontSize: 8, halign: 'center' },
-                styles: { fontSize: 8, halign: 'center', cellPadding: 3 },
-                columnStyles: { 2: { fontStyle: 'bold' } },
-                didParseCell: (data) => {
-                    if (data.section === 'body' && data.column.index === 2) {
-                        data.cell.styles.textColor = data.cell.raw === 'Conforme' ? [21, 128, 61] : [185, 28, 28];
-                    }
-                }
-            });
-
-            // ─── 6. SIGNATURES ───
-            const sigY = pdf.lastAutoTable.finalY + 15;
-            pdf.setTextColor(71, 85, 105);
-            pdf.setFontSize(7);
-            pdf.setFont('helvetica', 'normal');
+            const sigBoxHeight = 30;
+            const sigWidth = 80;
             
-            pdf.text('SIGNATURE TECHNICIEN', 45, sigY, { align: 'center' });
+            // Left Box: Signature Technicien
+            pdf.setTextColor(100, 116, 139);
+            pdf.setFontSize(7.5);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('SIGNATURE TECHNICIEN', 15 + sigWidth/2, currentY + 2, { align: 'center' });
+            
             pdf.setDrawColor(226, 232, 240);
-            pdf.roundedRect(15, sigY + 3, 60, 25, 2, 2, 'D');
+            pdf.rect(15, currentY + 4, sigWidth, sigBoxHeight - 4, 'D');
 
-            // Find tech signature
-            const techSignature = inspection?.technicianId === user?.id ? user?.signatureUrl : null; // Basic fallback
+            const techUser = users.find(u => u.id === inspection?.technicianId || u.fullName === inspection?.technicianName);
+            const rawTechSig = inspection?.signatureUrl || techUser?.signatureUrl || (inspection?.technicianId === user?.id ? user?.signatureUrl : null);
+            const techSignature = await urlToBase64(rawTechSig);
             
-            if (techSignature && techSignature.startsWith('data:image')) {
+            if (techSignature) {
                 try {
-                    pdf.addImage(techSignature, 'PNG', 25, sigY + 5, 40, 20);
+                    pdf.addImage(techSignature, 'PNG', 20, currentY + 6, sigWidth - 10, sigBoxHeight - 8);
                 } catch (err) {}
             } else {
                 pdf.setTextColor(148, 163, 184);
                 pdf.setFont('helvetica', 'italic');
-                pdf.text(inspection?.technicianName || 'Signé', 45, sigY + 16, { align: 'center' });
+                pdf.text(techName, 15 + sigWidth/2, currentY + 16, { align: 'center' });
             }
 
-            pdf.setTextColor(71, 85, 105);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text('SIGNATURE RESPONSABLE QUALITÉ', pageWidth - 45, sigY, { align: 'center' });
-            pdf.roundedRect(pageWidth - 75, sigY + 3, 60, 25, 2, 2, 'D');
+            // Right Box: Signature Responsable Qualité
+            pdf.setTextColor(100, 116, 139);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('SIGNATURE RESPONSABLE QUALITÉ', pageWidth - 15 - sigWidth/2, currentY + 2, { align: 'center' });
+            
+            pdf.rect(pageWidth - 15 - sigWidth, currentY + 4, sigWidth, sigBoxHeight - 4, 'D');
+
+            const rawManagerSig = user?.signatureUrl;
+            const managerSignature = await urlToBase64(rawManagerSig);
+            
+            if (managerSignature) {
+                try {
+                    pdf.addImage(managerSignature, 'PNG', pageWidth - 10 - sigWidth, currentY + 6, sigWidth - 10, sigBoxHeight - 8);
+                } catch (err) {}
+            } else {
+                pdf.setTextColor(148, 163, 184);
+                pdf.setFont('helvetica', 'italic');
+                pdf.text(user?.fullName || 'Validé', pageWidth - 15 - sigWidth/2, currentY + 16, { align: 'center' });
+            }
 
             // ─── 7. FOOTER ───
             pdf.setDrawColor(226, 232, 240);
-            pdf.line(15, 285, pageWidth - 15, 285);
+            pdf.setLineWidth(0.3);
+            pdf.line(15, 280, pageWidth - 15, 280);
+            
             pdf.setTextColor(148, 163, 184);
-            pdf.setFontSize(6);
-            pdf.text('ICEM QA v2.0 — Certification IA Roboflow', 15, 289);
-            pdf.text('Page 1/1', pageWidth - 15, 289, { align: 'right' });
+            pdf.setFontSize(7);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text('Document généré automatiquement — ICEM AI © 2026', 15, 286);
+            pdf.text('Page 1/1', pageWidth - 15, 286, { align: 'right' });
 
             pdf.save(`Rapport_Inspection_${inspection?.reference || id}.pdf`);
             toast.success("Certificat d'inspection exporté avec succès", { id: toastId });

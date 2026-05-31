@@ -17,7 +17,7 @@ class AuthService {
   /// Authenticate user with email and password
   Future<User?> login(String email, String password, bool rememberMe) async {
     try {
-      final finalEmail = email.contains('@') ? email.trim() : '${email.trim()}@icem.app';
+      final finalEmail = email.trim();
       final userCredential = await _auth.signInWithEmailAndPassword(
         email: finalEmail,
         password: password,

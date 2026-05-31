@@ -6,6 +6,7 @@ import 'package:printing/printing.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:http/http.dart' as http;
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/manufacturing_order.dart';
 import '../models/report.dart';
 
@@ -38,8 +39,8 @@ class PdfExportService {
     } catch (_) {}
     return _PdfResources(
       logo: logo,
-      fontRegular: await PdfGoogleFonts.interRegular(),
-      fontBold: await PdfGoogleFonts.interBold(),
+      fontRegular: pw.Font.helvetica(),
+      fontBold: pw.Font.helveticaBold(),
     );
   }
 
@@ -388,45 +389,349 @@ class PdfExportService {
   // ═══════════════════════════════════════════════════════════════════════
   static Future<void> exportInspectionReport(Report report) async {
     final res = await _loadResources();
+    
+    // 1. Download images
     final anomalyImage = report.imageUrl != null ? await _downloadImage(report.imageUrl) : null;
+    final techSignatureImage = report.signatureUrl != null ? await _downloadImage(report.signatureUrl) : null;
+    
+    // Fetch manager/admin signature from Firestore
+    String? managerSignatureUrl;
+    String? managerName;
+    try {
+      final managersSnap = await FirebaseFirestore.instance
+          .collection('users')
+          .where('role', isEqualTo: 'manager')
+          .limit(1)
+          .get();
+      if (managersSnap.docs.isNotEmpty) {
+        managerSignatureUrl = managersSnap.docs.first.data()['signatureUrl'] as String?;
+        managerName = managersSnap.docs.first.data()['fullName'] as String?;
+      } else {
+        final adminsSnap = await FirebaseFirestore.instance
+            .collection('users')
+            .where('role', isEqualTo: 'admin')
+            .limit(1)
+            .get();
+        if (adminsSnap.docs.isNotEmpty) {
+          managerSignatureUrl = adminsSnap.docs.first.data()['signatureUrl'] as String?;
+          managerName = adminsSnap.docs.first.data()['fullName'] as String?;
+        }
+      }
+    } catch (_) {}
+    
+    final managerSignatureImage = managerSignatureUrl != null ? await _downloadImage(managerSignatureUrl) : null;
 
-    await _generatePdf(
-      title: 'Rapport d\'Inspection Détallé',
-      userName: 'Technicien : ${report.technicianName ?? "N/A"}',
-      fileName: 'Inspection_${report.cableId}_${DateFormat('yyyyMMdd').format(DateTime.now())}',
-      res: res,
-      signatureUrl: report.signatureUrl,
-      contentBuilder: () => [
-        _section('DÉTAILS DE L\'INSPECTION'),
-        pw.SizedBox(height: 10),
-        _infoGrid([
-          ['CÂBLE ID', report.cableId],
-          ['ORDRE ID', report.orderId],
-          ['DATE', DateFormat('dd/MM/yyyy HH:mm').format(report.generatedAt)],
-          ['VERDICT', report.conformityStatus],
-          ['ANOMALIES', '${report.anomaliesCount}'],
-        ]),
-        pw.SizedBox(height: 24),
-        if (report.notes != null && report.notes!.isNotEmpty) ...[
-          _section('OBSERVATIONS TECHNIQUES'),
-          pw.SizedBox(height: 10),
-          pw.Container(
-            padding: const pw.EdgeInsets.all(12),
-            decoration: pw.BoxDecoration(border: pw.Border.all(color: PdfColors.grey200)),
-            child: pw.Text(report.notes!, style: const pw.TextStyle(fontSize: 9)),
-          ),
-          pw.SizedBox(height: 24),
-        ],
-        if (anomalyImage != null) ...[
-          _section('PREUVE VISUELLE'),
-          pw.SizedBox(height: 10),
-          pw.Center(
+    final pdf = pw.Document();
+    
+    final dateOnlyStr = DateFormat('dd/MM/yyyy').format(report.generatedAt);
+    final timeOnlyStr = DateFormat('HH:mm').format(report.generatedAt);
+    final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(report.generatedAt);
+    final isConform = report.conformityStatus == 'Conforme';
+
+    // Helper for Section Headers
+    pw.Widget buildSectionHeader(String title) {
+      return pw.Row(
+        children: [
+          pw.Container(width: 3, height: 20, color: const PdfColor.fromInt(0xFF2563EB)),
+          pw.Expanded(
             child: pw.Container(
-              height: 200,
-              child: pw.Image(anomalyImage, fit: pw.BoxFit.contain),
+              padding: const pw.EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+              color: const PdfColor.fromInt(0xFFEFF6FF),
+              child: pw.Text(
+                title, 
+                style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF0F172A)),
+              ),
             ),
           ),
         ],
+      );
+    }
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        margin: const pw.EdgeInsets.symmetric(horizontal: 40, vertical: 30),
+        theme: pw.ThemeData.withFont(
+          base: res.fontRegular,
+          bold: res.fontBold,
+        ),
+        build: (context) => [
+          // ─── 1. HEADER ───
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              pw.Row(
+                children: [
+                  if (res.logo != null)
+                    pw.Container(
+                      width: 40,
+                      height: 40,
+                      margin: const pw.EdgeInsets.only(right: 12),
+                      child: pw.Image(res.logo!),
+                    ),
+                  pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'ICEM', 
+                        style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF0F172A)),
+                      ),
+                      pw.Text(
+                        'Smart Quality Control System', 
+                        style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.end,
+                children: [
+                  pw.Text(
+                    'Technicien : ${report.technicianName ?? "Inconnu"}', 
+                    style: pw.TextStyle(fontSize: 9, fontWeight: pw.FontWeight.bold, color: const PdfColor.fromInt(0xFF0F172A)),
+                  ),
+                  pw.Text('Date : $dateOnlyStr', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+                  pw.Text('Heure : $timeOnlyStr', style: const pw.TextStyle(fontSize: 8, color: PdfColors.grey600)),
+                ],
+              ),
+            ],
+          ),
+          pw.SizedBox(height: 8),
+          // Blue separation line
+          pw.Container(
+            height: 2,
+            color: const PdfColor.fromInt(0xFF2563EB),
+          ),
+          pw.SizedBox(height: 16),
+          
+          // ─── 2. TITLE BANNER ───
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.symmetric(vertical: 10),
+            color: const PdfColor.fromInt(0xFF0F172A),
+            child: pw.Center(
+              child: pw.Text(
+                'RAPPORT D\'INSPECTION DÉTAILLÉ',
+                style: pw.TextStyle(color: PdfColors.white, fontSize: 12, fontWeight: pw.FontWeight.bold, letterSpacing: 1.5),
+              ),
+            ),
+          ),
+          pw.SizedBox(height: 24),
+          
+          // ─── 3. SECTION 1: DÉTAILS DE L'INSPECTION ───
+          buildSectionHeader('DÉTAILS DE L\'INSPECTION'),
+          pw.SizedBox(height: 8),
+          
+          // Details Container
+          pw.Container(
+            padding: const pw.EdgeInsets.all(14),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+              color: PdfColors.white,
+            ),
+            child: pw.Column(
+              children: [
+                _buildDetailsRow('CÂBLE ID', report.cableId),
+                pw.SizedBox(height: 6),
+                _buildDetailsRow('ORDRE ID', report.orderId.replaceAll('&#x2F;', '/')),
+                pw.SizedBox(height: 6),
+                _buildDetailsRow('DATE', dateStr),
+                pw.SizedBox(height: 6),
+                _buildVerdictRow('VERDICT', report.conformityStatus, isConform),
+                pw.SizedBox(height: 6),
+                _buildDetailsRow('ANOMALIES', '${report.anomaliesCount}'),
+              ],
+            ),
+          ),
+          pw.SizedBox(height: 24),
+          
+          // ─── 4. SECTION 2: OBSERVATIONS TECHNIQUES ───
+          buildSectionHeader('OBSERVATIONS TECHNIQUES'),
+          pw.SizedBox(height: 8),
+          
+          // Observations Box
+          pw.Container(
+            width: double.infinity,
+            padding: const pw.EdgeInsets.all(14),
+            decoration: pw.BoxDecoration(
+              border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+              color: PdfColors.white,
+            ),
+            child: pw.Text(
+              report.notes ?? (isConform
+                  ? 'Inspection visuelle : aucune anomalie détectée.'
+                  : 'Inspection visuelle avec ${report.anomaliesCount} défaut(s) détecté(s).'),
+              style: const pw.TextStyle(fontSize: 9),
+            ),
+          ),
+          pw.SizedBox(height: 24),
+          
+          // ─── 5. SECTION 3: PREUVE VISUELLE (si anomalie) ───
+          if (anomalyImage != null) ...[
+            buildSectionHeader('PREUVE VISUELLE'),
+            pw.SizedBox(height: 8),
+            pw.Container(
+              width: double.infinity,
+              height: 180,
+              padding: const pw.EdgeInsets.all(10),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                color: PdfColors.white,
+              ),
+              child: pw.Center(
+                child: pw.Image(anomalyImage, fit: pw.BoxFit.contain),
+              ),
+            ),
+            pw.SizedBox(height: 24),
+          ],
+          
+          // ─── 6. SECTION 4: SIGNATURES ───
+          buildSectionHeader('SIGNATURES DES RESPONSABLES'),
+          pw.SizedBox(height: 8),
+          
+          pw.Row(
+            mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+            children: [
+              // Technician Box
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    'SIGNATURE TECHNICIEN', 
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Container(
+                    width: 180,
+                    height: 50,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                      color: PdfColors.white,
+                    ),
+                    child: techSignatureImage != null
+                        ? pw.Padding(
+                            padding: const pw.EdgeInsets.all(4),
+                            child: pw.Image(techSignatureImage, fit: pw.BoxFit.contain),
+                          )
+                        : pw.Center(
+                            child: pw.Text(
+                              report.technicianName ?? 'Signé',
+                              style: pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic, color: PdfColors.grey500),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+              // Manager Box
+              pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.center,
+                children: [
+                  pw.Text(
+                    'SIGNATURE RESPONSABLE QUALITÉ', 
+                    style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey700),
+                  ),
+                  pw.SizedBox(height: 6),
+                  pw.Container(
+                    width: 180,
+                    height: 50,
+                    decoration: pw.BoxDecoration(
+                      border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                      color: PdfColors.white,
+                    ),
+                    child: managerSignatureImage != null
+                        ? pw.Padding(
+                            padding: const pw.EdgeInsets.all(4),
+                            child: pw.Image(managerSignatureImage, fit: pw.BoxFit.contain),
+                          )
+                        : pw.Center(
+                            child: pw.Text(
+                              managerName ?? 'Validé',
+                              style: pw.TextStyle(fontSize: 9, fontStyle: pw.FontStyle.italic, color: PdfColors.grey500),
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          pw.Spacer(),
+          
+          // ─── 7. FOOTER ───
+          pw.Column(
+            children: [
+              pw.Container(
+                height: 0.5,
+                color: PdfColors.grey300,
+              ),
+              pw.SizedBox(height: 6),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Document généré automatiquement — ICEM AI © 2026', 
+                    style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey500),
+                  ),
+                  pw.Text(
+                    'Page 1 / 1', 
+                    style: const pw.TextStyle(fontSize: 7, color: PdfColors.grey500),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+
+    await Printing.layoutPdf(
+      onLayout: (format) async => pdf.save(),
+      name: 'Rapport_ICEM_${report.cableId}_${DateFormat('yyyyMMdd').format(DateTime.now())}.pdf',
+    );
+  }
+
+  // Helper row builder inside details box
+  static pw.Widget _buildDetailsRow(String label, String value) {
+    return pw.Row(
+      children: [
+        pw.SizedBox(
+          width: 120,
+          child: pw.Text(
+            '$label :', 
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600),
+          ),
+        ),
+        pw.Expanded(
+          child: pw.Text(
+            value,
+            style: const pw.TextStyle(fontSize: 9, color: PdfColors.black),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Helper row builder for status verdict with custom color
+  static pw.Widget _buildVerdictRow(String label, String value, bool isConform) {
+    return pw.Row(
+      children: [
+        pw.SizedBox(
+          width: 120,
+          child: pw.Text(
+            '$label :', 
+            style: pw.TextStyle(fontSize: 8, fontWeight: pw.FontWeight.bold, color: PdfColors.grey600),
+          ),
+        ),
+        pw.Expanded(
+          child: pw.Text(
+            value.toUpperCase(),
+            style: pw.TextStyle(
+              fontSize: 9, 
+              fontWeight: pw.FontWeight.bold, 
+              color: isConform ? PdfColors.green900 : PdfColors.red900,
+            ),
+          ),
+        ),
       ],
     );
   }
