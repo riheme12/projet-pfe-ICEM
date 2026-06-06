@@ -10,8 +10,27 @@ import {
 } from 'recharts';
 import { db } from '../services/firebase';
 import { collection, onSnapshot, query, orderBy, limit } from 'firebase/firestore';
-import PageHeader from '../components/PageHeader';
+import html2canvas from 'html2canvas';
 import toast, { Toaster } from 'react-hot-toast';
+import logo from '../assets/logo.png';
+
+const urlToBase64 = async (url) => {
+    if (!url) return null;
+    if (url.startsWith('data:image')) return url;
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    } catch (err) {
+        console.error("Erreur conversion image base64:", err);
+        return null;
+    }
+};
 
 const StatCard = ({ label, value, unit, subtitle, icon, hero = false, trend, color = 'indigo' }) => {
     const colorStyles = {
@@ -190,7 +209,7 @@ const Dashboard = () => {
                 fetchRecentData();
                 const newNotif = snapshot.docs[0]?.data();
                 if (newNotif && newNotif.type === 'anomaly_detected') {
-                    toast.error(`🚨 ${newNotif.message || 'Anomalie détectée'}`, {
+                    toast.error(`Alerte: ${newNotif.message || 'Anomalie détectée'}`, {
                         duration: 5000,
                         style: { borderRadius: '12px', background: '#1e2035', color: '#fff', fontSize: '13px' }
                     });
@@ -220,44 +239,337 @@ const Dashboard = () => {
     const trendData = trends.slice(-12);
 
     const handleExportPDF = async () => {
-        const toastId = toast.loading("Génération du rapport exécutif...");
+        const toastId = toast.loading("Génération du rapport complet...");
         try {
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pageWidth = pdf.internal.pageSize.getWidth();
-            
-            // Header
-            pdf.setFillColor(15, 23, 42);
-            pdf.rect(0, 0, pageWidth, 40, 'F');
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(22);
-            pdf.setFont('helvetica', 'bold');
-            pdf.text('ICEM QUALITY DASHBOARD', 15, 18);
-            
-            pdf.setFontSize(9);
-            pdf.setFont('helvetica', 'normal');
-            pdf.text(`GÉNÉRÉ LE : ${new Date().toLocaleString('fr-FR')}`, 15, 28);
-            pdf.text(`UTILISATEUR : ${user?.fullName || 'DIRECTEUR'}`, 15, 33);
+            const pageHeight = pdf.internal.pageSize.getHeight();
+            const margin = 15;
+            const contentWidth = pageWidth - margin * 2;
 
-            // Table Summary
+            // ────── PAGE 1 : HEADER + KPI ──────
+            const logoBase64 = await urlToBase64(logo);
+            if (logoBase64) {
+                pdf.addImage(logoBase64, 'PNG', 15, 10, 15, 15);
+            }
+            pdf.setFontSize(18);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text('ICEM', 34, 16);
+            pdf.setFontSize(8);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(100, 116, 139);
+            pdf.text('Smart Quality Control System', 34, 21);
+
+            pdf.setFontSize(8);
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`Utilisateur : ${user?.fullName || 'riheme'}`, pageWidth - 15, 15, { align: 'right' });
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Date : ${new Date().toLocaleDateString('fr-FR')}`, pageWidth - 15, 20, { align: 'right' });
+            pdf.text(`Heure : ${new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - 15, 25, { align: 'right' });
+
+            // Blue separator line
+            pdf.setDrawColor(30, 58, 138);
+            pdf.setLineWidth(0.5);
+            pdf.line(15, 30, pageWidth - 15, 30);
+
+            // Section: KPIs principaux
+            let y = 42;
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('INDICATEURS CLES DE PERFORMANCE', margin, y);
+            y += 2;
+
             autoTable(pdf, {
-                startY: 50,
-                head: [['Indicateur', 'Valeur Actuelle']],
+                startY: y,
+                head: [['Indicateur', 'Valeur', 'Detail']],
                 body: [
-                    ['Ordres en cours', stats.orders.enCours || 0],
-                    ['Câbles Inspectés (30j)', stats.cables.total || 0],
-                    ['Taux de Conformité', `${conformityRate}%`],
-                    ['Anomalies Critiques', stats.anomalies.critique || 0],
-                    ['Total Anomalies', stats.anomalies.total || 0],
+                    ['Ordres de Fabrication', `${stats.orders.total || 0}`, `En cours: ${stats.orders.enCours || 0} | Termines: ${stats.orders.termine || 0} | En attente: ${stats.orders.enAttente || 0}`],
+                    ['Cables Inspectes', `${stats.cables.total || 0}`, `Conformes: ${stats.cables.conforme || 0} | Non conformes: ${stats.cables.nonConforme || 0} | En attente: ${stats.cables.enAttente || 0}`],
+                    ['Taux de Conformite', `${conformityRate}%`, conformityRate >= 90 ? 'Objectif atteint (>=90%)' : 'En dessous de l\'objectif (90%)'],
+                    ['Total Anomalies', `${stats.anomalies.total || 0}`, `Critiques: ${stats.anomalies.critique || 0} | Majeures: ${stats.anomalies.majeur || 0} | Mineures: ${stats.anomalies.mineur || 0}`],
+                    ['Anomalies Critiques', `${stats.anomalies.critique || 0}`, stats.anomalies.critique > 0 ? 'Attention requise' : 'Aucune anomalie critique'],
                 ],
-                theme: 'striped',
-                headStyles: { fillColor: [79, 70, 229] }
+                theme: 'grid',
+                headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold', fontSize: 10 },
+                bodyStyles: { fontSize: 9, textColor: [30, 30, 30] },
+                alternateRowStyles: { fillColor: [248, 248, 255] },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 45 },
+                    1: { halign: 'center', cellWidth: 25, fontStyle: 'bold' },
+                    2: { cellWidth: contentWidth - 70, fontSize: 8, textColor: [100, 100, 100] }
+                },
+                margin: { left: margin, right: margin }
             });
 
-            pdf.save(`ICEM_Dashboard_Summary_${new Date().toISOString().split('T')[0]}.pdf`);
-            toast.success("Rapport exporté !", { id: toastId });
+            y = pdf.lastAutoTable.finalY + 10;
+
+            // Section: Répartition des ordres
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text('REPARTITION DES ORDRES DE FABRICATION', margin, y);
+            y += 2;
+
+            autoTable(pdf, {
+                startY: y,
+                head: [['Statut', 'Nombre', 'Proportion']],
+                body: [
+                    ['En cours', stats.orders.enCours || 0, `${stats.orders.total > 0 ? ((stats.orders.enCours / stats.orders.total) * 100).toFixed(1) : 0}%`],
+                    ['Termines', stats.orders.termine || 0, `${stats.orders.total > 0 ? ((stats.orders.termine / stats.orders.total) * 100).toFixed(1) : 0}%`],
+                    ['En attente', stats.orders.enAttente || 0, `${stats.orders.total > 0 ? ((stats.orders.enAttente / stats.orders.total) * 100).toFixed(1) : 0}%`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 9 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 50 },
+                    1: { halign: 'center', cellWidth: 30 },
+                    2: { halign: 'center' }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            y = pdf.lastAutoTable.finalY + 10;
+
+            // Section: Répartition des câbles
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('REPARTITION DES CABLES', margin, y);
+            y += 2;
+
+            autoTable(pdf, {
+                startY: y,
+                head: [['Statut', 'Nombre', 'Proportion']],
+                body: [
+                    ['Conformes', stats.cables.conforme || 0, `${stats.cables.total > 0 ? ((stats.cables.conforme / stats.cables.total) * 100).toFixed(1) : 0}%`],
+                    ['Non conformes', stats.cables.nonConforme || 0, `${stats.cables.total > 0 ? ((stats.cables.nonConforme / stats.cables.total) * 100).toFixed(1) : 0}%`],
+                    ['En attente', stats.cables.enAttente || 0, `${stats.cables.total > 0 ? ((stats.cables.enAttente / stats.cables.total) * 100).toFixed(1) : 0}%`],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 9 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 50 },
+                    1: { halign: 'center', cellWidth: 30 },
+                    2: { halign: 'center' }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // ────── PAGE 2 : GRAPHIQUES ──────
+            pdf.addPage();
+
+            // Header page 2
+            if (logoBase64) {
+                pdf.addImage(logoBase64, 'PNG', 15, 10, 12, 12);
+            }
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text('ICEM - Graphiques & Visualisations', 30, 18);
+            pdf.setDrawColor(30, 58, 138);
+            pdf.setLineWidth(0.3);
+            pdf.line(15, 24, pageWidth - 15, 24);
+
+            y = 32;
+
+            // Capture chart images using html2canvas
+            const captureChart = async (elementId, label) => {
+                const el = document.getElementById(elementId);
+                if (!el) return null;
+                try {
+                    const canvas = await html2canvas(el, {
+                        backgroundColor: '#ffffff',
+                        scale: 2,
+                        useCORS: true,
+                        logging: false
+                    });
+                    return canvas.toDataURL('image/png');
+                } catch (e) {
+                    console.warn(`Failed to capture ${label}:`, e);
+                    return null;
+                }
+            };
+
+            // Capture Trend chart
+            const trendImg = await captureChart('dashboard-trend-chart', 'Tendances');
+            if (trendImg) {
+                pdf.setTextColor(15, 23, 42);
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Tendances de Conformite (14 derniers jours)', margin, y);
+                y += 4;
+                const imgWidth = contentWidth;
+                const imgHeight = 65;
+                pdf.addImage(trendImg, 'PNG', margin, y, imgWidth, imgHeight);
+                y += imgHeight + 12;
+            }
+
+            // Capture Bar chart and Pie chart side by side
+            const barImg = await captureChart('dashboard-bar-chart', 'Production');
+            const pieImg = await captureChart('dashboard-pie-chart', 'Anomalies');
+
+            if (barImg || pieImg) {
+                pdf.setTextColor(15, 23, 42);
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('Production & Anomalies par Gravite', margin, y);
+                y += 4;
+
+                const halfWidth = (contentWidth - 6) / 2;
+                const chartHeight = 65;
+                if (barImg) {
+                    pdf.addImage(barImg, 'PNG', margin, y, halfWidth, chartHeight);
+                }
+                if (pieImg) {
+                    pdf.addImage(pieImg, 'PNG', margin + halfWidth + 6, y, halfWidth, chartHeight);
+                }
+                y += chartHeight + 12;
+            }
+
+            // Anomalies breakdown table on page 2
+            pdf.setTextColor(15, 23, 42);
+            pdf.setFontSize(12);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text('DETAIL DES ANOMALIES PAR GRAVITE', margin, y);
+            y += 2;
+
+            const totalAnom = (stats.anomalies.critique || 0) + (stats.anomalies.majeur || 0) + (stats.anomalies.mineur || 0);
+            autoTable(pdf, {
+                startY: y,
+                head: [['Gravite', 'Nombre', 'Proportion', 'Niveau de Risque']],
+                body: [
+                    ['Critique', stats.anomalies.critique || 0, `${totalAnom > 0 ? ((stats.anomalies.critique / totalAnom) * 100).toFixed(1) : 0}%`, 'Risque Eleve'],
+                    ['Majeur', stats.anomalies.majeur || 0, `${totalAnom > 0 ? ((stats.anomalies.majeur / totalAnom) * 100).toFixed(1) : 0}%`, 'Risque Modere'],
+                    ['Mineur', stats.anomalies.mineur || 0, `${totalAnom > 0 ? ((stats.anomalies.mineur / totalAnom) * 100).toFixed(1) : 0}%`, 'Risque Faible'],
+                ],
+                theme: 'grid',
+                headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+                bodyStyles: { fontSize: 9 },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 35 },
+                    1: { halign: 'center', cellWidth: 25 },
+                    2: { halign: 'center', cellWidth: 30 },
+                    3: { halign: 'center' }
+                },
+                margin: { left: margin, right: margin }
+            });
+
+            // ────── PAGE 3 : ACTIVITÉ RÉCENTE ──────
+            pdf.addPage();
+
+            // Header page 3
+            if (logoBase64) {
+                pdf.addImage(logoBase64, 'PNG', 15, 10, 12, 12);
+            }
+            pdf.setFontSize(14);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(15, 23, 42);
+            pdf.text('ICEM - Activite Recente & Inspections', 30, 18);
+            pdf.setDrawColor(30, 58, 138);
+            pdf.setLineWidth(0.3);
+            pdf.line(15, 24, pageWidth - 15, 24);
+
+            y = 32;
+
+            // Recent inspections table
+            if (recentInspections.length > 0) {
+                pdf.setTextColor(15, 23, 42);
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('DERNIERES INSPECTIONS', margin, y);
+                y += 2;
+
+                autoTable(pdf, {
+                    startY: y,
+                    head: [['Reference', 'OF', 'Date', 'Statut']],
+                    body: recentInspections.map(ins => [
+                        ins.reference || ins.id?.substring(0, 12) || 'N/A',
+                        ins.orderId?.substring(0, 12) || 'N/A',
+                        ins.inspectionDate ? new Date(ins.inspectionDate).toLocaleDateString('fr-FR') : 'N/A',
+                        ins.status || 'N/A'
+                    ]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [16, 185, 129], textColor: 255, fontStyle: 'bold' },
+                    bodyStyles: { fontSize: 9 },
+                    margin: { left: margin, right: margin }
+                });
+                y = pdf.lastAutoTable.finalY + 10;
+            }
+
+            // Recent anomalies table
+            if (recentAnomalies.length > 0) {
+                pdf.setTextColor(15, 23, 42);
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('DERNIERES ANOMALIES DETECTEES', margin, y);
+                y += 2;
+
+                autoTable(pdf, {
+                    startY: y,
+                    head: [['Type', 'Reference', 'Gravite', 'Confiance', 'Date']],
+                    body: recentAnomalies.map(ano => [
+                        ano.type || 'N/A',
+                        ano.reference || 'N/A',
+                        ano.severity || 'N/A',
+                        ano.confidence ? `${(ano.confidence * 100).toFixed(0)}%` : 'N/A',
+                        ano.detectedAt?.seconds
+                            ? new Date(ano.detectedAt.seconds * 1000).toLocaleDateString('fr-FR')
+                            : ano.detectedAt ? new Date(ano.detectedAt).toLocaleDateString('fr-FR') : 'N/A'
+                    ]),
+                    theme: 'grid',
+                    headStyles: { fillColor: [239, 68, 68], textColor: 255, fontStyle: 'bold' },
+                    bodyStyles: { fontSize: 9 },
+                    margin: { left: margin, right: margin }
+                });
+                y = pdf.lastAutoTable.finalY + 10;
+            }
+
+            // Trend data table
+            if (trendData.length > 0) {
+                pdf.setTextColor(15, 23, 42);
+                pdf.setFontSize(12);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('DONNEES DE TENDANCES QUOTIDIENNES', margin, y);
+                y += 2;
+
+                autoTable(pdf, {
+                    startY: y,
+                    head: [['Jour', 'Inspections', 'Anomalies']],
+                    body: trendData.map(t => [
+                        t.label || 'N/A',
+                        t.inspections || 0,
+                        t.anomalies || 0
+                    ]),
+                    theme: 'striped',
+                    headStyles: { fillColor: [99, 102, 241], textColor: 255, fontStyle: 'bold' },
+                    bodyStyles: { fontSize: 8 },
+                    columnStyles: {
+                        0: { cellWidth: 40 },
+                        1: { halign: 'center', cellWidth: 35 },
+                        2: { halign: 'center', cellWidth: 35 }
+                    },
+                    margin: { left: margin, right: margin }
+                });
+            }
+
+            // Footer on each page
+            const totalPages = pdf.internal.getNumberOfPages();
+            for (let i = 1; i <= totalPages; i++) {
+                pdf.setPage(i);
+                pdf.setFontSize(7);
+                pdf.setTextColor(150, 150, 150);
+                pdf.text(`ICEM Quality Dashboard - Page ${i}/${totalPages}`, pageWidth / 2, pageHeight - 8, { align: 'center' });
+            }
+
+            pdf.save(`ICEM_Dashboard_Complet_${new Date().toISOString().split('T')[0]}.pdf`);
+            toast.success("Rapport complet exporté avec succès !", { id: toastId });
         } catch (e) {
-            console.error(e);
-            toast.error("Erreur d'export", { id: toastId });
+            console.error('PDF export error:', e);
+            toast.error("Erreur d'export : " + e.message, { id: toastId });
         }
     };
 
@@ -290,7 +602,7 @@ const Dashboard = () => {
                 <div className="flex items-center gap-3 relative z-10">
                     {canExport && (
                         <button onClick={handleExportPDF} className="px-8 py-4 bg-blue-600/20 text-blue-400 border border-blue-500/30 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-600 hover:text-white transition-all shadow-xl shadow-blue-900/20 flex items-center gap-3 active:scale-95">
-                            <Download size={18} /> Export Stratégique
+                            <Download size={18} /> Exporter
                         </button>
                     )}
                 </div>
@@ -334,7 +646,7 @@ const Dashboard = () => {
 
                 {/* Area Chart — spans 2 cols */}
                 {trendData.length > 0 && (
-                    <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-2">
+                    <div id="dashboard-trend-chart" className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-2">
                         <div className="flex items-center justify-between mb-4">
                             <div>
                                 <h3 className="text-sm font-bold text-gray-800">Tendances de Conformité</h3>
@@ -375,7 +687,7 @@ const Dashboard = () => {
                 )}
 
                 {/* Pie Chart */}
-                <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5">
+                <div id="dashboard-pie-chart" className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Anomalies par Gravité</h3>
                     <p className="text-sm text-gray-400 mb-4">Répartition des défauts</p>
                     {pieData.length > 0 ? (
@@ -417,7 +729,7 @@ const Dashboard = () => {
             {/* Bottom Row: Bar Chart + Mini Stats + Activity */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 {/* Bar Chart */}
-                <div className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-1">
+                <div id="dashboard-bar-chart" className="bg-gradient-to-br from-white to-slate-50/50 p-8 rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 lg:col-span-1">
                     <h3 className="text-sm font-bold text-gray-800 mb-1">Production</h3>
                     <p className="text-sm text-gray-400 mb-4">Par statut</p>
                     <div className="h-44">

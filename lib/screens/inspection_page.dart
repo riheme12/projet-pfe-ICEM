@@ -46,6 +46,8 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
 
   final RoboflowService _roboflowService = RoboflowService();
   bool _useRealAI = true;
+  final List<String> _allDetectedDefects = [];
+  final List<String> _allImageUrls = [];
 
   @override
   void initState() {
@@ -100,13 +102,39 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
         final String finalImageUrl = uploadedUrl ?? 'https://i.ibb.co/placeholder/notfound.png';
         
         result = await _roboflowService.analyzeImage(context, xFile.path);
-        if (result['status'] == 'NOK') await _saveAnomaly(result, imageUrl: finalImageUrl);
         result['imageUrl'] = finalImageUrl;
+        if (result['status'] == 'NOK') {
+          if (!_allImageUrls.contains(finalImageUrl)) {
+            _allImageUrls.add(finalImageUrl);
+          }
+          final dynamic rawAnoms = result['anomalies'];
+          if (rawAnoms is List && rawAnoms.isNotEmpty) {
+            for (var a in rawAnoms) {
+              final code = a['code'] as String?;
+              if (code != null && !_allDetectedDefects.contains(code.trim().toUpperCase())) {
+                _allDetectedDefects.add(code.trim().toUpperCase());
+              }
+            }
+          } else {
+            if (!_allDetectedDefects.contains('Z')) {
+              _allDetectedDefects.add('Z');
+            }
+          }
+        }
         try { await File(xFile.path).delete(); } catch (_) {}
       } else {
         await Future.delayed(const Duration(milliseconds: 1500));
         result = _generateSimulatedResult();
-        if (result['status'] == 'NOK') await _saveAnomaly(result);
+        final String mockUrl = 'https://i.ibb.co/placeholder/notfound.png';
+        result['imageUrl'] = mockUrl;
+        if (result['status'] == 'NOK') {
+          if (!_allImageUrls.contains(mockUrl)) {
+            _allImageUrls.add(mockUrl);
+          }
+          if (!_allDetectedDefects.contains('Z')) {
+            _allDetectedDefects.add('Z');
+          }
+        }
       }
 
       if (mounted) {
@@ -123,25 +151,6 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
     }
   }
 
-  Future<void> _saveAnomaly(Map<String, dynamic> result, {String? imageUrl}) async {
-    final auth = Provider.of<AuthProvider>(context, listen: false);
-    final user = auth.currentUser;
-    final anomaly = Anomaly(
-      id: '',
-      type: result['label'] ?? 'Défaut IA',
-      severity: result['severity'] ?? 'Majeur',
-      confidence: (result['confidence'] as num?)?.toDouble() ?? 0.0,
-      location: 'Zone #${_partsInspectedCount + 1}',
-      cableId: widget.cableReference ?? 'N/A',
-      detectedAt: DateTime.now(),
-      technicianId: user?.id,
-      technicianName: user?.fullName,
-      imageUrl: imageUrl,
-      status: 'detectee',
-      orderId: widget.orderId,
-    );
-    await AnomalyService().createAnomaly(anomaly);
-  }
 
   void _next() async {
     setState(() { _showResult = false; _stepResult = null; });
@@ -162,16 +171,14 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
     await Future.delayed(const Duration(seconds: 1));
     if (!mounted) return;
 
-    final List<dynamic> anoms = _stepResult?['anomalies'] ?? [];
-    final codes = anoms.map((a) => a['code'] as String).toList();
-
     final result = await Navigator.push(context, MaterialPageRoute(builder: (_) => ChecklistPage(
       orderId: widget.orderId,
       orderReference: widget.orderReference,
       cableReference: widget.cableReference,
       serialNumber: widget.cableReference,
-      detectedDefects: codes,
-      imageUrl: _stepResult?['imageUrl'],
+      detectedDefects: _allDetectedDefects,
+      imageUrl: _allImageUrls.isNotEmpty ? _allImageUrls.first : null,
+      imageUrls: _allImageUrls,
     )));
 
     if (!mounted) return;
@@ -185,12 +192,10 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
   }
 
   Map<String, dynamic> _generateSimulatedResult() {
-    final random = Random();
-    final ok = random.nextDouble() > 0.3;
     return {
-      'status': ok ? 'OK' : 'NOK',
-      'label': ok ? 'Conforme' : 'Rayure détectée',
-      'confidence': 0.7 + (random.nextDouble() * 0.25),
+      'status': 'OK',
+      'label': 'Conforme',
+      'confidence': 0.95,
       'severity': 'Majeur',
     };
   }
@@ -252,7 +257,7 @@ class _InspectionPageState extends State<InspectionPage> with SingleTickerProvid
             width: double.infinity, padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(color: color, borderRadius: const BorderRadius.only(bottomLeft: Radius.circular(20), bottomRight: Radius.circular(20))),
             child: Text(
-              ok ? 'CONFORME ✓' : '${_stepResult!['label'].toString().toUpperCase()} ⚠️',
+              ok ? 'CONFORME' : '${_stepResult!['label'].toString().toUpperCase()}',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13),
             ),

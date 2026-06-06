@@ -127,6 +127,7 @@ class OrdersService {
     required String technicianName,
     int anomaliesCount = 0,
     String? imageUrl,
+    List<String>? imageUrls,
     List<Map<String, dynamic>>? visualChecklistItems,
   }) async {
     try {
@@ -139,7 +140,7 @@ class OrdersService {
         'inspectionDate': Timestamp.fromDate(now),
         'technicianId': technicianId,
         'technicianName': technicianName,
-        'imageUrls': imageUrl != null ? [imageUrl] : <String>[],
+        'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl] : <String>[]),
         'anomaliesCount': anomaliesCount,
         if (visualChecklistItems != null) 'visualChecklist': visualChecklistItems,
       };
@@ -160,18 +161,6 @@ class OrdersService {
         final docRef = await _cablesCollection.add(cableData);
         docId = docRef.id;
       }
-
-      // Créer un rapport d'inspection dans Firestore
-      await _db.collection('report').add({
-        'type': 'inspection',
-        'cableId': code,
-        'orderId': orderId,
-        'technicianId': technicianId,
-        'technicianName': technicianName,
-        'generatedAt': Timestamp.fromDate(now),
-        'conformityStatus': status,
-        'anomaliesCount': anomaliesCount,
-      });
 
       return docId;
     } catch (e) {

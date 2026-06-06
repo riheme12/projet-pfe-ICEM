@@ -42,7 +42,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     setState(() => _isSaving = false);
     
     if (mounted && result != null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo mise à jour ✓')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo mise à jour')));
     }
   }
 

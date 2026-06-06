@@ -49,12 +49,12 @@ const Layout = () => {
             <Sidebar />
 
             <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-[#f1f5f9]">
-                {/* 🎨 NEW: More colorful background elements */}
+                {/* NEW: More colorful background elements */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 blur-[120px] rounded-full -z-10 translate-x-1/2 -translate-y-1/2"></div>
                 <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-indigo-600/5 blur-[150px] rounded-full -z-10 -translate-x-1/3 translate-y-1/3"></div>
                 <div className="absolute inset-0 opacity-[0.4] pointer-events-none bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:32px_32px] -z-10"></div>
 
-                {/* 🎨 Massive Creative Premium Header */}
+                {/* Massive Creative Premium Header */}
                 <header className="sticky top-0 z-40 px-12 py-6 flex items-center justify-between transition-all duration-300 border-b border-blue-100/50 shadow-[0_15px_40px_-15px_rgba(30,27,75,0.15)] relative overflow-hidden">
                     {/* Background Image behind glass */}
                     <div 
@@ -67,7 +67,7 @@ const Layout = () => {
                     />
                     <div className="absolute inset-0 z-0 bg-gradient-to-r from-white/95 via-white/80 to-blue-50/90 backdrop-blur-md"></div>
                     
-                    {/* 🎨 Subtle Blue Fade over background */}
+                    {/* Subtle Blue Fade over background */}
                     <div className="absolute inset-0 z-0 bg-gradient-to-b from-blue-600/40 via-blue-600/10 to-transparent mix-blend-multiply"></div>
 
                     {/* Top Accent Line */}
@@ -129,11 +129,11 @@ const Layout = () => {
                     </div>
                 </header>
 
-                {/* 🚀 Page Content Section */}
-                <div className="flex-1 p-12 overflow-auto relative custom-scrollbar">
+                {/* Page Content Section */}
+                <div className="flex-1 p-12 overflow-auto custom-scrollbar">
 
 
-                    <div className="relative z-10" style={{ animation: 'fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
+                    <div style={{ animation: 'fadeUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) both' }}>
                         <Outlet />
                     </div>
                 </div>

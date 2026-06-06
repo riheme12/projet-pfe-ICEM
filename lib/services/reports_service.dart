@@ -280,6 +280,7 @@ class ReportsService {
     String? notes,
     String? signatureUrl,
     String? imageUrl,
+    List<String>? imageUrls,
   }) async {
     try {
       await _db.collection('report').add({
@@ -294,6 +295,7 @@ class ReportsService {
         'notes': notes ?? 'Rapport généré le ${DateTime.now().day}/${DateTime.now().month}/${DateTime.now().year}',
         'signatureUrl': signatureUrl,
         'imageUrl': imageUrl,
+        'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl] : <String>[]),
       });
     } catch (e) {
       debugPrint('Error creating report record: $e');

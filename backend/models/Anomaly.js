@@ -6,7 +6,7 @@
  * Elle a un type, une gravité et un score de confiance
  */
 class Anomaly {
-    constructor({ id, type, severity, confidence, location = null, cableId, detectedAt, technicianId = null, technicianName = null, imageUrl = null, statut = 'detectee', orderId = null, mesureCorrective = null, resolvedBy = null, resolvedByRole = null }) {
+    constructor({ id, type, severity, confidence, location = null, cableId, detectedAt, technicianId = null, technicianName = null, imageUrl = null, imageUrls = [], statut = 'detectee', orderId = null, mesureCorrective = null, resolvedBy = null, resolvedByRole = null }) {
         this.id = id;
         this.type = type;                // 'Rayure', 'Déformation', 'Défaut de surface', etc.
         this.severity = severity;        // 'Mineur', 'Majeur', 'Critique'
@@ -17,6 +17,7 @@ class Anomaly {
         this.technicianId = technicianId;
         this.technicianName = technicianName;
         this.imageUrl = imageUrl;
+        this.imageUrls = imageUrls || [];
         this.statut = statut;
         this.orderId = orderId;
         this.mesureCorrective = mesureCorrective;
@@ -69,6 +70,7 @@ class Anomaly {
             technicianId: json.technicianId || null,
             technicianName: json.technicianName || json.technicianFullName || 'Inconnu',
             imageUrl: json.imageUrl || null,
+            imageUrls: json.imageUrls || (json.imageUrl ? [json.imageUrl] : []),
             statut: json.statut || 'detectee',
             orderId: json.orderId || null,
             mesureCorrective: json.mesureCorrective || null,
@@ -92,6 +94,7 @@ class Anomaly {
             technicianId: this.technicianId,
             technicianName: this.technicianName,
             imageUrl: this.imageUrl,
+            imageUrls: this.imageUrls,
             statut: this.statut,
             orderId: this.orderId,
             mesureCorrective: this.mesureCorrective,

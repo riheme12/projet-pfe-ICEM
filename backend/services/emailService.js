@@ -27,12 +27,12 @@ class EmailService {
     async sendCriticalAlert({ recipients, anomalyType, severity, confidence, cableId, orderId }) {
         if (!recipients || recipients.length === 0) return;
 
-        const subject = `🔴 ALERTE CRITIQUE — Anomalie détectée sur câble ${cableId || 'N/A'}`;
+        const subject = `ALERTE CRITIQUE — Anomalie détectée sur câble ${cableId || 'N/A'}`;
 
         const html = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px; border-radius: 16px 16px 0 0;">
-                    <h1 style="color: #fff; margin: 0; font-size: 20px;">⚠️ ICEM Quality Control</h1>
+                    <h1 style="color: #fff; margin: 0; font-size: 20px;">ICEM Quality Control</h1>
                     <p style="color: #94a3b8; margin: 8px 0 0; font-size: 13px;">Notification d'Alerte Critique</p>
                 </div>
                 <div style="background: #fff; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
@@ -82,10 +82,10 @@ class EmailService {
                 subject,
                 html,
             });
-            console.log(`✉️  Alert email sent to: ${recipients.join(', ')}`);
+            console.log(`[Email] Alert email sent to: ${recipients.join(', ')}`);
             return true;
         } catch (error) {
-            console.error('❌ Failed to send email:', error.message);
+            console.error('[Error] Failed to send email:', error.message);
             return false;
         }
     }
@@ -96,12 +96,12 @@ class EmailService {
     async sendReport({ recipients, reportType, reportDate, summary }) {
         if (!recipients || recipients.length === 0) return;
 
-        const subject = `📊 ICEM — Rapport ${reportType || 'Qualité'} du ${reportDate || new Date().toLocaleDateString('fr-FR')}`;
+        const subject = `ICEM — Rapport ${reportType || 'Qualité'} du ${reportDate || new Date().toLocaleDateString('fr-FR')}`;
 
         const html = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px; border-radius: 16px 16px 0 0;">
-                    <h1 style="color: #fff; margin: 0; font-size: 20px;">📊 ICEM Quality Control</h1>
+                    <h1 style="color: #fff; margin: 0; font-size: 20px;">ICEM Quality Control</h1>
                     <p style="color: #94a3b8; margin: 8px 0 0; font-size: 13px;">Rapport Automatique</p>
                 </div>
                 <div style="background: #fff; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
@@ -121,10 +121,10 @@ class EmailService {
                 subject,
                 html,
             });
-            console.log(`✉️  Report email sent to: ${recipients.join(', ')}`);
+            console.log(`[Email] Report email sent to: ${recipients.join(', ')}`);
             return true;
         } catch (error) {
-            console.error('❌ Failed to send report email:', error.message);
+            console.error('[Error] Failed to send report email:', error.message);
             return false;
         }
     }
@@ -134,12 +134,12 @@ class EmailService {
     async sendPasswordReset({ email, username, newPassword }) {
         if (!email) return;
 
-        const subject = `🔐 ICEM — Nouveau mot de passe`;
+        const subject = `ICEM — Nouveau mot de passe`;
 
         const html = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px; border-radius: 16px 16px 0 0;">
-                    <h1 style="color: #fff; margin: 0; font-size: 20px;">🔐 ICEM Quality Control</h1>
+                    <h1 style="color: #fff; margin: 0; font-size: 20px;">ICEM Quality Control</h1>
                     <p style="color: #94a3b8; margin: 8px 0 0; font-size: 13px;">Réinitialisation de mot de passe</p>
                 </div>
                 <div style="background: #fff; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
@@ -164,10 +164,10 @@ class EmailService {
                 subject,
                 html,
             });
-            console.log(`✉️  Password reset email sent to: ${email}`);
+            console.log(`[Email] Password reset email sent to: ${email}`);
             return true;
         } catch (error) {
-            console.error('❌ Failed to send password reset email:', error.message);
+            console.error('[Error] Failed to send password reset email:', error.message);
             return false;
         }
     }
@@ -178,13 +178,13 @@ class EmailService {
     async sendRoleUpdate({ email, username, roles }) {
         if (!email) return;
 
-        const subject = `🛡️ ICEM — Mise à jour de vos permissions`;
+        const subject = `ICEM — Mise à jour de vos permissions`;
         const rolesDisplay = Array.isArray(roles) ? roles.join(', ') : roles;
 
         const html = `
             <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                 <div style="background: linear-gradient(135deg, #1e293b, #0f172a); padding: 24px; border-radius: 16px 16px 0 0;">
-                    <h1 style="color: #fff; margin: 0; font-size: 20px;">🛡️ ICEM Quality Control</h1>
+                    <h1 style="color: #fff; margin: 0; font-size: 20px;">ICEM Quality Control</h1>
                     <p style="color: #94a3b8; margin: 8px 0 0; font-size: 13px;">Mise à jour de votre compte</p>
                 </div>
                 <div style="background: #fff; padding: 24px; border: 1px solid #e2e8f0; border-top: none;">
@@ -208,10 +208,10 @@ class EmailService {
                 subject,
                 html,
             });
-            console.log(`✉️  Role update email sent to: ${email}`);
+            console.log(`[Email] Role update email sent to: ${email}`);
             return true;
         } catch (error) {
-            console.error('❌ Failed to send role update email:', error.message);
+            console.error('[Error] Failed to send role update email:', error.message);
             return false;
         }
     }

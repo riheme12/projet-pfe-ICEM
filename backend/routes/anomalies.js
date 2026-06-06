@@ -48,15 +48,94 @@ router.get('/', async (req, res) => {
     }
 });
 
-// Get anomalies by cable
+// Get anomalies by cable (supports both Firestore document ID and reference/code, filtered by orderId)
 router.get('/cable/:cableId', async (req, res) => {
     try {
+        const cableId = req.params.cableId;
+        const reqOrderId = req.query.orderId;
+        let queryIds = [cableId];
+        let orderIds = [];
+        if (reqOrderId) {
+            const cleanOrderId = reqOrderId.replace(/^OFL/i, 'OF');
+            const withL = 'OFL' + cleanOrderId.substring(2);
+            orderIds.push(reqOrderId);
+            orderIds.push(reqOrderId.replace(/\//g, '&#x2F;'));
+            orderIds.push(cleanOrderId);
+            orderIds.push(cleanOrderId.replace(/\//g, '&#x2F;'));
+            orderIds.push(withL);
+            orderIds.push(withL.replace(/\//g, '&#x2F;'));
+        }
+
+        // Résoudre les identifiants possibles du câble (Firestore ID, référence, code)
+        try {
+            const cableDoc = await db.collection('cable').doc(cableId).get();
+            if (cableDoc.exists) {
+                const data = cableDoc.data();
+                if (data.reference) queryIds.push(data.reference);
+                if (data.code) queryIds.push(data.code);
+                if (data.orderId) {
+                    orderIds.push(data.orderId);
+                    orderIds.push(data.orderId.replace(/\//g, '&#x2F;'));
+                }
+            } else {
+                // Essayer de trouver par référence
+                let queryRef = db.collection('cable').where('reference', '==', cableId);
+                if (reqOrderId) {
+                    const cleanOrderId = reqOrderId.replace(/^OFL/i, 'OF');
+                    const withL = 'OFL' + cleanOrderId.substring(2);
+                    const possibleOrderIds = [
+                        reqOrderId,
+                        reqOrderId.replace(/\//g, '&#x2F;'),
+                        cleanOrderId,
+                        cleanOrderId.replace(/\//g, '&#x2F;'),
+                        withL,
+                        withL.replace(/\//g, '&#x2F;')
+                    ];
+                    const snapshotRef = await queryRef.where('orderId', 'in', possibleOrderIds).limit(1).get();
+                    if (!snapshotRef.empty) {
+                        queryIds.push(snapshotRef.docs[0].id);
+                        const data = snapshotRef.docs[0].data();
+                        if (data.code) queryIds.push(data.code);
+                    }
+                } else {
+                    const snapshotRef = await queryRef.limit(1).get();
+                    if (!snapshotRef.empty) {
+                        queryIds.push(snapshotRef.docs[0].id);
+                        const data = snapshotRef.docs[0].data();
+                        if (data.code) queryIds.push(data.code);
+                        if (data.orderId) {
+                            orderIds.push(data.orderId);
+                            orderIds.push(data.orderId.replace(/\//g, '&#x2F;'));
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error('Erreur lors de la résolution du câble dans la route des anomalies:', err);
+        }
+
+        const uniqueQueryIds = [...new Set(queryIds)].filter(Boolean);
+        const uniqueOrderIds = [...new Set(orderIds)].filter(Boolean);
+
         const snapshot = await db.collection('anomaly')
-            .where('cableId', '==', req.params.cableId)
+            .where('cableId', 'in', uniqueQueryIds)
             .get();
-        const anomalies = snapshot.docs.map(doc => {
+            
+        let anomalies = snapshot.docs.map(doc => {
             return Anomaly.fromJson({ id: doc.id, ...doc.data() }).toJson();
         });
+
+        // Filtrer les anomalies en mémoire par orderId si spécifié
+        if (uniqueOrderIds.length > 0) {
+            anomalies = anomalies.filter(anom => {
+                const anomOrderId = String(anom.orderId || '').toLowerCase().trim();
+                return uniqueOrderIds.some(id => String(id).toLowerCase().trim() === anomOrderId);
+            });
+        }
+
+        // Tri par date
+        anomalies.sort((a, b) => new Date(b.detectedAt) - new Date(a.detectedAt));
+
         res.status(200).json(anomalies);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -105,6 +184,7 @@ router.post('/', async (req, res) => {
         if (req.body.orderId !== undefined) data.orderId = req.body.orderId;
         if (req.body.inspectionId !== undefined) data.inspectionId = req.body.inspectionId;
         if (req.body.imageUrl !== undefined) data.imageUrl = req.body.imageUrl;
+        if (req.body.imageUrls !== undefined) data.imageUrls = req.body.imageUrls;
         delete data.id;
         const docRef = await db.collection('anomaly').add(data);
         const createdAnomaly = { id: docRef.id, ...data };

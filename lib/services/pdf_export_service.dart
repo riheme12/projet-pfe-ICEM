@@ -182,8 +182,87 @@ class PdfExportService {
     ),
   );
 
+  static const Map<String, String> _defectNamesMap = {
+    'A': 'Cosse déformée', 'B': 'Cosse ébanchati', 'C': 'Cosse ouverte',
+    'D': 'Fil pincé/coupé', 'E': 'Fils inversés', 'F': 'Fil tendu',
+    'G': 'Fil sans cosse', 'H': 'Ticket élec. NC', 'I': 'Long./couleur NC',
+    'J': 'Conn. cassé', 'K': 'Bouchette manq.', 'L': 'Tube thermo NC',
+    'M': 'Protection manq.', 'N': 'Tube manqué', 'O': 'Vis mal serrée',
+    'P': 'Composant manq.', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
+    'S': 'Scotch mal exécuté', 'T': 'Mesure Dériv.', 'V': 'Étiquette manquante',
+    'W': 'Étiquette inv.', 'Z': 'Autres défauts',
+  };
+
+  static String _getCleanDefectName(String rawKey) {
+    String key = rawKey.trim();
+    
+    // 1. Remove "Défauts: " or "Défaut: " prefix if it exists
+    if (key.startsWith('Défauts:') || key.startsWith('Défaut:')) {
+      final codePart = key.split(':').last.trim();
+      final codes = codePart.split(',').map((c) => c.trim().toUpperCase()).toList();
+      final names = codes.map((c) => _defectNamesMap[c] ?? c).toList();
+      return names.join(', ');
+    }
+    
+    // 2. Remove "[Code] " prefix if it exists (e.g. "[A] Cosse déformée" -> "Cosse déformée")
+    final match = RegExp(r'^\[[A-Z]\]\s+(.+)$').firstMatch(key);
+    if (match != null) {
+      return match.group(1)!;
+    }
+    
+    // 3. Map raw Roboflow classes to clean names
+    final classMapping = {
+      'composant_mal_insere': 'Composant mal inséré',
+      'composant_mal _insere': 'Composant mal inséré',
+      'composant_manquant': 'Composant manquant',
+      'etiquette_anomalie': 'Étiquette manquante',
+      'protection_anomalie': 'Anomalie protection',
+      'connecteur_anomalie': 'Anomalie connecteur',
+      'cosse_anomalie': 'Anomalie cosse',
+      'scotche_anomalie': 'Scotch mal exécuté',
+      'anomalie scotch': 'Scotch mal exécuté',
+      'anomalie étiquette': 'Étiquette manquante',
+      'anomalie protection': 'Protection manquante',
+      'anomalie connecteur': 'Connecteur cassé',
+      'anomalie cosse': 'Cosse déformée',
+    };
+    
+    final lowerKey = key.toLowerCase();
+    if (classMapping.containsKey(lowerKey)) {
+      return classMapping[lowerKey]!;
+    }
+    
+    // 4. Map electrical check abbreviations
+    final electricalMapping = {
+      'fi conn.': 'Fils inversés connecteur',
+      'fmi conn.': 'Fils mal insérés connecteur',
+      'fi pos.': 'Fils inversés position',
+      'fmi pos.': 'Fils mal insérés position',
+      'fi mar/coul': 'Fils inversés marquage/couleur',
+      'étiq. manq.': 'Étiquette manquante',
+      'étiq. inv. c1': 'Étiquette invertie Conn 1',
+      'étiq. inv. c2': 'Étiquette invertie Conn 2',
+      'conn. dériv.': 'Connecteur dérivation',
+      'prot. manq.': 'Protection manquante connecteur',
+    };
+    
+    if (key.startsWith('Défaut Électrique:')) {
+      final label = key.split(':').last.trim().toLowerCase();
+      return electricalMapping[label] ?? key;
+    }
+    
+    return key;
+  }
+
   // ─── Defects Table ─────────────────────────────────────────────────────
-  static pw.Widget _defectsTable(Map<String, int> map) {
+  static pw.Widget _defectsTable(Map<String, int> rawMap) {
+    // Aggregate by clean names
+    final Map<String, int> map = {};
+    rawMap.forEach((key, val) {
+      final cleanKey = _getCleanDefectName(key);
+      map[cleanKey] = (map[cleanKey] ?? 0) + val;
+    });
+
     final total = map.values.fold(0, (a, b) => a + b);
     return pw.Table(
       border: pw.TableBorder.all(color: PdfColors.grey200),
@@ -325,7 +404,7 @@ class PdfExportService {
           'Taux de conformité global : ${stats.conformityRate.toStringAsFixed(1)}%.',
           '${stats.anomaliesDetected} anomalie(s) détectée(s), dont ${stats.anomaliesResolved} corrigée(s) (${stats.resolutionRate}% de résolution).',
           if (stats.anomaliesBySeverity['Critique'] != null && stats.anomaliesBySeverity['Critique']! > 0)
-            '⚠ ${stats.anomaliesBySeverity['Critique']} anomalie(s) critique(s) nécessitant une attention immédiate.',
+            '${stats.anomaliesBySeverity['Critique']} anomalie(s) critique(s) nécessitant une attention immédiate.',
         ]),
       ],
     );
@@ -391,7 +470,14 @@ class PdfExportService {
     final res = await _loadResources();
     
     // 1. Download images
-    final anomalyImage = report.imageUrl != null ? await _downloadImage(report.imageUrl) : null;
+    final List<pw.MemoryImage> anomalyImages = [];
+    final imageUrls = report.imageUrls ?? (report.imageUrl != null && report.imageUrl!.isNotEmpty ? [report.imageUrl!] : <String>[]);
+    for (final url in imageUrls) {
+      final img = await _downloadImage(url);
+      if (img != null) {
+        anomalyImages.add(img);
+      }
+    }
     final techSignatureImage = report.signatureUrl != null ? await _downloadImage(report.signatureUrl) : null;
     
     // Fetch manager/admin signature from Firestore
@@ -568,20 +654,24 @@ class PdfExportService {
           pw.SizedBox(height: 24),
           
           // ─── 5. SECTION 3: PREUVE VISUELLE (si anomalie) ───
-          if (anomalyImage != null) ...[
+          if (anomalyImages.isNotEmpty) ...[
             buildSectionHeader('PREUVE VISUELLE'),
             pw.SizedBox(height: 8),
-            pw.Container(
-              width: double.infinity,
-              height: 180,
-              padding: const pw.EdgeInsets.all(10),
-              decoration: pw.BoxDecoration(
-                border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
-                color: PdfColors.white,
-              ),
-              child: pw.Center(
-                child: pw.Image(anomalyImage, fit: pw.BoxFit.contain),
-              ),
+            pw.Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: anomalyImages.map((img) {
+                return pw.Container(
+                  width: 150,
+                  height: 110,
+                  padding: const pw.EdgeInsets.all(4),
+                  decoration: pw.BoxDecoration(
+                    border: pw.Border.all(color: PdfColors.grey300, width: 0.5),
+                    color: PdfColors.white,
+                  ),
+                  child: pw.Image(img, fit: pw.BoxFit.contain),
+                );
+              }).toList(),
             ),
             pw.SizedBox(height: 24),
           ],

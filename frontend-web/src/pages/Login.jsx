@@ -117,7 +117,7 @@ const Login = () => {
     return (
         <div className="min-h-screen w-full flex bg-white font-['Inter'] overflow-hidden">
             
-            {/* 🏛️ Left Side — Cinematic Professional Panel */}
+            {/* Left Side — Cinematic Professional Panel */}
             <div className="hidden lg:flex lg:w-[45%] relative overflow-hidden bg-[#1e1b4b]">
                 <div 
                     className="absolute inset-0 z-0 animate-slow-zoom scale-110" 
@@ -168,7 +168,7 @@ const Login = () => {
                 </div>
             </div>
 
-            {/* 📝 Right Side — Harmonized LIGHT Professional Login/Signup */}
+            {/* Right Side — Harmonized LIGHT Professional Login/Signup */}
             <div className="flex-1 flex items-center justify-center p-8 lg:p-12 relative bg-slate-50 overflow-y-auto">
                 
                 <div className="absolute inset-0 overflow-hidden pointer-events-none">

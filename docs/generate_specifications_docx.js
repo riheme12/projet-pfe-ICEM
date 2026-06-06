@@ -218,7 +218,7 @@ const doc = new Document({
 
 Packer.toBuffer(doc).then(buffer => {
     fs.writeFileSync(path.join(docsDir, 'SPECIFICATIONS_CABLE_DEFAUTS.docx'), buffer);
-    console.log('✅ Document Word généré avec succès : SPECIFICATIONS_CABLE_DEFAUTS.docx');
+    console.log('Document Word généré avec succès : SPECIFICATIONS_CABLE_DEFAUTS.docx');
 }).catch(err => {
     console.error('Erreur lors de la génération du document Word :', err);
 });

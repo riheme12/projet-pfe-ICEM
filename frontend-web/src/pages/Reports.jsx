@@ -31,6 +31,80 @@ const urlToBase64 = async (url) => {
     }
 };
 
+const defectNamesMap = {
+    'A': 'Cosse déformée', 'B': 'Cosse ébanchati', 'C': 'Cosse ouverte',
+    'D': 'Fil pincé/coupé', 'E': 'Fils inversés', 'F': 'Fil tendu',
+    'G': 'Fil sans cosse', 'H': 'Ticket élec. NC', 'I': 'Long./couleur NC',
+    'J': 'Conn. cassé', 'K': 'Bouchette manq.', 'L': 'Tube thermo NC',
+    'M': 'Protection manq.', 'N': 'Tube manqué', 'O': 'Vis mal serrée',
+    'P': 'Composant manq.', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
+    'S': 'Scotch mal exécuté', 'T': 'Mesure Dériv.', 'V': 'Étiquette manquante',
+    'W': 'Étiquette inv.', 'Z': 'Autres défauts',
+};
+
+const getCleanDefectName = (rawKey) => {
+    if (!rawKey) return 'Inconnu';
+    let key = String(rawKey).trim();
+    
+    // 1. Remove "Défauts: " or "Défaut: " prefix if it exists
+    if (key.startsWith('Défauts:') || key.startsWith('Défaut:')) {
+      const codePart = key.split(':').pop().trim();
+      const codes = codePart.split(',').map(c => c.trim().toUpperCase());
+      const names = codes.map(c => defectNamesMap[c] || c);
+      return names.join(', ');
+    }
+    
+    // 2. Remove "[Code] " prefix if it exists (e.g. "[A] Cosse déformée" -> "Cosse déformée")
+    const match = key.match(/^\[[A-Z]\]\s+(.+)$/);
+    if (match) {
+      return match[1];
+    }
+    
+    // 3. Map raw Roboflow classes to clean names
+    const classMapping = {
+      'composant_mal_insere': 'Composant mal inséré',
+      'composant_mal _insere': 'Composant mal inséré',
+      'composant_manquant': 'Composant manquant',
+      'etiquette_anomalie': 'Étiquette manquante',
+      'protection_anomalie': 'Anomalie protection',
+      'connecteur_anomalie': 'Anomalie connecteur',
+      'cosse_anomalie': 'Anomalie cosse',
+      'scotche_anomalie': 'Scotch mal exécuté',
+      'anomalie scotch': 'Scotch mal exécuté',
+      'anomalie étiquette': 'Étiquette manquante',
+      'anomalie protection': 'Protection manquante',
+      'anomalie connecteur': 'Connecteur cassé',
+      'anomalie cosse': 'Cosse déformée',
+    };
+    
+    const lowerKey = key.toLowerCase();
+    if (classMapping[lowerKey]) {
+      return classMapping[lowerKey];
+    }
+    
+    // 4. Map electrical check abbreviations
+    const electricalMapping = {
+      'fi conn.': 'Fils inversés connecteur',
+      'fmi conn.': 'Fils mal insérés connecteur',
+      'fi pos.': 'Fils inversés position',
+      'fmi pos.': 'Fils mal insérés position',
+      'fi mar/coul': 'Fils inversés marquage/couleur',
+      'étiq. manq.': 'Étiquette manquante',
+      'étiq. inv. c1': 'Étiquette invertie Conn 1',
+      'étiq. inv. c2': 'Étiquette invertie Conn 2',
+      'conn. dériv.': 'Connecteur dérivation',
+      'prot. manq.': 'Protection manquante connecteur',
+    };
+    
+    if (key.startsWith('Défaut Électrique:')) {
+      const label = key.split(':').pop().trim().toLowerCase();
+      return electricalMapping[label] || key;
+    }
+    
+    return key;
+};
+
+
 
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) return null;
@@ -124,7 +198,7 @@ const Reports = () => {
         fetchData();
     }, []);
 
-    // 📊 Computed Data
+    // Computed Data
     const filteredCablesGlobal = cables.filter(c => {
         const cDate = new Date(c.inspectionDate || c.createdAt);
         const ds = dateStart ? new Date(dateStart) : null;
@@ -134,7 +208,10 @@ const Reports = () => {
             const eod = new Date(de); eod.setHours(23,59,59,999);
             if (cDate > eod) return false;
         }
-        if (filterOperator !== 'Tous' && c.technicianName !== filterOperator) return false;
+        if (filterOperator !== 'Tous') {
+            const cTechName = c.technicianName || (c.technicianId ? users.find(u => u.id === c.technicianId)?.fullName : null);
+            if (cTechName !== filterOperator) return false;
+        }
         return true;
     });
 
@@ -147,25 +224,49 @@ const Reports = () => {
             const eod = new Date(de); eod.setHours(23,59,59,999);
             if (aDate > eod) return false;
         }
-        if (filterOperator !== 'Tous' && a.technicianName !== filterOperator) return false;
+        if (filterOperator !== 'Tous') {
+            const aTechName = a.technicianName || (a.technicianId ? users.find(u => u.id === a.technicianId)?.fullName : null);
+            if (aTechName !== filterOperator) return false;
+        }
         if (filterDefect !== 'Tous' && a.type !== filterDefect) return false;
         return true;
     });
 
+    // Helper: resolve technician name from cable data using users list
+    const getTechName = (cable) => {
+        if (cable.technicianId) {
+            const found = users.find(u => u.id === cable.technicianId);
+            if (found) return found.fullName;
+        }
+        if (cable.technicianName && cable.technicianName !== 'Système') return cable.technicianName;
+        return null; // no identifiable technician
+    };
+
+    const isTechnician = (name) => {
+        if (!name) return false;
+        const u = users.find(usr => usr.fullName === name || usr.username === name);
+        return u && (u.role === 'technician' || (u.roles && u.roles.includes('technician')));
+    };
+
     const workerStats = Object.values(filteredCablesGlobal.reduce((acc, c) => {
-        const tech = c.technicianName || 'Système';
+        const tech = getTechName(c);
+        if (!tech || !isTechnician(tech)) return acc; // skip cables without identifiable technician or non-technicians
         if (!acc[tech]) acc[tech] = { name: tech, total: 0, conform: 0 };
         acc[tech].total++;
-        if (c.status === 'Conforme') acc[tech].conform++;
+        if (c.status?.toLowerCase()?.startsWith('conforme')) acc[tech].conform++;
         return acc;
     }, {})).map(s => ({
         ...s,
         yield: s.total > 0 ? ((s.conform / s.total) * 100).toFixed(1) : 0,
-        anomalies: filteredAnomaliesGlobal.filter(a => a.technicianName === s.name).length
+        anomalies: filteredAnomaliesGlobal.filter(a => {
+            const anomTech = a.technicianName || (a.technicianId ? users.find(u => u.id === a.technicianId)?.fullName : null);
+            return anomTech === s.name;
+        }).length
     })).sort((a, b) => b.total - a.total);
 
     const defectDistribution = Object.entries(filteredAnomaliesGlobal.reduce((acc, a) => {
-        acc[a.type] = (acc[a.type] || 0) + 1;
+        const cleanName = getCleanDefectName(a.type || 'Inconnu');
+        acc[cleanName] = (acc[cleanName] || 0) + 1;
         return acc;
     }, {})).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value);
 
@@ -197,7 +298,10 @@ const Reports = () => {
             const pageWidth = pdf.internal.pageSize.getWidth();
             
             // ─── 1. HEADER (Exactly like screenshot) ───
-            pdf.addImage(logo, 'PNG', 10, 10, 15, 15);
+            const logoBase64 = await urlToBase64(logo);
+            if (logoBase64) {
+                pdf.addImage(logoBase64, 'PNG', 10, 10, 15, 15);
+            }
             pdf.setFontSize(18);
             pdf.setFont('helvetica', 'bold');
             pdf.setTextColor(15, 23, 42);
@@ -237,7 +341,7 @@ const Reports = () => {
             pdf.line(10, 60, 10, 64); // Small vertical bar
 
             const total = filteredCablesGlobal.length;
-            const conform = filteredCablesGlobal.filter(c => c.status === 'Conforme').length;
+            const conform = filteredCablesGlobal.filter(c => c.status?.toLowerCase()?.startsWith('conforme')).length;
             const nonConform = total - conform;
             const confRate = total > 0 ? (conform / total * 100).toFixed(1) : '100';
             const anomTotal = filteredAnomaliesGlobal.length;
@@ -286,7 +390,8 @@ const Reports = () => {
             pdf.line(10, tableY - 4, 10, tableY);
 
             const anomalyGroups = filteredAnomaliesGlobal.reduce((acc, a) => {
-                acc[a.type] = (acc[a.type] || 0) + 1;
+                const cleanName = getCleanDefectName(a.type || 'Inconnu');
+                acc[cleanName] = (acc[cleanName] || 0) + 1;
                 return acc;
             }, {});
 
@@ -593,7 +698,14 @@ const Reports = () => {
             drawSectionHeader("OBSERVATIONS TECHNIQUES", currentY);
             currentY += 7;
 
-            const obsHeight = 15;
+            const noteText = report.notes || (isConform 
+                ? "Inspection visuelle : aucune anomalie détectée."
+                : `Inspection visuelle avec ${anomaliesVal} défaut(s) détecté(s).`);
+
+            // Split text to fit the page width dynamically
+            const splitNotes = pdf.splitTextToSize(noteText, pageWidth - 40);
+            const obsHeight = Math.max(15, splitNotes.length * 4 + 6);
+
             pdf.setDrawColor(226, 232, 240);
             pdf.setFillColor(255, 255, 255);
             pdf.rect(15, currentY + 3, pageWidth - 30, obsHeight, 'FD');
@@ -601,35 +713,69 @@ const Reports = () => {
             pdf.setTextColor(15, 23, 42);
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'normal');
-            
-            const noteText = report.notes || (isConform 
-                ? "Inspection visuelle : aucune anomalie détectée."
-                : `Inspection visuelle avec ${anomaliesVal} défaut(s) détecté(s).`);
-            pdf.text(noteText, 20, currentY + 11);
+            pdf.text(splitNotes, 20, currentY + 9);
 
             currentY += obsHeight + 8;
 
             // ─── 5. SECTION 3: PREUVE VISUELLE ───
             const relatedAnomaly = anomalies.find(a => a.id === report.anomalyId);
-            const rawImgUrl = report.imageUrl || relatedAnomaly?.imageUrl;
-            const imgUrl = await urlToBase64(rawImgUrl);
+            const allImageUrls = [];
+            
+            const reportUrls = report.imageUrls && report.imageUrls.length > 0 
+                ? report.imageUrls 
+                : (report.imageUrl ? [report.imageUrl] : []);
+            reportUrls.forEach(url => {
+                if (url && !allImageUrls.includes(url)) allImageUrls.push(url);
+            });
+            
+            if (relatedAnomaly) {
+                const anomUrls = relatedAnomaly.imageUrls && relatedAnomaly.imageUrls.length > 0 
+                    ? relatedAnomaly.imageUrls 
+                    : (relatedAnomaly.imageUrl ? [relatedAnomaly.imageUrl] : []);
+                anomUrls.forEach(url => {
+                    if (url && !allImageUrls.includes(url)) {
+                        allImageUrls.push(url);
+                    }
+                });
+            }
 
-            if (imgUrl) {
+            const base64Images = [];
+            for (const url of allImageUrls) {
+                const b64 = await urlToBase64(url);
+                if (b64) base64Images.push(b64);
+            }
+
+            if (base64Images.length > 0) {
                 drawSectionHeader("PREUVE VISUELLE", currentY);
                 currentY += 7;
 
-                const imgBoxHeight = 65;
+                const rows = Math.ceil(base64Images.length / 2);
+                const imgBoxHeight = rows * 60 + 5;
                 pdf.setDrawColor(226, 232, 240);
                 pdf.setFillColor(255, 255, 255);
                 pdf.rect(15, currentY + 3, pageWidth - 30, imgBoxHeight, 'FD');
 
                 try {
-                    const imgWidth = 85;
-                    const imgHeight = 55;
-                    const xPos = (pageWidth - imgWidth) / 2;
-                    pdf.addImage(imgUrl, 'JPEG', xPos, currentY + 8, imgWidth, imgHeight);
+                    const imgWidth = 75;
+                    const imgHeight = 48;
+                    for (let i = 0; i < base64Images.length; i++) {
+                        const row = Math.floor(i / 2);
+                        const col = i % 2;
+                        
+                        let xPos;
+                        if (base64Images.length === 1) {
+                            xPos = (pageWidth - imgWidth) / 2;
+                        } else {
+                            const startX = 20;
+                            const spacing = (pageWidth - 40 - (imgWidth * 2));
+                            xPos = startX + col * (imgWidth + spacing);
+                        }
+
+                        const yPos = currentY + 8 + row * 55;
+                        pdf.addImage(base64Images[i], 'JPEG', xPos, yPos, imgWidth, imgHeight);
+                    }
                 } catch (e) {
-                    console.error("Error adding anomaly image", e);
+                    console.error("Error adding anomaly images to PDF", e);
                 }
 
                 currentY += imgBoxHeight + 8;
@@ -704,42 +850,85 @@ const Reports = () => {
         }
     };
 
+    const downloadExcelBlob = (wbout, filename) => {
+        const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
+    };
+
     const exportGlobalExcel = () => {
-        const data = [
-            ['RAPPORT DE PERFORMANCE ICEM'],
-            ['Date', new Date().toLocaleString()],
-            ['Technicien', user?.fullName || 'Admin'],
-            ['Période', periodType],
-            [],
-            ['KPI', 'Valeur'],
-            ['Total Inspections', filteredCablesGlobal.length],
-            ['Taux Conformité', `${(filteredCablesGlobal.filter(c => c.status === 'Conforme').length / (filteredCablesGlobal.length || 1) * 100).toFixed(1)}%`],
-            ['Total Anomalies', filteredAnomaliesGlobal.length],
-            [],
-            ['DÉTAIL DES ANOMALIES'],
-            ['Type', 'Nombre'],
-            ...Object.entries(filteredAnomaliesGlobal.reduce((acc, a) => {
-                acc[a.type] = (acc[a.type] || 0) + 1;
-                return acc;
-            }, {})).map(([type, count]) => [type, count])
-        ];
-        const ws = XLSX.utils.aoa_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Performance");
-        XLSX.writeFile(wb, `ICEM_Performance_Global_${new Date().toISOString().split('T')[0]}.xlsx`);
-        toast.success("Export Excel réussi !");
+        try {
+            const conformCount = filteredCablesGlobal.filter(c => (c.status || '').toLowerCase().startsWith('conforme')).length;
+            const conformRate = (conformCount / (filteredCablesGlobal.length || 1) * 100).toFixed(1);
+
+            const data = [
+                ['RAPPORT DE PERFORMANCE ICEM'],
+                ['Date', new Date().toLocaleString()],
+                ['Technicien', user?.fullName || 'Admin'],
+                ['Période', periodType],
+                [],
+                ['KPI', 'Valeur'],
+                ['Total Inspections', filteredCablesGlobal.length],
+                ['Taux Conformité', `${conformRate}%`],
+                ['Total Anomalies', filteredAnomaliesGlobal.length],
+                [],
+                ['PERFORMANCE PAR OPÉRATEUR'],
+                ['Opérateur', 'Inspections', 'Rendement (%)', 'Anomalies', 'Verdict'],
+                ...workerStats.map(s => [
+                    s.name,
+                    s.total,
+                    `${s.yield}%`,
+                    s.anomalies,
+                    parseFloat(s.yield) > 85 ? 'Excellent' : 'À surveiller'
+                ]),
+                [],
+                ['DÉTAIL DES ANOMALIES'],
+                ['Type', 'Nombre'],
+                ...Object.entries(filteredAnomaliesGlobal.reduce((acc, a) => {
+                    const cleanName = getCleanDefectName(a.type || 'Inconnu');
+                    acc[cleanName] = (acc[cleanName] || 0) + 1;
+                    return acc;
+                }, {})).map(([type, count]) => [type, count])
+            ];
+
+            const ws = XLSX.utils.aoa_to_sheet(data);
+            ws['!cols'] = [{ wch: 30 }, { wch: 18 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Performance");
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            downloadExcelBlob(wbout, `ICEM_Performance_Global_${new Date().toISOString().split('T')[0]}.xlsx`);
+            toast.success("Export Excel réussi !");
+        } catch (error) {
+            console.error("Excel export error:", error);
+            toast.error("Échec de l'exportation Excel : " + error.message);
+        }
     };
 
     const exportInspectionsExcel = () => {
-        const data = filteredCablesGlobal.map(c => ({
-            'Référence': c.reference, 'OF': c.orderId, 'Technicien': c.technicianName,
-            'Date': new Date(c.inspectionDate || c.createdAt).toLocaleString(), 'Statut': c.status
-        }));
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Inspections");
-        XLSX.writeFile(wb, `ICEM_Inspections_${new Date().toISOString().split('T')[0]}.xlsx`);
-        toast.success("Export Excel réussi !");
+        try {
+            const data = filteredCablesGlobal.map(c => ({
+                'Référence': c.reference || '—', 'OF': c.orderId || '—', 'Technicien': getTechName(c) || 'Système',
+                'Date': c.inspectionDate ? new Date(c.inspectionDate).toLocaleString() : '—', 'Statut': c.status || '—'
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            ws['!cols'] = [{ wch: 20 }, { wch: 18 }, { wch: 22 }, { wch: 22 }, { wch: 18 }];
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "Inspections");
+            const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+            downloadExcelBlob(wbout, `ICEM_Inspections_${new Date().toISOString().split('T')[0]}.xlsx`);
+            toast.success("Export Excel réussi !");
+        } catch (error) {
+            console.error("Inspections Excel export error:", error);
+            toast.error("Échec de l'exportation : " + error.message);
+        }
     };
 
     if (loading) return (
@@ -838,7 +1027,10 @@ const Reports = () => {
                                     className="w-full"
                                     options={[
                                         { value: 'Tous', label: 'Tous les opérateurs' },
-                                        ...[...new Set(cables.map(c => c.technicianName))].filter(Boolean).map(op => ({ value: op, label: op }))
+                                        ...[...new Set(cables.map(c => getTechName(c)))]
+                                            .filter(Boolean)
+                                            .filter(isTechnician)
+                                            .map(op => ({ value: op, label: op }))
                                     ]}
                                     value={filterOperator}
                                     onChange={setFilterOperator}
@@ -916,86 +1108,103 @@ const Reports = () => {
                             </div>
                         </div>
 
-                        {/* Performance Chart */}
+                        {/* Performance Équipe — Techniciens & Rendement */}
                         <div className="bg-gradient-to-br from-white via-white to-indigo-50/20 p-12 rounded-[50px] border border-white shadow-2xl shadow-indigo-900/5">
                             <div className="flex items-center justify-between mb-10">
                                 <div>
-                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Performance Équipe</h3>
-                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">Volume d'inspection par opérateur</p>
+                                    <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Performance de l'Équipe</h3>
+                                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest mt-1">Rendement et volume par technicien</p>
                                 </div>
                                 <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center">
                                     <BarChart3 size={24} />
                                 </div>
                             </div>
-                            <div className="h-[300px]">
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={workerStats.slice(0, 6)}>
-                                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                                        <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#64748b' }} />
-                                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#64748b' }} />
-                                        <RechartsTooltip 
-                                            cursor={{ fill: '#f8fafc' }}
-                                            contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 900 }}
-                                        />
-                                        <Bar dataKey="total" fill="#4f46e5" radius={[10, 10, 0, 0]} barSize={40} />
-                                    </BarChart>
-                                </ResponsiveContainer>
-                            </div>
+
+                            {workerStats.length > 0 ? (
+                                <>
+                                    {/* Chart: Inspections + Rendement */}
+                                    <div className="h-[300px] mb-10">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={workerStats.slice(0, 8)} barGap={4}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 11, fontWeight: 900, fill: '#334155' }} />
+                                                <YAxis yAxisId="left" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} label={{ value: 'Inspections', angle: -90, position: 'insideLeft', style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8' } }} />
+                                                <YAxis yAxisId="right" orientation="right" domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 900, fill: '#94a3b8' }} label={{ value: 'Rendement %', angle: 90, position: 'insideRight', style: { fontSize: 9, fontWeight: 900, fill: '#94a3b8' } }} />
+                                                <RechartsTooltip
+                                                    cursor={{ fill: '#f8fafc' }}
+                                                    contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', fontWeight: 900, fontSize: 13 }}
+                                                    formatter={(value, name) => {
+                                                        if (name === 'total') return [value, 'Inspections'];
+                                                        if (name === 'yield') return [`${value}%`, 'Rendement'];
+                                                        return [value, name];
+                                                    }}
+                                                />
+                                                <Bar yAxisId="left" dataKey="total" name="total" fill="#4f46e5" radius={[8, 8, 0, 0]} barSize={28} />
+                                                <Bar yAxisId="right" dataKey="yield" name="yield" fill="#10b981" radius={[8, 8, 0, 0]} barSize={28} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    {/* Legend */}
+                                    <div className="flex items-center justify-center gap-8 mb-8">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3.5 h-3.5 rounded-md bg-indigo-600"></div>
+                                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Inspections</span>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-3.5 h-3.5 rounded-md bg-emerald-500"></div>
+                                            <span className="text-xs font-black text-slate-500 uppercase tracking-widest">Rendement (%)</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Technician Leaderboard Cards */}
+                                    <div className="space-y-3">
+                                        {workerStats.map((tech, i) => (
+                                            <div key={i} className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50/70 border border-slate-100 hover:bg-indigo-50/40 hover:border-indigo-100 transition-all group">
+                                                {/* Rank */}
+                                                <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-sm flex-shrink-0 ${i === 0 ? 'bg-amber-100 text-amber-700 border border-amber-200' : i === 1 ? 'bg-slate-200 text-slate-600 border border-slate-300' : i === 2 ? 'bg-orange-100 text-orange-600 border border-orange-200' : 'bg-slate-100 text-slate-500 border border-slate-200'}`}>
+                                                    {i + 1}
+                                                </div>
+                                                {/* Avatar + Name */}
+                                                <div className="flex items-center gap-3 min-w-[180px]">
+                                                    <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center font-black text-indigo-600 text-sm border-2 border-white shadow-sm flex-shrink-0">
+                                                        {tech.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <p className="font-black text-slate-900 text-sm">{tech.name}</p>
+                                                        <p className="text-[11px] font-bold text-slate-400">{tech.total} inspection{tech.total > 1 ? 's' : ''} · {tech.anomalies} anomalie{tech.anomalies > 1 ? 's' : ''}</p>
+                                                    </div>
+                                                </div>
+                                                {/* Yield Bar */}
+                                                <div className="flex-1 flex items-center gap-4">
+                                                    <div className="flex-1 h-2.5 bg-slate-200/60 rounded-full overflow-hidden">
+                                                        <div
+                                                            className={`h-full rounded-full transition-all duration-700 ${parseFloat(tech.yield) > 90 ? 'bg-emerald-500' : parseFloat(tech.yield) > 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                                            style={{ width: `${Math.min(parseFloat(tech.yield), 100)}%` }}
+                                                        ></div>
+                                                    </div>
+                                                    <span className={`font-black text-sm min-w-[60px] text-right ${parseFloat(tech.yield) > 90 ? 'text-emerald-600' : parseFloat(tech.yield) > 70 ? 'text-amber-600' : 'text-rose-600'}`}>
+                                                        {tech.yield}%
+                                                    </span>
+                                                </div>
+                                                {/* Status Badge */}
+                                                <span className={`px-3 py-1.5 rounded-xl text-xs font-black uppercase tracking-wider flex-shrink-0 ${parseFloat(tech.yield) > 85 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-600 border border-rose-100'}`}>
+                                                    {parseFloat(tech.yield) > 85 ? 'Excellent' : 'À surveiller'}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="py-20 text-center opacity-40">
+                                    <Users size={40} className="mx-auto mb-3 text-slate-400" />
+                                    <p className="text-sm font-black uppercase tracking-widest text-slate-500">Aucune donnée technicien disponible</p>
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Workforce Leaderboard Table */}
-                    <div className="bg-gradient-to-br from-white to-slate-50/30 rounded-[50px] border border-white shadow-2xl shadow-indigo-900/10 overflow-hidden">
-                        <div className="p-10 border-b border-slate-100 flex items-center justify-between">
-                            <h3 className="text-xl font-black text-slate-900 uppercase tracking-normal">Matrice de Performance Individuelle</h3>
-                            <Users className="text-slate-300" size={24} />
-                        </div>
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left">
-                                <thead className="bg-slate-50/80 border-b border-slate-100">
-                                    <tr>
-                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em]">Opérateur</th>
-                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-center">Inspections</th>
-                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-center">Rendement (%)</th>
-                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-center">Anomalies</th>
-                                        <th className="px-12 py-8 text-sm font-black text-slate-400 uppercase tracking-[0.2em] text-right">Statut Équipe</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-50">
-                                    {workerStats.map((stat, i) => (
-                                        <tr key={i} className="hover:bg-indigo-50/20 transition-all group">
-                                            <td className="px-12 py-8">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center font-black text-indigo-600 border-2 border-white shadow-sm">
-                                                        {stat.name.charAt(0)}
-                                                    </div>
-                                                    <p className="font-black text-slate-900 text-sm">{stat.name}</p>
-                                                </div>
-                                            </td>
-                                            <td className="px-12 py-8 text-center font-black text-slate-700">{stat.total}</td>
-                                            <td className="px-12 py-8 text-center">
-                                                <div className="flex flex-col items-center gap-1">
-                                                    <span className="font-black text-slate-900">{stat.yield}%</span>
-                                                    <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                                                        <div 
-                                                            className={`h-full rounded-full ${parseFloat(stat.yield) > 90 ? 'bg-emerald-500' : parseFloat(stat.yield) > 70 ? 'bg-amber-500' : 'bg-rose-500'}`}
-                                                            style={{ width: `${stat.yield}%` }}
-                                                        ></div>
-                                                    </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-12 py-8 text-center font-black text-rose-500">{stat.anomalies}</td>
-                                            <td className="px-12 py-8 text-right">
-                                                <span className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-widest ${parseFloat(stat.yield) > 85 ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-                                                    {parseFloat(stat.yield) > 85 ? 'Excellent' : 'À surveiller'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+
                 </div>
             )}
 

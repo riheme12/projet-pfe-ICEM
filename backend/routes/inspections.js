@@ -20,8 +20,20 @@ router.get('/', async (req, res) => {
 // Get cables by production order
 router.get('/order/:orderId', async (req, res) => {
     try {
+        const { orderId } = req.params;
+        const cleanOrderId = orderId.replace(/^OFL/i, 'OF');
+        const withL = 'OFL' + cleanOrderId.substring(2);
+        
+        const possibleOrderIds = [
+            cleanOrderId,
+            cleanOrderId.replace(/\//g, '&#x2F;'),
+            withL,
+            withL.replace(/\//g, '&#x2F;')
+        ];
+        
+        const uniqueOrderIds = [...new Set(possibleOrderIds)];
         const snapshot = await db.collection('cable')
-            .where('orderId', '==', req.params.orderId)
+            .where('orderId', 'in', uniqueOrderIds)
             .get();
         const cables = snapshot.docs.map(doc => {
             const cable = Cable.fromJson({ id: doc.id, ...doc.data() });
@@ -38,17 +50,47 @@ router.get('/:id', async (req, res) => {
     try {
         let doc = await db.collection('cable').doc(req.params.id).get();
         if (!doc.exists) {
-            // Try finding by reference
-            const snapshot = await db.collection('cable').where('reference', '==', req.params.id).limit(1).get();
-            if (snapshot.empty) {
-                // Try finding by code
-                const snapshotCode = await db.collection('cable').where('code', '==', req.params.id).limit(1).get();
-                if (snapshotCode.empty) {
-                    return res.status(404).json({ error: 'Cable not found' });
+            const orderId = req.query.orderId;
+            let queryRef = db.collection('cable').where('reference', '==', req.params.id);
+            let queryCode = db.collection('cable').where('code', '==', req.params.id);
+            
+            if (orderId) {
+                const cleanOrderId = orderId.replace(/^OFL/i, 'OF');
+                const withL = 'OFL' + cleanOrderId.substring(2);
+                
+                const possibleOrderIds = [
+                    cleanOrderId,
+                    cleanOrderId.replace(/\//g, '&#x2F;'),
+                    withL,
+                    withL.replace(/\//g, '&#x2F;')
+                ];
+                const uniqueOrderIds = [...new Set(possibleOrderIds)];
+                
+                // Try finding by reference in this specific order
+                const snapshotRef = await queryRef.where('orderId', 'in', possibleOrderIds).limit(1).get();
+                if (!snapshotRef.empty) {
+                    doc = snapshotRef.docs[0];
+                } else {
+                    // Try finding by code in this specific order
+                    const snapshotCode = await queryCode.where('orderId', 'in', possibleOrderIds).limit(1).get();
+                    if (!snapshotCode.empty) {
+                        doc = snapshotCode.docs[0];
+                    }
                 }
-                doc = snapshotCode.docs[0];
-            } else {
-                doc = snapshot.docs[0];
+            }
+            
+            // Fallback to simple limit(1) if not found with orderId or orderId not provided
+            if (!doc || !doc.exists) {
+                const snapshotRef = await queryRef.limit(1).get();
+                if (snapshotRef.empty) {
+                    const snapshotCode = await queryCode.limit(1).get();
+                    if (snapshotCode.empty) {
+                        return res.status(404).json({ error: 'Cable not found' });
+                    }
+                    doc = snapshotCode.docs[0];
+                } else {
+                    doc = snapshotRef.docs[0];
+                }
             }
         }
         const cable = Cable.fromJson({ id: doc.id, ...doc.data() });

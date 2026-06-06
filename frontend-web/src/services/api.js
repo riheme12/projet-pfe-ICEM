@@ -53,7 +53,7 @@ export const OrderService = {
 
 export const InspectionService = {
     getAll: () => api.get('/inspections'),
-    getById: (id) => api.get(`/inspections/${id}`),
+    getById: (id, params) => api.get(`/inspections/${id}`, { params }),
     getByOrder: (orderId) => api.get(`/inspections/order/${orderId}`),
     create: (data) => api.post('/inspections', data),
     update: (id, data) => api.patch(`/inspections/${id}`, data),
@@ -63,7 +63,7 @@ export const AnomalyService = {
     getAll: (params) => api.get('/anomalies', { params }),
     getUnreadCount: () => api.get('/anomalies/notifications/unread/count'),
     getStats: () => api.get('/anomalies/stats/summary'),
-    getByCable: (cableId) => api.get(`/anomalies/cable/${cableId}`),
+    getByCable: (cableId, params) => api.get(`/anomalies/cable/${cableId}`, { params }),
     create: (data) => api.post('/anomalies', data),
     update: (id, data) => api.patch(`/anomalies/${id}`, data),
     delete: (id) => api.delete(`/anomalies/${id}`),

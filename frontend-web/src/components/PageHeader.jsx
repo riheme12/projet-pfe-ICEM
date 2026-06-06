@@ -6,7 +6,7 @@ import React from 'react';
 const PageHeader = ({ title, subtitle, icon, actions, badge }) => {
     return (
         <div className="relative mb-12 group/header">
-            {/* 🎨 Premium Light Command Center Theme */}
+            {/* Premium Light Command Center Theme */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-10 bg-gradient-to-br from-white/95 via-blue-50/90 to-white/80 backdrop-blur-2xl rounded-[45px] shadow-[0_15px_40px_-10px_rgba(30,27,75,0.05)] border border-white relative overflow-hidden group">
                 <div className="absolute inset-0 opacity-[0.3] pointer-events-none bg-[radial-gradient(#3b82f6_1px,transparent_1px)] [background-size:20px_20px]"></div>
                 <div className="absolute -top-12 -right-12 w-64 h-64 bg-blue-300/30 rounded-full blur-[80px] animate-pulse"></div>

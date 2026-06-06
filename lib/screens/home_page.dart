@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/providers/auth_provider.dart';
@@ -113,26 +114,44 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   );
 
   Widget _buildTopBar() {
+    final auth = Provider.of<AuthProvider>(context);
+    final user = auth.currentUser;
+    final photo = user?.photoUrl;
+
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Row(children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8)],
-          ),
-          child: const Icon(Icons.auto_awesome_mosaic_rounded, color: AppTheme.primaryNavy, size: 18),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF00C6FF).withOpacity(0.35),
+              blurRadius: 20,
+              spreadRadius: 1,
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Text('ICEM', style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: 1)),
-      ]),
+        child: Image.asset(
+          'assets/images/logo.png',
+          height: 32,
+          fit: BoxFit.contain,
+        ),
+      ),
       GestureDetector(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage())),
         child: Container(
           padding: const EdgeInsets.all(2),
           decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.white38, width: 2)),
-          child: const CircleAvatar(radius: 16, backgroundColor: Colors.white24, child: Icon(Icons.person_rounded, color: Colors.white, size: 18)),
+          child: CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.white24,
+            backgroundImage: photo != null && photo.isNotEmpty
+                ? MemoryImage(base64Decode(photo.split(',').last))
+                : null,
+            child: photo == null || photo.isEmpty
+                ? const Icon(Icons.person_rounded, color: Colors.white, size: 18)
+                : null,
+          ),
         ),
       ),
     ]);
@@ -225,57 +244,248 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   Widget _bannerDivider() => Container(width: 1, height: 36, color: Colors.white12);
 
   Widget _buildFeatures() {
-    return Column(children: [
-      _featureTile(Icons.assignment_rounded, 'Ordres de Fabrication', 'Gérer les productions', const Color(0xFF6366F1),
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersListPage()))),
-      _featureTile(Icons.camera_alt_rounded, 'Inspection Vision IA', 'Contrôle automatique', const Color(0xFF0EA5E9),
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InspectionPage()))),
-      _featureTile(Icons.notification_important_rounded, 'Registre Anomalies', 'Suivi non-conformités', const Color(0xFFF43F5E),
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnomaliesListPage()))),
-      _featureTile(Icons.insights_rounded, 'Rapports & Analytics', 'Performance industrielle', const Color(0xFF10B981),
-        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage()))),
-    ]);
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _gridFeatureTile(
+                Icons.assignment_rounded,
+                'Ordres de Fabrication',
+                'Gérer les productions',
+                const Color(0xFF6366F1),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersListPage())),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _gridFeatureTile(
+                Icons.notification_important_rounded,
+                'Registre Anomalies',
+                'Suivi non-conformités',
+                const Color(0xFFF43F5E),
+                () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AnomaliesListPage())),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        _featureTile(
+          Icons.insights_rounded,
+          'Rapports & Analytics',
+          'Performance industrielle',
+          const Color(0xFF10B981),
+          () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsPage())),
+        ),
+      ],
+    );
   }
 
-  Widget _featureTile(IconData icon, String title, String desc, Color color, VoidCallback onTap) => Container(
-    margin: const EdgeInsets.only(bottom: 10),
-    child: Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withOpacity(0.1)),
+  List<Color> _getCardGradient(Color color) {
+    if (color == const Color(0xFF6366F1)) {
+      // Indigo theme (3D glossy gradient)
+      return [
+        const Color(0xFFFFFFFF),
+        const Color(0xFFEEF2FF),
+        const Color(0xFFC7D2FE),
+      ];
+    } else if (color == const Color(0xFFF43F5E)) {
+      // Rose theme
+      return [
+        const Color(0xFFFFFFFF),
+        const Color(0xFFFFF1F2),
+        const Color(0xFFFECDD3),
+      ];
+    } else if (color == const Color(0xFF10B981)) {
+      // Emerald theme
+      return [
+        const Color(0xFFFFFFFF),
+        const Color(0xFFECFDF5),
+        const Color(0xFFA7F3D0),
+      ];
+    }
+    return [Colors.white, color.withOpacity(0.12)];
+  }
+
+  Widget _gridFeatureTile(IconData icon, String title, String desc, Color color, VoidCallback onTap) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: _getCardGradient(color),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.4, 1.0],
+        ),
+        boxShadow: [
+          // Soft physical shadow
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          child: Row(children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [color.withOpacity(0.15), color.withOpacity(0.05)]),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: color, size: 22),
+          // Deep colored glow for 3D elevation
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 20,
+            spreadRadius: -2,
+            offset: const Offset(0, 10),
+          ),
+        ],
+        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            height: 130,
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: color.withOpacity(0.18),
+                            blurRadius: 10,
+                            offset: const Offset(0, 3),
+                          ),
+                        ],
+                        border: Border.all(color: Colors.white, width: 1),
+                      ),
+                      child: Icon(icon, color: color, size: 20),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.arrow_forward_rounded, size: 14, color: color),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy, letterSpacing: -0.2),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      desc,
+                      style: GoogleFonts.inter(fontSize: 10, color: const Color(0xFF334155), fontWeight: FontWeight.w600),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ],
             ),
-            const SizedBox(width: 16),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.primaryNavy)),
-              const SizedBox(height: 2),
-              Text(desc, style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textGrey, fontWeight: FontWeight.w500)),
-            ])),
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(color: AppTheme.surfaceGrey, borderRadius: BorderRadius.circular(8)),
-              child: Icon(Icons.arrow_forward_ios_rounded, size: 12, color: color),
-            ),
-          ]),
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
+
+  Widget _featureTile(IconData icon, String title, String desc, Color color, VoidCallback onTap) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: _getCardGradient(color),
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: const [0.0, 0.4, 1.0],
+        ),
+        boxShadow: [
+          // Soft physical shadow
+          BoxShadow(
+            color: Colors.black.withOpacity(0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+          // Deep colored glow for 3D elevation
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 20,
+            spreadRadius: -2,
+            offset: const Offset(0, 10),
+          ),
+        ],
+        border: Border.all(color: Colors.white.withOpacity(0.8), width: 1.5),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(24),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: color.withOpacity(0.18),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                    border: Border.all(color: Colors.white, width: 1),
+                  ),
+                  child: Icon(icon, color: color, size: 22),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title,
+                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy, letterSpacing: -0.2),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        desc,
+                        style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF334155), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.arrow_forward_rounded, size: 16, color: color),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   Widget _buildBottomNav() {
     return Container(
@@ -284,7 +494,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, -2))],
       ),
       child: BottomNavigationBar(
-        currentIndex: _currentTab,
+        currentIndex: _currentTab > 1 ? 0 : _currentTab,
         backgroundColor: Colors.white,
         elevation: 0,
         selectedItemColor: AppTheme.accentBlue,
@@ -296,13 +506,11 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
         unselectedLabelStyle: GoogleFonts.inter(fontSize: 10),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard_rounded, size: 22), label: 'Tableau'),
-          BottomNavigationBarItem(icon: Icon(Icons.qr_code_scanner_rounded, size: 22), label: 'Scanner'),
           BottomNavigationBarItem(icon: Icon(Icons.person_rounded, size: 22), label: 'Profil'),
         ],
         onTap: (i) {
           setState(() => _currentTab = i);
-          if (i == 1) Navigator.push(context, MaterialPageRoute(builder: (_) => const OrdersListPage()));
-          if (i == 2) Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
+          if (i == 1) Navigator.push(context, MaterialPageRoute(builder: (_) => const ProfilePage()));
         },
       ),
     );

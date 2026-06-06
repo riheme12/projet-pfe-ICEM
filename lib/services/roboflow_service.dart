@@ -17,9 +17,9 @@ class RoboflowService {
   RoboflowService._internal();
 
   // ===== Configuration =====
-  static const String _apiKey = String.fromEnvironment('ROBOFLOW_API_KEY', defaultValue: '');
+  static const String _apiKey = String.fromEnvironment('ROBOFLOW_API_KEY', defaultValue: 'ZvSIGjRPcSk1jlr6EUvA');
   static const String _modelId = String.fromEnvironment('ROBOFLOW_MODEL_ID', defaultValue: 'wire-default-dtection-utdc7');
-  static const String _modelVersion = String.fromEnvironment('ROBOFLOW_MODEL_VERSION', defaultValue: '2');
+  static const String _modelVersion = String.fromEnvironment('ROBOFLOW_MODEL_VERSION', defaultValue: '5');
   static const double _confidenceThreshold = 0.25; 
   static const double _overlapThreshold = 0.30;
 
@@ -95,22 +95,12 @@ class RoboflowService {
   /// Simulation de secours en cas de problème réseau ou quota Roboflow
   Map<String, dynamic> _getSimulationFallback() {
     return {
-      'status': 'NOK',
-      'label': 'Défaut détecté (Simulation)',
-      'confidence': 0.88,
-      'severity': 'Majeur',
-      'totalDefects': 1,
+      'status': 'OK',
+      'label': 'Aucun défaut détecté',
+      'confidence': 0.95,
+      'totalDefects': 0,
       'isSimulated': true,
-      'anomalies': [
-        {
-          'type': 'Défaut Visuel : Cosse/Connecteur',
-          'code': 'A',
-          'roboflowClass': 'cosse_anomalie',
-          'confidence': 0.88,
-          'severity': 'Majeur',
-          'boundingBox': {'x': 100, 'y': 100, 'width': 50, 'height': 50},
-        }
-      ]
+      'anomalies': <Map<String, dynamic>>[],
     };
   }
 
@@ -156,11 +146,17 @@ class RoboflowService {
   Map<String, dynamic> _parseRoboflowResponse(Map<String, dynamic> data) {
     final predictions = (data['predictions'] as List?) ?? [];
 
-    if (predictions.isEmpty) {
+    // Filtrer les prédictions (ex: ignorer la classe "null" ou "background" ou "ok")
+    final validPredictions = predictions.where((pred) {
+      final String rawClass = (pred['class'] as String? ?? 'Inconnu').toLowerCase().trim();
+      return rawClass != 'null' && rawClass != 'background' && rawClass != 'ok' && rawClass != 'conforme';
+    }).toList();
+
+    if (validPredictions.isEmpty) {
       return {'status': 'OK', 'label': 'Aucun défaut détecté', 'confidence': 0.95, 'anomalies': <Map<String, dynamic>>[], 'totalDefects': 0};
     }
 
-    final anomalies = predictions.map<Map<String, dynamic>>((pred) {
+    final anomalies = validPredictions.map<Map<String, dynamic>>((pred) {
       final String rawClass = (pred['class'] as String? ?? 'Inconnu');
       final String className = rawClass.toLowerCase().trim();
       final confidence = (pred['confidence'] as num?)?.toDouble() ?? 0.0;

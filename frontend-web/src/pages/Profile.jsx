@@ -68,7 +68,7 @@ const Profile = () => {
 
     return (
         <div className="max-w-[1400px] mx-auto animate-in fade-in zoom-in duration-700 space-y-12 pb-20">
-            {/* 🛸 High-Vibrancy Command Center Light Theme */}
+            {/* High-Vibrancy Command Center Light Theme */}
             <div className="bg-white/70 backdrop-blur-3xl rounded-[40px] border border-white shadow-[0_15px_40px_-15px_rgba(30,27,75,0.1)] overflow-hidden relative">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-100/40 via-indigo-50/30 to-purple-50/20 pointer-events-none"></div>
                 
@@ -205,7 +205,7 @@ const Profile = () => {
                 </div>
             </div>
 
-            {/* 🌈 Matrix - Infused with Colors */}
+            {/* Matrix - Infused with Colors */}
             <div className="space-y-8">
                 <div className="flex items-center gap-4 px-6">
                     <div className="w-3 h-8 bg-gradient-to-b from-indigo-500 to-purple-600 rounded-full shadow-lg"></div>

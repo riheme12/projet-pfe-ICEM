@@ -67,7 +67,7 @@ router.post('/analyze', async (req, res) => {
                     // Pour le PFE, notifions tout ce qui est détecté par l'IA
                     await db.collection('notifications').add({
                         type: 'anomaly_detected',
-                        title: `🔍 Anomalie détectée par IA`,
+                        title: `Anomalie détectée par IA`,
                         message: `${detection.type} sur câble ${cableId || 'N/A'} (Confiance: ${(detection.confidence * 100).toFixed(0)}%)`,
                         severity: detection.severity,
                         anomalyId: docRef.id,

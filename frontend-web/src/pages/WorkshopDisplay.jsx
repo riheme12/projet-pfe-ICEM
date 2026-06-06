@@ -198,14 +198,12 @@ export default function WorkshopDisplay() {
                 {/* En-tête */}
                 <div style={styles.alertHeader}>
                     <div style={styles.alertHeaderLeft}>
-                        <span style={{ ...styles.alertIcon, opacity: blink ? 1 : 0.4 }}>🚨</span>
                         <div>
-                            <h1 style={styles.alertTitle}>ANOMALIE DÉTECTÉE</h1>
+                            <h1 style={styles.alertTitle}>ANOMALIE DETECTEE</h1>
                             <p style={styles.alertSubTitle}>
                                 {anomalies.length} anomalie{anomalies.length > 1 ? 's' : ''} active{anomalies.length > 1 ? 's' : ''} — Intervention requise
                             </p>
                         </div>
-                        <span style={{ ...styles.alertIcon, opacity: blink ? 1 : 0.4 }}>🚨</span>
                     </div>
 
                     <div style={styles.headerRight}>
@@ -234,13 +232,13 @@ export default function WorkshopDisplay() {
                                 />
                             ) : (
                                 <div style={styles.noImage}>
-                                    <span style={{ fontSize: 60 }}>📷</span>
+                                    <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
                                     <p style={styles.noImageText}>Image non disponible</p>
                                 </div>
                             )}
                             {/* Badge IA */}
                             <div style={styles.aiBadge}>
-                                🤖 IA Roboflow
+                                IA Roboflow
                                 {mainAnomaly.confidence && (
                                     <span style={styles.confidenceChip}>
                                         {(mainAnomaly.confidence * 100).toFixed(0)}% confiance
@@ -295,13 +293,13 @@ export default function WorkshopDisplay() {
                                         disabled={resolving}
                                         style={styles.confirmYes}
                                     >
-                                        {resolving ? '⏳ En cours...' : '✅ Oui, marquer comme Traité'}
+                                        {resolving ? 'En cours...' : 'Oui, marquer comme Traité'}
                                     </button>
                                     <button
                                         onClick={() => setShowConfirm(null)}
                                         style={styles.confirmNo}
                                     >
-                                        ✕ Annuler
+                                        Annuler
                                     </button>
                                 </div>
                             </div>
@@ -312,7 +310,7 @@ export default function WorkshopDisplay() {
                                 onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.04)'}
                                 onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                             >
-                                ✅ MARQUER COMME TRAITÉ
+                                MARQUER COMME TRAITÉ
                             </button>
                         )}
                         <p style={styles.actionHint}>Appuyez sur le bouton après avoir traité le câble défectueux</p>
@@ -349,7 +347,9 @@ export default function WorkshopDisplay() {
             {/* Centre */}
             <div style={styles.normalCenter}>
                 <div style={styles.normalIconRing}>
-                    <span style={{ fontSize: 90, lineHeight: 1 }}>✅</span>
+                    <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
                 </div>
                 <h1 style={styles.normalTitle}>PRODUCTION CONFORME</h1>
                 <p style={styles.normalSubTitle}>Aucune anomalie active détectée dans l'atelier</p>

@@ -207,7 +207,7 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
           Text('Taux de Conformité', style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w900, color: AppTheme.primaryNavy)),
           const SizedBox(height: 4),
           Text(
-            rate >= 80 ? '🏆 Excellent travail !' : rate >= 50 ? '⚡ Peut mieux faire' : '⚠️ Attention requise',
+            rate >= 80 ? 'Excellent travail !' : rate >= 50 ? 'Peut mieux faire' : 'Attention requise',
             style: GoogleFonts.inter(fontSize: 12, color: color, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -263,10 +263,89 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
     ]),
   );
 
+  static const Map<String, String> _defectNamesMap = {
+    'A': 'Cosse déformée', 'B': 'Cosse ébanchati', 'C': 'Cosse ouverte',
+    'D': 'Fil pincé/coupé', 'E': 'Fils inversés', 'F': 'Fil tendu',
+    'G': 'Fil sans cosse', 'H': 'Ticket élec. NC', 'I': 'Long./couleur NC',
+    'J': 'Conn. cassé', 'K': 'Bouchette manq.', 'L': 'Tube thermo NC',
+    'M': 'Protection manq.', 'N': 'Tube manqué', 'O': 'Vis mal serrée',
+    'P': 'Composant manq.', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
+    'S': 'Scotch mal exécuté', 'T': 'Mesure Dériv.', 'V': 'Étiquette manquante',
+    'W': 'Étiquette inv.', 'Z': 'Autres défauts',
+  };
+
+  String _getCleanDefectName(String rawKey) {
+    String key = rawKey.trim();
+    
+    // 1. Remove "Défauts: " or "Défaut: " prefix if it exists
+    if (key.startsWith('Défauts:') || key.startsWith('Défaut:')) {
+      final codePart = key.split(':').last.trim();
+      final codes = codePart.split(',').map((c) => c.trim().toUpperCase()).toList();
+      final names = codes.map((c) => _defectNamesMap[c] ?? c).toList();
+      return names.join(', ');
+    }
+    
+    // 2. Remove "[Code] " prefix if it exists (e.g. "[A] Cosse déformée" -> "Cosse déformée")
+    final match = RegExp(r'^\[[A-Z]\]\s+(.+)$').firstMatch(key);
+    if (match != null) {
+      return match.group(1)!;
+    }
+    
+    // 3. Map raw Roboflow classes to clean names
+    final classMapping = {
+      'composant_mal_insere': 'Composant mal inséré',
+      'composant_mal _insere': 'Composant mal inséré',
+      'composant_manquant': 'Composant manquant',
+      'etiquette_anomalie': 'Étiquette manquante',
+      'protection_anomalie': 'Anomalie protection',
+      'connecteur_anomalie': 'Anomalie connecteur',
+      'cosse_anomalie': 'Anomalie cosse',
+      'scotche_anomalie': 'Scotch mal exécuté',
+      'anomalie scotch': 'Scotch mal exécuté',
+      'anomalie étiquette': 'Étiquette manquante',
+      'anomalie protection': 'Protection manquante',
+      'anomalie connecteur': 'Connecteur cassé',
+      'anomalie cosse': 'Cosse déformée',
+    };
+    
+    final lowerKey = key.toLowerCase();
+    if (classMapping.containsKey(lowerKey)) {
+      return classMapping[lowerKey]!;
+    }
+    
+    // 4. Map electrical check abbreviations
+    final electricalMapping = {
+      'fi conn.': 'Fils inversés connecteur',
+      'fmi conn.': 'Fils mal insérés connecteur',
+      'fi pos.': 'Fils inversés position',
+      'fmi pos.': 'Fils mal insérés position',
+      'fi mar/coul': 'Fils inversés marquage/couleur',
+      'étiq. manq.': 'Étiquette manquante',
+      'étiq. inv. c1': 'Étiquette invertie Conn 1',
+      'étiq. inv. c2': 'Étiquette invertie Conn 2',
+      'conn. dériv.': 'Connecteur dérivation',
+      'prot. manq.': 'Protection manquante connecteur',
+    };
+    
+    if (key.startsWith('Défaut Électrique:')) {
+      final label = key.split(':').last.trim().toLowerCase();
+      return electricalMapping[label] ?? key;
+    }
+    
+    return key;
+  }
+
   // ─── Defects Breakdown ────────────────────────────────────────────────
   Widget _buildDefectsBreakdown() {
-    final map = _techStats?.anomaliesByType ?? {};
-    if (map.isEmpty) return const SizedBox.shrink();
+    final rawMap = _techStats?.anomaliesByType ?? {};
+    if (rawMap.isEmpty) return const SizedBox.shrink();
+
+    // Aggregate and clean names dynamically to sum counts of merged names
+    final Map<String, int> map = {};
+    rawMap.forEach((key, val) {
+      final cleanKey = _getCleanDefectName(key);
+      map[cleanKey] = (map[cleanKey] ?? 0) + val;
+    });
 
     final total = map.values.fold(0, (a, b) => a + b);
     final colors = [

@@ -13,7 +13,7 @@ function getCached(key) {
 }
 function setCache(key, data) { cache[key] = { data, time: Date.now() }; }
 
-// ⚠️ IMPORTANT: Static routes (/stats/summary) MUST come before dynamic routes (/:id)
+// IMPORTANT: Static routes (/stats/summary) MUST come before dynamic routes (/:id)
 
 // Get statistics for production orders (CACHED)
 router.get('/stats/summary', async (req, res) => {
@@ -128,6 +128,12 @@ router.patch('/:id', async (req, res) => {
         if (!doc.exists) {
             return res.status(404).json({ error: 'Order not found' });
         }
+
+        const currentStatus = (doc.data().statusDisplay || doc.data().status || '').toLowerCase().trim();
+        if (currentStatus !== 'en cours' && currentStatus !== 'en attente') {
+            return res.status(400).json({ error: 'Seuls les ordres "En cours" ou "En attente" peuvent être modifiés.' });
+        }
+
         const existingData = { id: doc.id, ...doc.data() };
         const updatedData = { ...existingData, ...req.body };
         const order = ManufacturingOrder.fromJson(updatedData);
@@ -147,6 +153,12 @@ router.delete('/:id', async (req, res) => {
         if (!doc.exists) {
             return res.status(404).json({ error: 'Order not found' });
         }
+
+        const currentStatus = (doc.data().statusDisplay || doc.data().status || '').toLowerCase().trim();
+        if (currentStatus !== 'en attente') {
+            return res.status(400).json({ error: 'Seuls les ordres "En attente" peuvent être supprimés.' });
+        }
+
         await db.collection('manufacturingOrder').doc(req.params.id).delete();
         res.status(200).json({ message: 'Order deleted successfully' });
     } catch (error) {

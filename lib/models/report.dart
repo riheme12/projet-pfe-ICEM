@@ -18,6 +18,7 @@ class Report {
   final String? notes;              // Notes du technicien
   final String? signatureUrl;       // Signature du technicien
   final String? imageUrl;           // Image de l'anomalie
+  final List<String>? imageUrls;     // Images des anomalies
 
   Report({
     required this.id,
@@ -33,6 +34,7 @@ class Report {
     this.notes,
     this.signatureUrl,
     this.imageUrl,
+    this.imageUrls,
   });
 
   /// Vérifier si le câble est conforme
@@ -52,6 +54,14 @@ class Report {
       try { dateToUse = DateTime.parse(data['generatedAt'] as String); } catch (_) {}
     }
 
+    final dynamic rawImageUrls = data['imageUrls'];
+    List<String>? parsedImageUrls;
+    if (rawImageUrls is List) {
+      parsedImageUrls = List<String>.from(rawImageUrls.map((e) => e.toString()));
+    } else if (data['imageUrl'] != null) {
+      parsedImageUrls = [data['imageUrl'] as String];
+    }
+
     return Report(
       id: doc.id,
       cableId: data['cableId'] as String? ?? '',
@@ -66,11 +76,20 @@ class Report {
       notes: data['notes'] as String?,
       signatureUrl: data['signatureUrl'] as String?,
       imageUrl: data['imageUrl'] as String?,
+      imageUrls: parsedImageUrls,
     );
   }
 
   /// Créer depuis JSON (Map)
   factory Report.fromJson(Map<String, dynamic> json) {
+    final dynamic rawImageUrls = json['imageUrls'];
+    List<String>? parsedImageUrls;
+    if (rawImageUrls is List) {
+      parsedImageUrls = List<String>.from(rawImageUrls.map((e) => e.toString()));
+    } else if (json['imageUrl'] != null) {
+      parsedImageUrls = [json['imageUrl'] as String];
+    }
+
     return Report(
       id: json['id'] as String,
       cableId: json['cableId'] as String,
@@ -85,6 +104,7 @@ class Report {
       notes: json['notes'] as String?,
       signatureUrl: json['signatureUrl'] as String?,
       imageUrl: json['imageUrl'] as String?,
+      imageUrls: parsedImageUrls,
     );
   }
 
@@ -104,6 +124,7 @@ class Report {
       'notes': notes,
       'signatureUrl': signatureUrl,
       'imageUrl': imageUrl,
+      'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl!] : []),
     };
   }
 }

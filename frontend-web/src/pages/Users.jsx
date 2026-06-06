@@ -61,7 +61,7 @@ const Users = () => {
     const [currentPage, setCurrentPage] = useState(1);
     
     const [form, setForm] = useState({
-        fullName: '', username: '', email: '', phone: '', isActive: true, role: 'operator'
+        fullName: '', username: '', email: '', phone: '', isActive: true, role: 'technician', roles: ['technician']
     });
 
     const { canResetPassword, canCreate, canEdit } = useAuth();
@@ -82,7 +82,7 @@ const Users = () => {
 
     const openCreateUser = () => {
         setEditUser(null);
-        setForm({ fullName: '', username: '', email: '', phone: '', isActive: true, role: 'technician' });
+        setForm({ fullName: '', username: '', email: '', phone: '', isActive: true, role: 'technician', roles: ['technician'] });
         setSignatureFile(null);
         setSignaturePreview(null);
         setIsModalOpen(true);
@@ -103,13 +103,18 @@ const Users = () => {
             const fullUser = response.data;
             
             setEditUser(fullUser);
+            
+            const userRoles = fullUser.roles && fullUser.roles.length > 0 ? fullUser.roles : [fullUser.role || 'technician'];
+            const primaryRole = fullUser.role || userRoles[0];
+
             setForm({
                 fullName: fullUser.fullName || '',
                 username: fullUser.username || '',
                 email: fullUser.email || '',
                 phone: fullUser.phone || '',
                 isActive: fullUser.isActive !== false,
-                role: fullUser.role || (fullUser.roles && fullUser.roles.length > 0 ? fullUser.roles[0] : 'technician')
+                role: primaryRole,
+                roles: userRoles
             });
             setSignatureFile(null);
             setSignaturePreview(fullUser.signatureUrl || null);
@@ -150,7 +155,12 @@ const Users = () => {
     const handleUserSubmit = async (e) => {
         e.preventDefault();
         try {
-            const data = { ...form, roles: [form.role] };
+            const secondaryRoles = (form.roles || []).filter(r => r !== form.role);
+            const data = {
+                ...form,
+                role: form.role,
+                roles: [form.role, ...secondaryRoles]
+            };
             let userId = editUser?.id;
 
             if (editUser) {
@@ -293,9 +303,16 @@ const Users = () => {
                                 <div className="flex flex-wrap items-center gap-4 text-sm text-slate-500">
                                     <span className="flex items-center gap-1"><Mail size={14} /> {user.email}</span>
                                     {user.phone && <span className="flex items-center gap-1"><Phone size={14} /> {user.phone}</span>}
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider">
-                                        {ROLE_LABELS[user.role || (user.roles && user.roles[0]) || 'technician'] || user.role}
-                                    </span>
+                                    <div className="flex flex-wrap gap-1.5 items-center">
+                                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-100 uppercase tracking-wider">
+                                            {ROLE_LABELS[user.role || (user.roles && user.roles[0]) || 'technician'] || user.role}
+                                        </span>
+                                        {user.roles && user.roles.filter(r => r !== (user.role || (user.roles && user.roles[0]))).map(r => (
+                                            <span key={r} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200 uppercase tracking-wider">
+                                                {ROLE_LABELS[r] || r}
+                                            </span>
+                                        ))}
+                                    </div>
                                     <span className={`flex items-center gap-1 font-medium ${user.isActive ? 'text-emerald-600' : 'text-red-600'}`}>
                                         <Shield size={14} /> {user.isActive ? 'Actif' : 'Suspendu'}
                                     </span>
@@ -417,15 +434,96 @@ const Users = () => {
                                     <input type="email" required placeholder="nom@icem.tn" className="input-field" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                                 </div>
 
-                                {/* Rôle */}
+                                {/* Rôle Principal */}
                                 <div>
-                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Rôle Utilisateur</label>
-                                    <select className="input-field" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em] mb-2">Rôle Principal</label>
+                                    <select
+                                        className="input-field"
+                                        value={form.role}
+                                        onChange={(e) => {
+                                            const newRole = e.target.value;
+                                            setForm(prev => {
+                                                const updatedRoles = (prev.roles || []).filter(r => r !== newRole);
+                                                return {
+                                                    ...prev,
+                                                    role: newRole,
+                                                    roles: [newRole, ...updatedRoles]
+                                                };
+                                            });
+                                        }}
+                                    >
                                         <option value="technician">Technicien</option>
                                         <option value="manager">Responsable Qualité</option>
                                         <option value="director">Directeur</option>
                                         <option value="admin">Administrateur</option>
                                     </select>
+                                </div>
+
+                                {/* Rôles Secondaires */}
+                                <div className="bg-slate-50/50 rounded-2xl p-4 border border-slate-100 space-y-3">
+                                    <label className="block text-xs font-black text-slate-400 uppercase tracking-[0.15em]">Rôles Secondaires</label>
+                                    
+                                    {/* Liste des rôles secondaires actuels */}
+                                    {form.roles && form.roles.filter(r => r !== form.role).length > 0 ? (
+                                        <div className="flex flex-wrap gap-2 py-1">
+                                            {form.roles.filter(r => r !== form.role).map(roleKey => (
+                                                <span
+                                                    key={roleKey}
+                                                    className="inline-flex items-center gap-1.5 pl-3 pr-2 py-1.5 rounded-xl text-xs font-bold bg-white text-slate-700 border border-slate-200 shadow-sm hover:border-red-200 hover:bg-red-50/10 transition-all group"
+                                                >
+                                                    <Shield size={12} className="text-slate-400 group-hover:text-red-400" />
+                                                    {ROLE_LABELS[roleKey] || roleKey}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setForm(prev => ({
+                                                                ...prev,
+                                                                roles: prev.roles.filter(r => r !== roleKey)
+                                                            }));
+                                                        }}
+                                                        className="w-4 h-4 rounded-lg bg-slate-100 hover:bg-red-500 hover:text-white flex items-center justify-center text-slate-400 transition-all duration-200"
+                                                    >
+                                                        <X size={10} strokeWidth={3} />
+                                                    </button>
+                                                </span>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <p className="text-xs text-slate-400 italic">Aucun rôle secondaire attribué.</p>
+                                    )}
+
+                                    {/* Menu déroulant pour ajouter un rôle secondaire */}
+                                    {Object.keys(ROLE_LABELS).filter(roleKey => roleKey !== form.role && !(form.roles || []).includes(roleKey)).length > 0 ? (
+                                        <div className="pt-1.5 border-t border-slate-100">
+                                            <select
+                                                className="input-field text-xs !py-2 bg-white"
+                                                value=""
+                                                onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    if (val) {
+                                                        setForm(prev => ({
+                                                            ...prev,
+                                                            roles: [...new Set([...(prev.roles || []), val])]
+                                                        }));
+                                                    }
+                                                }}
+                                            >
+                                                <option value="" disabled hidden>+ Attribuer un rôle secondaire...</option>
+                                                {Object.keys(ROLE_LABELS)
+                                                    .filter(roleKey => roleKey !== form.role && !(form.roles || []).includes(roleKey))
+                                                    .map(roleKey => (
+                                                        <option key={roleKey} value={roleKey}>
+                                                            {ROLE_LABELS[roleKey]}
+                                                        </option>
+                                                    ))
+                                                }
+                                            </select>
+                                        </div>
+                                    ) : (
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider pt-2 border-t border-slate-100">
+                                            Tous les rôles ont été attribués
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Signature */}

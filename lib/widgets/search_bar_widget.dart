@@ -40,7 +40,7 @@ class _SearchBarWidgetState extends State<SearchBarWidget> {
       ),
       child: TextField(
         controller: _controller,
-        style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+        style: GoogleFonts.inter(color: Colors.black, fontSize: 14),
         decoration: InputDecoration(
           hintText: widget.hintText,
           hintStyle: GoogleFonts.inter(color: AppTheme.textLight, fontSize: 14),

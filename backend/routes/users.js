@@ -132,13 +132,13 @@ router.patch('/:id', async (req, res) => {
                 await emailService.transporter.sendMail({
                     from: `"ICEM Quality Control" <${emailService.fromAddress}>`,
                     to: user.email,
-                    subject: '🛠️ ICEM — Mise à jour de votre compte',
+                    subject: 'ICEM — Mise à jour de votre compte',
                     html: `<p>Bonjour ${user.fullName},</p><p>Vos informations de compte ont été mises à jour par un administrateur.</p><p>Veuillez vous connecter pour vérifier les changements.</p>`
                 });
             }
-            console.log(`✉️ Email de notification envoyé avec succès à ${user.email}`);
+            console.log(`Email de notification envoyé avec succès à ${user.email}`);
         } catch (mailErr) {
-            console.error('❌ Erreur critique lors de l\'envoi du mail backend:', mailErr.message);
+            console.error('Erreur critique lors de l\'envoi du mail backend:', mailErr.message);
             console.error('Vérifiez que SMTP_USER et SMTP_PASS sont corrects dans le fichier .env');
         }
 

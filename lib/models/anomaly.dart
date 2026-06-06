@@ -15,6 +15,7 @@ class Anomaly {
   final String? technicianName;     // Nom du technicien
   final DateTime detectedAt;        // Date de détection
   final String? imageUrl;           // URL de l'image capturée dans Firebase Storage
+  final List<String>? imageUrls;     // URLs de toutes les images capturées
   final String status;              // 'detectee', 'en_traitement', 'traitee'
   final String? orderId;            // ID de l'ordre de fabrication
   final String? correctiveAction;   // Mesure corrective appliquée
@@ -30,6 +31,7 @@ class Anomaly {
     this.technicianId,
     this.technicianName,
     this.imageUrl,
+    this.imageUrls,
     this.status = 'detectee',
     this.orderId,
     this.correctiveAction,
@@ -72,6 +74,14 @@ class Anomaly {
       return 0.0;
     }
 
+    final dynamic rawImageUrls = data['imageUrls'];
+    List<String>? parsedImageUrls;
+    if (rawImageUrls is List) {
+      parsedImageUrls = List<String>.from(rawImageUrls.map((e) => e.toString()));
+    } else if (data['imageUrl'] != null) {
+      parsedImageUrls = [data['imageUrl'] as String];
+    }
+
     return Anomaly(
       id: doc.id,
       type: data['type'] as String? ?? '',
@@ -85,6 +95,7 @@ class Anomaly {
       technicianId: data['technicianId'] as String?,
       technicianName: data['technicianName'] as String?,
       imageUrl: data['imageUrl'] as String?,
+      imageUrls: parsedImageUrls,
       status: data['status'] as String? ?? data['statut'] as String? ?? 'detectee',
       orderId: data['orderId'] as String?,
       correctiveAction: data['correctiveAction'] as String? ?? data['mesureCorrective'] as String?,
@@ -103,6 +114,7 @@ class Anomaly {
       'technicianId': technicianId,
       'technicianName': technicianName,
       'imageUrl': imageUrl,
+      'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl!] : []),
       'status': status,
       'orderId': orderId,
       'correctiveAction': correctiveAction,
@@ -111,6 +123,14 @@ class Anomaly {
 
   /// Créer depuis JSON
   factory Anomaly.fromJson(Map<String, dynamic> json) {
+    final dynamic rawImageUrls = json['imageUrls'];
+    List<String>? parsedImageUrls;
+    if (rawImageUrls is List) {
+      parsedImageUrls = List<String>.from(rawImageUrls.map((e) => e.toString()));
+    } else if (json['imageUrl'] != null) {
+      parsedImageUrls = [json['imageUrl'] as String];
+    }
+
     return Anomaly(
       id: json['id']?.toString() ?? '',
       type: json['type']?.toString() ?? json['description']?.toString() ?? 'Inconnu',
@@ -130,6 +150,7 @@ class Anomaly {
       technicianId: json['technicianId']?.toString(),
       technicianName: json['technicianName']?.toString() ?? json['technicianFullName']?.toString(),
       imageUrl: json['imageUrl']?.toString(),
+      imageUrls: parsedImageUrls,
       status: json['status']?.toString() ?? json['statut']?.toString() ?? 'detectee',
       orderId: json['orderId']?.toString(),
       correctiveAction: json['correctiveAction']?.toString() ?? json['mesureCorrective']?.toString(),
@@ -149,6 +170,7 @@ class Anomaly {
       'technicianId': technicianId,
       'technicianName': technicianName,
       'imageUrl': imageUrl,
+      'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl!] : []),
       'status': status,
       'orderId': orderId,
       'correctiveAction': correctiveAction,
@@ -167,6 +189,7 @@ class Anomaly {
     String? technicianId,
     String? technicianName,
     String? imageUrl,
+    List<String>? imageUrls,
     String? status,
     String? orderId,
     String? correctiveAction,
@@ -182,6 +205,7 @@ class Anomaly {
       technicianId: technicianId ?? this.technicianId,
       technicianName: technicianName ?? this.technicianName,
       imageUrl: imageUrl ?? this.imageUrl,
+      imageUrls: imageUrls ?? this.imageUrls,
       status: status ?? this.status,
       orderId: orderId ?? this.orderId,
       correctiveAction: correctiveAction ?? this.correctiveAction,

@@ -45,14 +45,6 @@ const CLASS_MAPPING = {
  */
 function determineSeverity(className, confidence) {
     const mapping = CLASS_MAPPING[className.toLowerCase()] || CLASS_MAPPING['default'];
-    
-    if (confidence >= 0.85) return 'Critique';
-    
-    // Ne pas rétrograder si c'est déjà critique par défaut
-    if (mapping.defaultSeverity === 'Critique') return 'Critique';
-    
-    if (confidence < 0.30) return 'Mineur';
-    
     return mapping.defaultSeverity;
 }
 

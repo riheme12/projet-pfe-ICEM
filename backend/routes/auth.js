@@ -144,7 +144,7 @@ router.post('/forgot-password', async (req, res) => {
         await emailService.transporter.sendMail({
             from: `"ICEM Quality Control" <${emailService.fromAddress}>`,
             to: email,
-            subject: '🔑 ICEM — Réinitialisation de votre mot de passe',
+            subject: 'ICEM — Réinitialisation de votre mot de passe',
             html: `
                 <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #f8fafc; padding: 20px; border-radius: 24px;">
                     <div style="background: linear-gradient(135deg, #1e1b4b, #312e81, #4338ca); padding: 32px; border-radius: 20px; text-align: center; color: white;">

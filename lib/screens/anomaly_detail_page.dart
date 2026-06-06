@@ -171,29 +171,53 @@ class _AnomalyDetailPageState extends State<AnomalyDetailPage> {
     Flexible(child: Text(value, style: GoogleFonts.inter(fontWeight: FontWeight.w800, color: AppTheme.primaryNavy, fontSize: 12), overflow: TextOverflow.ellipsis, textAlign: TextAlign.end)),
   ]);
 
-  Widget _buildImageSection(Anomaly a) {
-    if (a.imageUrl == null || a.imageUrl!.isEmpty) return const SizedBox();
-
-    Widget imageWidget;
-    if (a.imageUrl!.startsWith('data:image')) {
-      final base64String = a.imageUrl!.split(',').last;
-      imageWidget = Image.memory(base64Decode(base64String), fit: BoxFit.cover, width: double.infinity);
+  Widget _buildSingleImage(String url) {
+    Widget img;
+    if (url.startsWith('data:image')) {
+      final base64String = url.split(',').last;
+      img = Image.memory(base64Decode(base64String), fit: BoxFit.cover);
     } else {
-      imageWidget = Image.network(a.imageUrl!, fit: BoxFit.cover, width: double.infinity,
-        errorBuilder: (_, __, ___) => const Center(child: Icon(Icons.broken_image, size: 40, color: AppTheme.textLight)));
-    }
-
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Preuve Visuelle', style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryNavy)),
-      const SizedBox(height: 10),
-      Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.borderGris),
+      img = Image.network(
+        url,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => const Center(
+          child: Icon(Icons.broken_image, size: 30, color: AppTheme.textLight),
         ),
-        child: ClipRRect(borderRadius: BorderRadius.circular(16), child: imageWidget),
+      );
+    }
+    return Container(
+      width: 150,
+      height: 110,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.borderGris),
       ),
-    ]);
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: img,
+      ),
+    );
+  }
+
+  Widget _buildImageSection(Anomaly a) {
+    final images = a.imageUrls ?? (a.imageUrl != null && a.imageUrl!.isNotEmpty ? [a.imageUrl!] : []);
+    if (images.isEmpty) return const SizedBox();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Preuves Visuelles (${images.length})',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 14, color: AppTheme.primaryNavy),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: images.map((url) => _buildSingleImage(url)).toList(),
+        ),
+      ],
+    );
   }
 
   Widget _buildResolutionForm() {

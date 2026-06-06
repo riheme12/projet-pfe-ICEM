@@ -199,5 +199,5 @@ const doc = new Document({
 
 Packer.toBuffer(doc).then(buffer => {
     fs.writeFileSync('CAHIER_DES_CHARGES_FINAL_PFE.docx', buffer);
-    console.log('✅ Word Ultra-Détaillé généré : CAHIER_DES_CHARGES_FINAL_PFE.docx');
+    console.log('Word Ultra-Détaillé généré : CAHIER_DES_CHARGES_FINAL_PFE.docx');
 });

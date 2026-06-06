@@ -15,7 +15,7 @@ const _defectCodes = [
   ('J','Conn. cassé'), ('K','Bouchette manq.'), ('L','Tube thermo NC'),
   ('M','Protection manq.'), ('N','Tube manqué'), ('O','Vis mal serrée'),
   ('P','Composant manq.'), ('Q','Fusible manq.'), ('R','Gamme manq.'),
-  ('S','Scotch mal exéc.'), ('T','Mesure Dériv.'), ('V','Étiquette manq.'),
+  ('S','Scotch mal exécuté'), ('T','Mesure Dériv.'), ('V','Étiquette manquante'),
   ('W','Étiquette inv.'), ('Z','Autres défauts'),
 ];
 
@@ -37,7 +37,8 @@ class ChecklistPage extends StatefulWidget {
   final String? serialNumber;
   final List<String>? detectedDefects;
   final String? imageUrl;
-  const ChecklistPage({super.key, this.orderId, this.orderReference, this.cableReference, this.serialNumber, this.detectedDefects, this.imageUrl});
+  final List<String>? imageUrls;
+  const ChecklistPage({super.key, this.orderId, this.orderReference, this.cableReference, this.serialNumber, this.detectedDefects, this.imageUrl, this.imageUrls});
   @override
   State<ChecklistPage> createState() => _ChecklistPageState();
 }
@@ -186,6 +187,43 @@ class _ChecklistPageState extends State<ChecklistPage> {
     ]),
   );
 
+  String _getDefectName(String code) {
+    final match = _defectCodes.firstWhere((e) => e.$1 == code, orElse: () => (code, 'Défaut Autre'));
+    return match.$2;
+  }
+
+  String _getDefectSeverity(String code) {
+    switch (code) {
+      case 'P': // Composant manq.
+      case 'J': // Conn. cassé
+      case 'E': // Fils inversés
+        return 'Critique';
+      case 'A': // Cosse déformée
+      case 'B': // Cosse ébanchati
+      case 'C': // Cosse ouverte
+      case 'D': // Fil pincé/coupé
+      case 'F': // Fil tendu
+      case 'G': // Fil sans cosse
+      case 'K': // Bouchette manq.
+      case 'L': // Tube thermo NC
+      case 'M': // Protection manq.
+      case 'N': // Tube manqué
+      case 'O': // Vis mal serrée
+      case 'Q': // Fusible manq.
+      case 'R': // Gamme manq.
+        return 'Majeur';
+      case 'H': // Ticket élec. NC
+      case 'I': // Long./couleur NC
+      case 'S': // Scotch mal exéc.
+      case 'T': // Mesure Dériv.
+      case 'V': // Étiquette manq.
+      case 'W': // Étiquette inv.
+      case 'Z': // Autres défauts
+      default:
+        return 'Mineur';
+    }
+  }
+
   Future<void> _submit() async {
     final auth = Provider.of<AuthProvider>(context, listen: false);
     final validRows = _rows.where((r) => r.hasCode).toList();
@@ -203,22 +241,46 @@ class _ChecklistPageState extends State<ChecklistPage> {
       await OrdersService().saveCable(
         reference: row.cableCode.trim(), code: row.cableCode.trim(), orderId: widget.orderId ?? '', status: status,
         technicianId: auth.currentUser?.id ?? '', technicianName: auth.currentUser?.fullName ?? '',
-        anomaliesCount: row.selectedDefects.length, imageUrl: widget.imageUrl,
+        anomaliesCount: row.selectedDefects.length,
+        imageUrl: widget.imageUrl,
+        imageUrls: widget.imageUrls,
         visualChecklistItems: [{'defauts': row.selectedDefects.toList(), 'commentaire': row.comment, 'status': status}],
       );
 
       if (row.hasDefect) {
-        final a = Anomaly(
-          id: '', type: 'Défauts: ${row.selectedDefects.join(", ")}', severity: 'Majeur', confidence: 1.0,
-          cableId: row.cableCode, detectedAt: DateTime.now(), technicianId: auth.currentUser?.id,
-          technicianName: auth.currentUser?.fullName, imageUrl: widget.imageUrl, status: 'detectee', orderId: widget.orderId,
-          location: 'Inspection Visuelle',
-        );
-        final id = await AnomalyService().createAnomaly(a);
-        lastCreatedAnomaly = a.copyWith(id: id);
+        for (final code in row.selectedDefects) {
+          final defectName = _getDefectName(code);
+          final severity = _getDefectSeverity(code);
+          final a = Anomaly(
+            id: '',
+            type: defectName,
+            severity: severity,
+            confidence: 1.0,
+            cableId: row.cableCode,
+            detectedAt: DateTime.now(),
+            technicianId: auth.currentUser?.id,
+            technicianName: auth.currentUser?.fullName,
+            imageUrl: widget.imageUrl,
+            imageUrls: widget.imageUrls,
+            status: 'detectee',
+            orderId: widget.orderId,
+            location: 'Inspection Visuelle',
+          );
+          final id = await AnomalyService().createAnomaly(a);
+          lastCreatedAnomaly = a.copyWith(id: id);
+        }
       }
 
       // CRÉER UN ENREGISTREMENT DE RAPPORT (pour TOUS les câbles, conformes et non conformes)
+      final String notesText;
+      if (row.hasDefect) {
+        final defectsList = row.selectedDefects.map((code) => '  • [$code] ${_getDefectName(code)} (${_getDefectSeverity(code)})').join('\n');
+        notesText = 'Inspection visuelle non-conforme. Défaut(s) détecté(s) :\n$defectsList'
+            '${row.comment.isNotEmpty ? '\n\nCommentaire technique : ${row.comment}' : ''}';
+      } else {
+        notesText = 'Inspection visuelle conforme (OK).${row.comment.isNotEmpty ? '\nCommentaire : ${row.comment}' : ''}';
+      }
+
       await ReportsService().createReportRecord(
         technicianId: auth.currentUser?.id ?? '',
         technicianName: auth.currentUser?.fullName ?? '',
@@ -227,11 +289,10 @@ class _ChecklistPageState extends State<ChecklistPage> {
         orderId: widget.orderId,
         status: status, // "Conforme" ou "Non conforme"
         anomaliesCount: row.selectedDefects.length,
-        notes: row.hasDefect 
-            ? 'Inspection visuelle avec ${row.selectedDefects.length} défaut(s): ${row.selectedDefects.join(", ")}\nCommentaire: ${row.comment}'
-            : 'Inspection visuelle OK. ${row.comment}',
+        notes: notesText,
         signatureUrl: auth.currentUser?.signatureUrl,
         imageUrl: widget.imageUrl,
+        imageUrls: widget.imageUrls,
       );
     }
     

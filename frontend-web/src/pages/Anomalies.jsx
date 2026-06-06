@@ -28,6 +28,87 @@ const SeverityBadge = ({ severity }) => {
     );
 };
 
+const defectNamesMap = {
+    'A': 'Cosse déformée', 'B': 'Cosse ébanchati', 'C': 'Cosse ouverte',
+    'D': 'Fil pincé/coupé', 'E': 'Fils inversés', 'F': 'Fil tendu',
+    'G': 'Fil sans cosse', 'H': 'Ticket élec. NC', 'I': 'Long./couleur NC',
+    'J': 'Conn. cassé', 'K': 'Bouchette manq.', 'L': 'Tube thermo NC',
+    'M': 'Protection manq.', 'N': 'Tube manqué', 'O': 'Vis mal serrée',
+    'P': 'Composant manq.', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
+    'S': 'Scotch mal exécuté', 'T': 'Mesure Dériv.', 'V': 'Étiquette manquante',
+    'W': 'Étiquette inv.', 'Z': 'Autres défauts',
+};
+
+const getCleanDefectName = (rawKey) => {
+    if (!rawKey) return 'Inconnu';
+    let key = String(rawKey).trim();
+    
+    // 1. Remove "Défauts: " or "Défaut: " prefix if it exists
+    if (key.startsWith('Défauts:') || key.startsWith('Défaut:')) {
+      const codePart = key.split(':').pop().trim();
+      const codes = codePart.split(',').map(c => c.trim().toUpperCase());
+      const names = codes.map(c => defectNamesMap[c] || c);
+      return names.join(', ');
+    }
+    
+    // 2. Remove "[Code] " prefix if it exists (e.g. "[A] Cosse déformée" -> "Cosse déformée")
+    const match = key.match(/^\[[A-Z]\]\s+(.+)$/);
+    if (match) {
+      return match[1];
+    }
+    
+    // 3. Map raw Roboflow classes to clean names
+    const classMapping = {
+      'composant_mal_insere': 'Composant mal inséré',
+      'composant_mal _insere': 'Composant mal inséré',
+      'composant_manquant': 'Composant manquant',
+      'etiquette_anomalie': 'Étiquette manquante',
+      'protection_anomalie': 'Anomalie protection',
+      'connecteur_anomalie': 'Anomalie connecteur',
+      'cosse_anomalie': 'Anomalie cosse',
+      'scotche_anomalie': 'Scotch mal exécuté',
+      'anomalie scotch': 'Scotch mal exécuté',
+      'anomalie étiquette': 'Étiquette manquante',
+      'anomalie protection': 'Protection manquante',
+      'anomalie connecteur': 'Connecteur cassé',
+      'anomalie cosse': 'Cosse déformée',
+    };
+    
+    const lowerKey = key.toLowerCase();
+    if (classMapping[lowerKey]) {
+      return classMapping[lowerKey];
+    }
+    
+    return rawKey;
+};
+
+const getDefectSeverity = (cleanType, originalSeverity) => {
+    const severities = {
+        'composant mal inséré': 'Critique',
+        'composant manquant': 'Critique',
+        'anomalie connecteur': 'Critique',
+        'connecteur cassé': 'Critique',
+        
+        'anomalie cosse': 'Majeur',
+        'cosse déformée': 'Majeur',
+        'anomalie protection': 'Majeur',
+        'protection manquante': 'Majeur',
+        
+        'anomalie scotch': 'Mineur',
+        'scotch mal exécuté': 'Mineur',
+        'anomalie étiquette': 'Mineur',
+        'étiquette manquante': 'Mineur',
+    };
+    
+    const cleanKey = cleanType.toLowerCase().trim();
+    for (const key of Object.keys(severities)) {
+        if (cleanKey.includes(key) || key.includes(cleanKey)) {
+            return severities[key];
+        }
+    }
+    return originalSeverity || 'Majeur';
+};
+
 // ── Composant Pagination ──────────────────────────────────────────────────────
 const Pagination = ({ currentPage, totalPages, onPageChange }) => {
     if (totalPages <= 1) return null;
@@ -161,7 +242,9 @@ const Anomalies = () => {
         const matchSearch = searchTerm === '' ||
             a.type?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             a.cableId?.toLowerCase().includes(searchTerm.toLowerCase());
-        const matchSeverity = filterSeverity === 'Tous' || a.severity?.toLowerCase() === filterSeverity.toLowerCase();
+        const cleanType = getCleanDefectName(a.type);
+        const resolvedSev = getDefectSeverity(cleanType, a.severity);
+        const matchSeverity = filterSeverity === 'Tous' || resolvedSev.toLowerCase() === filterSeverity.toLowerCase();
         return matchSearch && matchSeverity;
     });
 
@@ -217,7 +300,6 @@ const Anomalies = () => {
                         { value: 'Tous', label: 'Toutes les gravités' },
                         { value: 'Critique', label: 'Critique' },
                         { value: 'Majeur', label: 'Majeur' },
-                        { value: 'Moyenne', label: 'Moyenne' },
                         { value: 'Mineur', label: 'Mineur' },
                     ]}
                     value={filterSeverity}
@@ -234,8 +316,10 @@ const Anomalies = () => {
                     </div>
                 ) : paginatedAnomalies.length > 0 ? (
                     paginatedAnomalies.map((anomaly) => {
-                        const isCritical = anomaly.severity?.toLowerCase() === 'critique' || anomaly.severity?.toLowerCase() === 'haute';
-                        const isMajor = anomaly.severity?.toLowerCase() === 'majeur' || anomaly.severity?.toLowerCase() === 'moyenne';
+                        const cleanType = getCleanDefectName(anomaly.type);
+                        const resolvedSeverity = getDefectSeverity(cleanType, anomaly.severity);
+                        const isCritical = resolvedSeverity.toLowerCase() === 'critique' || resolvedSeverity.toLowerCase() === 'haute';
+                        const isMajor = resolvedSeverity.toLowerCase() === 'majeur' || resolvedSeverity.toLowerCase() === 'moyenne';
                         const isTraitee = anomaly.statut === 'traitee';
 
                         return (
@@ -275,8 +359,8 @@ const Anomalies = () => {
 
                                 <div className="px-6 pb-6 flex-1 flex flex-col">
                                     <div className="flex justify-between items-start gap-4 mb-3">
-                                        <h3 className="text-xl font-black text-slate-900 capitalize tracking-normal group-hover:text-blue-700 transition-colors">{anomaly.type}</h3>
-                                        <SeverityBadge severity={anomaly.severity} />
+                                        <h3 className="text-xl font-black text-slate-900 capitalize tracking-normal group-hover:text-blue-700 transition-colors">{cleanType}</h3>
+                                        <SeverityBadge severity={resolvedSeverity} />
                                     </div>
 
                                     <p className="text-sm font-medium text-slate-500 mb-6 line-clamp-2 leading-relaxed italic">
@@ -284,9 +368,11 @@ const Anomalies = () => {
                                     </p>
 
                                     <div className="grid grid-cols-2 gap-3 mb-6 p-4 bg-slate-50/80 rounded-2xl border border-slate-100 group-hover:bg-white group-hover:border-blue-100 transition-all duration-500">
-                                        <div className="space-y-1">
+                                        <div className="space-y-1 col-span-2 sm:col-span-1">
                                             <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Câble / OF</p>
-                                            <p className="text-sm font-black text-slate-900">#{anomaly.cableId?.substring(0, 10) || '—'}</p>
+                                            <p className="text-sm font-black text-slate-900 truncate">
+                                                {anomaly.cableId || '—'} / {anomaly.orderId || '—'}
+                                            </p>
                                         </div>
                                         <div className="space-y-1 text-right">
                                             <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Responsable</p>
@@ -324,7 +410,7 @@ const Anomalies = () => {
 
                                     <div className="flex gap-3 mt-auto">
                                         <button
-                                            onClick={() => navigate(`/inspections/${anomaly.inspectionId || anomaly.cableId}`)}
+                                            onClick={() => navigate(`/inspections/${anomaly.inspectionId || anomaly.cableId}?orderId=${encodeURIComponent(anomaly.orderId || '')}`)}
                                             className="w-full flex items-center justify-center gap-2 py-3.5 text-[13px] font-black text-slate-700 bg-white hover:bg-slate-900 hover:text-white rounded-2xl transition-all border border-slate-200 shadow-sm active:scale-95"
                                         >
                                             <Eye size={18} />

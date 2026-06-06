@@ -63,13 +63,13 @@ const Sidebar = () => {
             <div className="absolute inset-0 z-0 bg-gradient-to-b from-indigo-900/10 via-white/40 to-transparent backdrop-blur-sm"></div>
             <div className="absolute inset-0 z-0 bg-white/30"></div>
             
-            {/* 🎨 NEW: Subtle Blue Fade at the bottom */}
+            {/* NEW: Subtle Blue Fade at the bottom */}
             <div className="absolute bottom-0 left-0 right-0 h-2/3 z-0 bg-gradient-to-t from-blue-600/50 via-blue-600/10 to-transparent mix-blend-multiply"></div>
 
 
             <div className="relative z-10 flex flex-col h-full w-full">
                 
-                {/* 🚀 ENLARGED LOGO SECTION */}
+                {/* ENLARGED LOGO SECTION */}
                 <div className="px-8 pt-16 pb-12 cursor-pointer group" onClick={() => navigate('/')}>
                     <div className="flex flex-col items-center gap-6">
                         <div className="relative inline-block">

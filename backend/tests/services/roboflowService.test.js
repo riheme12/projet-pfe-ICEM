@@ -13,20 +13,11 @@ describe('Roboflow Service (Unit Tests)', () => {
     });
 
     describe('determineSeverity', () => {
-        it('should assign Critique severity for very high confidence', () => {
-            expect(determineSeverity('scotche_anomalie', 0.90)).toBe('Critique');
-        });
-
-        it('should assign Mineur severity for low confidence', () => {
-            expect(determineSeverity('cosse_anomalie', 0.25)).toBe('Mineur');
-        });
-
-        it('should use default severity for medium confidence', () => {
-            expect(determineSeverity('etiquette_anomalie', 0.60)).toBe('Mineur'); // Default for etiquette is Mineur
-            expect(determineSeverity('protection_anomalie', 0.60)).toBe('Majeur'); // Default for protection is Majeur
-        });
-
-        it('should never downgrade a default Critique anomaly', () => {
+        it('should assign correct severity levels based on class mapping for any confidence', () => {
+            expect(determineSeverity('scotche_anomalie', 0.90)).toBe('Mineur');
+            expect(determineSeverity('cosse_anomalie', 0.25)).toBe('Majeur');
+            expect(determineSeverity('etiquette_anomalie', 0.60)).toBe('Mineur');
+            expect(determineSeverity('protection_anomalie', 0.60)).toBe('Majeur');
             expect(determineSeverity('composant_manquant', 0.20)).toBe('Critique'); 
         });
     });

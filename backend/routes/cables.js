@@ -20,7 +20,18 @@ router.get('/', async (req, res) => {
         let query = db.collection('cable');
 
         if (orderId) {
-            query = query.where('orderId', '==', orderId);
+            const cleanOrderId = orderId.replace(/^OFL/i, 'OF');
+            const withL = 'OFL' + cleanOrderId.substring(2);
+            
+            const possibleOrderIds = [
+                cleanOrderId,
+                cleanOrderId.replace(/\//g, '&#x2F;'),
+                withL,
+                withL.replace(/\//g, '&#x2F;')
+            ];
+            
+            const uniqueOrderIds = [...new Set(possibleOrderIds)];
+            query = query.where('orderId', 'in', uniqueOrderIds);
         }
         if (status) {
             query = query.where('status', '==', status);

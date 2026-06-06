@@ -302,57 +302,62 @@ const Orders = () => {
                                         <p className="text-sm text-slate-400 font-bold">Ajustez vos filtres ou lancez une nouvelle recherche</p>
                                     </td>
                                 </tr>
-                            ) : paginatedOrders.map((order) => (
-                                <tr key={order.id} 
-                                    onClick={() => openDetails(order)}
-                                    className="hover:bg-blue-50/40 transition-all cursor-pointer group/row">
-                                    <td className="px-8 py-6 font-black text-slate-900 text-[15px] tracking-tight group-hover/row:text-blue-600 transition-colors">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-1.5 h-6 bg-blue-100 rounded-full group-hover/row:bg-blue-600 transition-colors"></div>
-                                            <div>
-                                                <div>{order.numeroOF || order.reference}</div>
-                                                {order.numeroOF && order.reference && order.numeroOF !== order.reference && (
-                                                    <div className="text-xs text-slate-400 font-bold">Réf: {order.reference}</div>
-                                                )}
+                            ) : paginatedOrders.map((order) => {
+                                const statusVal = (order.statusDisplay || order.status || '').toLowerCase().trim();
+                                const isEditable = ['en attente', 'en cours'].includes(statusVal);
+                                const isDeletable = statusVal === 'en attente';
+                                return (
+                                    <tr key={order.id} 
+                                        onClick={() => openDetails(order)}
+                                        className="hover:bg-blue-50/40 transition-all cursor-pointer group/row">
+                                        <td className="px-8 py-6 font-black text-slate-900 text-[15px] tracking-tight group-hover/row:text-blue-600 transition-colors">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-1.5 h-6 bg-blue-100 rounded-full group-hover/row:bg-blue-600 transition-colors"></div>
+                                                <div>
+                                                    <div>{order.numeroOF || order.reference}</div>
+                                                    {order.numeroOF && order.reference && order.numeroOF !== order.reference && (
+                                                        <div className="text-xs text-slate-400 font-bold">Réf: {order.reference}</div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="flex flex-col gap-0.5">
-                                            <span className="text-[15px] font-black text-slate-800">{order.client}</span>
-                                            <span className="text-sm text-slate-400 font-black uppercase tracking-wider bg-slate-50 self-start px-2 py-0.5 rounded-md border border-slate-100">{order.numComd || '—'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6">
-                                        <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
-                                            <Briefcase size={12} className="text-indigo-400" />
-                                            <span className="text-[13px] text-indigo-700 font-black">{order.giPros || '—'}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6 text-center">
-                                        <div className="inline-block px-4 py-2 bg-slate-900 text-white rounded-2xl text-[14px] font-black shadow-lg shadow-slate-900/10 min-w-[60px]">
-                                            {order.quantity}
-                                        </div>
-                                    </td>
-                                    <td className="px-8 py-6"><StatusBadge status={order.statusDisplay || order.status} /></td>
-                                    <td className="px-8 py-6" onClick={(e) => e.stopPropagation()}>
-                                        {(canEdit('orders') || canDelete('orders')) && (
-                                            <div className="flex justify-end gap-3 opacity-40 group-hover/row:opacity-100 transition-all translate-x-4 group-hover/row:translate-x-0">
-                                                {canEdit('orders') && (
-                                                    <button onClick={() => openEdit(order)} className="w-10 h-10 bg-white text-amber-500 rounded-[14px] border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white hover:shadow-lg hover:shadow-amber-200 transition-all active:scale-90">
-                                                        <Pencil size={16} strokeWidth={2.5} />
-                                                    </button>
-                                                )}
-                                                {canDelete('orders') && (
-                                                    <button onClick={() => setDeleteConfirm(order)} className="w-10 h-10 bg-white text-red-500 rounded-[14px] border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-200 transition-all active:scale-90">
-                                                        <Trash2 size={16} strokeWidth={2.5} />
-                                                    </button>
-                                                )}
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-[15px] font-black text-slate-800">{order.client}</span>
+                                                <span className="text-sm text-slate-400 font-black uppercase tracking-wider bg-slate-50 self-start px-2 py-0.5 rounded-md border border-slate-100">{order.numComd || '—'}</span>
                                             </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            ))}
+                                        </td>
+                                        <td className="px-8 py-6">
+                                            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-indigo-50/50 rounded-xl border border-indigo-100/50">
+                                                <Briefcase size={12} className="text-indigo-400" />
+                                                <span className="text-[13px] text-indigo-700 font-black">{order.giPros || '—'}</span>
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6 text-center">
+                                            <div className="inline-block px-4 py-2 bg-slate-900 text-white rounded-2xl text-[14px] font-black shadow-lg shadow-slate-900/10 min-w-[60px]">
+                                                {order.quantity}
+                                            </div>
+                                        </td>
+                                        <td className="px-8 py-6"><StatusBadge status={order.statusDisplay || order.status} /></td>
+                                        <td className="px-8 py-6" onClick={(e) => e.stopPropagation()}>
+                                            {((canEdit('orders') && isEditable) || (canDelete('orders') && isDeletable)) && (
+                                                <div className="flex justify-end gap-3 opacity-40 group-hover/row:opacity-100 transition-all translate-x-4 group-hover/row:translate-x-0">
+                                                    {canEdit('orders') && isEditable && (
+                                                        <button onClick={() => openEdit(order)} className="w-10 h-10 bg-white text-amber-500 rounded-[14px] border border-amber-100 shadow-sm flex items-center justify-center hover:bg-amber-500 hover:text-white hover:shadow-lg hover:shadow-amber-200 transition-all active:scale-90">
+                                                            <Pencil size={16} strokeWidth={2.5} />
+                                                        </button>
+                                                    )}
+                                                    {canDelete('orders') && isDeletable && (
+                                                        <button onClick={() => setDeleteConfirm(order)} className="w-10 h-10 bg-white text-red-500 rounded-[14px] border border-red-100 shadow-sm flex items-center justify-center hover:bg-red-500 hover:text-white hover:shadow-lg hover:shadow-red-200 transition-all active:scale-90">
+                                                            <Trash2 size={16} strokeWidth={2.5} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>
@@ -501,43 +506,86 @@ const Orders = () => {
                                         <X size={16} className="rotate-45" /> Retour au Dossier
                                     </button>
 
-                                    <div className="grid grid-cols-1 gap-3">
-                                        {cablesForOrder.length > 0 ? (
-                                            cablesForOrder.map((cable) => (
-                                                <div 
-                                                    key={cable.id} 
-                                                    onClick={() => navigate(`/inspections/${cable.id}`)}
-                                                    className="p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-500 hover:shadow-lg hover:shadow-blue-900/5 transition-all cursor-pointer"
-                                                >
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
-                                                            <Hash size={20} />
+                                    {(() => {
+                                        // 1. Filtrer les câbles réels pour ne garder que ceux inspectés (Conformes ou Non conformes)
+                                        const realInspectedCables = cablesForOrder.filter(cable => 
+                                            cable.status && 
+                                            cable.status.toLowerCase() !== 'en attente' && 
+                                            cable.status.toLowerCase() !== 'en cours'
+                                        );
+
+                                        // 2. Identifier combien de câbles conformes manquent en base de données
+                                        // (puisque Firestore n'enregistre souvent que les câbles non conformes pour économiser l'espace)
+                                        const conformInDb = realInspectedCables.filter(c => 
+                                            c.status?.toLowerCase() === 'conforme' || 
+                                            c.status?.toLowerCase() === 'conforme (corrigé)'
+                                        ).length;
+                                        
+                                        const missingConform = (selectedOrder.conformCount || 0) - conformInDb;
+                                        
+                                        const displayCables = [...realInspectedCables];
+                                        
+                                        if (missingConform > 0) {
+                                            for (let i = 0; i < missingConform; i++) {
+                                                displayCables.push({
+                                                    id: `virtual-conform-${i}-${selectedOrder.id}`,
+                                                    reference: `Câble Conforme #${i + 1}`,
+                                                    code: `${selectedOrder.numeroOF || selectedOrder.reference}-CONF-${String(i + 1).padStart(3, '0')}`,
+                                                    status: 'Conforme',
+                                                    inspectionDate: selectedOrder.productionDate || new Date().toISOString()
+                                                });
+                                            }
+                                        }
+
+                                        if (displayCables.length === 0) {
+                                            return (
+                                                <div className="py-20 text-center space-y-4">
+                                                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mx-auto border border-slate-100">
+                                                        <Package size={32} />
+                                                    </div>
+                                                    <p className="text-slate-500 font-bold">Aucun câble inspecté trouvé pour cet OF</p>
+                                                </div>
+                                            );
+                                        }
+
+                                        return (
+                                            <div className="grid grid-cols-1 gap-3">
+                                                {displayCables.map((cable) => (
+                                                    <div 
+                                                        key={cable.id} 
+                                                        onClick={() => {
+                                                            // Ne naviguer que pour les câbles non-virtuels
+                                                            if (!cable.id.startsWith('virtual-conform-')) {
+                                                                navigate(`/inspections/${cable.id}`);
+                                                            }
+                                                        }}
+                                                        className={`p-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between group hover:border-blue-500 hover:shadow-lg hover:shadow-blue-900/5 transition-all ${cable.id.startsWith('virtual-conform-') ? 'cursor-default' : 'cursor-pointer'}`}
+                                                    >
+                                                        <div className="flex items-center gap-4">
+                                                            <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 group-hover:bg-blue-600 group-hover:text-white transition-all">
+                                                                <Hash size={20} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{cable.reference}</p>
+                                                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{cable.code || 'Sans QR Code'}</p>
+                                                            </div>
                                                         </div>
-                                                        <div>
-                                                            <p className="text-sm font-black text-slate-900 group-hover:text-blue-600 transition-colors">{cable.reference}</p>
-                                                            <p className="text-sm font-bold text-slate-400 uppercase tracking-widest">{cable.code || 'Sans QR Code'}</p>
+                                                        <div className="flex items-center gap-4">
+                                                            <span className={`px-3 py-1 rounded-full text-sm font-black uppercase tracking-widest border
+                                                                ${cable.status === 'Conforme' || cable.status === 'Conforme (Corrigé)' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
+                                                                  cable.status === 'Non conforme' ? 'bg-red-50 text-red-600 border-red-100' : 
+                                                                  'bg-amber-50 text-amber-600 border-amber-100'}`}>
+                                                                {cable.status || 'En attente'}
+                                                            </span>
+                                                            {!cable.id.startsWith('virtual-conform-') && (
+                                                                <ChevronDown size={16} className="text-slate-300 group-hover:text-blue-600 -rotate-90 transition-all" />
+                                                            )}
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-4">
-                                                        <span className={`px-3 py-1 rounded-full text-sm font-black uppercase tracking-widest border
-                                                            ${cable.status === 'Conforme' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 
-                                                              cable.status === 'Non conforme' ? 'bg-red-50 text-red-600 border-red-100' : 
-                                                              'bg-amber-50 text-amber-600 border-amber-100'}`}>
-                                                            {cable.status || 'En attente'}
-                                                        </span>
-                                                        <ChevronDown size={16} className="text-slate-300 group-hover:text-blue-600 -rotate-90 transition-all" />
-                                                    </div>
-                                                </div>
-                                            ))
-                                        ) : (
-                                            <div className="py-20 text-center space-y-4">
-                                                <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center text-slate-200 mx-auto border border-slate-100">
-                                                    <Package size={32} />
-                                                </div>
-                                                <p className="text-slate-500 font-bold">Aucun câble trouvé pour cet OF</p>
+                                                ))}
                                             </div>
-                                        )}
-                                    </div>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>

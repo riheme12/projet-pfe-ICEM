@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, CheckCircle2, AlertTriangle, ShieldCheck, Calendar, User, Package, Image as ImageIcon, X, ChevronDown } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { ArrowLeft, CheckCircle2, AlertTriangle, AlertCircle, ShieldCheck, Calendar, User, Package, Image as ImageIcon, X, ChevronDown, Cpu, Tag, Layers, FileText, Activity } from 'lucide-react';
 import { InspectionService, AnomalyService, OrderService, UserService } from '../services/api';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -26,10 +26,118 @@ const urlToBase64 = async (url) => {
     }
 };
 
+const defectNamesMap = {
+    'A': 'Cosse déformée', 'B': 'Cosse ébanchati', 'C': 'Cosse ouverte',
+    'D': 'Fil pincé/coupé', 'E': 'Fils inversés', 'F': 'Fil tendu',
+    'G': 'Fil sans cosse', 'H': 'Ticket élec. NC', 'I': 'Long./couleur NC',
+    'J': 'Conn. cassé', 'K': 'Bouchette manq.', 'L': 'Tube thermo NC',
+    'M': 'Protection manq.', 'N': 'Tube manqué', 'O': 'Vis mal serrée',
+    'P': 'Composant manq.', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
+    'S': 'Scotch mal exécuté', 'T': 'Mesure Dériv.', 'V': 'Étiquette manquante',
+    'W': 'Étiquette inv.', 'Z': 'Autres défauts',
+};
+
+const getCleanDefectName = (rawKey) => {
+    if (!rawKey) return 'Inconnu';
+    let key = String(rawKey).trim();
+    
+    // 1. Remove "Défauts: " or "Défaut: " prefix if it exists
+    if (key.startsWith('Défauts:') || key.startsWith('Défaut:')) {
+      const codePart = key.split(':').pop().trim();
+      const codes = codePart.split(',').map(c => c.trim().toUpperCase());
+      const names = codes.map(c => defectNamesMap[c] || c);
+      return names.join(', ');
+    }
+    
+    // 2. Remove "[Code] " prefix if it exists (e.g. "[A] Cosse déformée" -> "Cosse déformée")
+    const match = key.match(/^\[[A-Z]\]\s+(.+)$/);
+    if (match) {
+      return match[1];
+    }
+    
+    // 3. Map raw Roboflow classes to clean names
+    const classMapping = {
+      'composant_mal_insere': 'Composant mal inséré',
+      'composant_mal _insere': 'Composant mal inséré',
+      'composant_manquant': 'Composant manquant',
+      'etiquette_anomalie': 'Étiquette manquante',
+      'protection_anomalie': 'Anomalie protection',
+      'connecteur_anomalie': 'Anomalie connecteur',
+      'cosse_anomalie': 'Anomalie cosse',
+      'scotche_anomalie': 'Scotch mal exécuté',
+      'anomalie scotch': 'Scotch mal exécuté',
+      'anomalie étiquette': 'Étiquette manquante',
+      'anomalie protection': 'Protection manquante',
+      'anomalie connecteur': 'Connecteur cassé',
+      'anomalie cosse': 'Cosse déformée',
+    };
+    
+    const lowerKey = key.toLowerCase();
+    if (classMapping[lowerKey]) {
+      return classMapping[lowerKey];
+    }
+    
+    return rawKey;
+};
+
+const getDefectDescription = (cleanType, rawDescription) => {
+    if (rawDescription && rawDescription.trim().length > 0 && !rawDescription.includes("Le système de vision artificielle a détecté")) {
+        return rawDescription;
+    }
+    
+    const descriptions = {
+        'étiquette manquante': "L'étiquette d'identification du câble est manquante, déchirée ou illisible sur le connecteur.",
+        'anomalie étiquette': "L'étiquette de marquage présente un défaut de positionnement ou est manquante.",
+        'scotch mal exécuté': "Le ruban adhésif (scotch) de protection n'est pas appliqué de manière homogène ou est effiloché.",
+        'anomalie scotch': "Le ruban de protection (scotch) présente des irrégularités d'application ou de tension.",
+        'composant manquant': "Un composant ou accessoire requis (ex: fusible, bouchon) est absent de l'assemblage.",
+        'composant mal inséré': "Le fil conducteur ou le composant n'est pas entièrement inséré dans le boîtier du connecteur.",
+        'anomalie protection': "La gaine isolante ou la protection thermique présente des déchirures ou un mauvais positionnement.",
+        'anomalie connecteur': "Le boîtier du connecteur montre des signes de fissures ou de casse mécanique lors de l'assemblage.",
+        'anomalie cosse': "La cosse métallique de raccordement est déformée, tordue ou mal sertie.",
+        'autres défauts': "Défaut de conformité générale détecté lors de l'analyse visuelle de la pièce.",
+    };
+    
+    const cleanKey = cleanType.toLowerCase().trim();
+    for (const key of Object.keys(descriptions)) {
+        if (cleanKey.includes(key) || key.includes(cleanKey)) {
+            return descriptions[key];
+        }
+    }
+    return "Défaut de conformité détecté et signalé pour analyse corrective par le responsable qualité.";
+};
+
+const getDefectSeverity = (cleanType, originalSeverity) => {
+    const severities = {
+        'composant mal inséré': 'Critique',
+        'composant manquant': 'Critique',
+        'anomalie connecteur': 'Critique',
+        'connecteur cassé': 'Critique',
+        
+        'anomalie cosse': 'Majeur',
+        'cosse déformée': 'Majeur',
+        'anomalie protection': 'Majeur',
+        'protection manquante': 'Majeur',
+        
+        'anomalie scotch': 'Mineur',
+        'scotch mal exécuté': 'Mineur',
+        'anomalie étiquette': 'Mineur',
+        'étiquette manquante': 'Mineur',
+    };
+    
+    const cleanKey = cleanType.toLowerCase().trim();
+    for (const key of Object.keys(severities)) {
+        if (cleanKey.includes(key) || key.includes(cleanKey)) {
+            return severities[key];
+        }
+    }
+    return originalSeverity || 'Majeur';
+};
 
 const InspectionDetails = () => {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { user, canEdit } = useAuth();
     const [inspection, setInspection] = useState(null);
     const [anomalies, setAnomalies] = useState([]);
@@ -37,16 +145,35 @@ const InspectionDetails = () => {
     const [loading, setLoading] = useState(true);
     const [selectedImage, setSelectedImage] = useState(null);
 
+    const getTechnicianName = () => {
+        if (inspection?.technicianName && !inspection.technicianName.startsWith('ID:')) return inspection.technicianName;
+        if (inspection?.technicianId) {
+            const u = users.find(user => user.id === inspection.technicianId || user.username === inspection.technicianId);
+            if (u) return u.fullName;
+            return `ID: ${inspection.technicianId.substring(0, 8)}`;
+        }
+        return 'System IA';
+    };
+
     useEffect(() => {
         const fetchDetails = async () => {
             try {
-                // Inspection in web context is actually a Cable object
-                const [insRes, anomRes, usersRes] = await Promise.all([
-                    InspectionService.getById(id),
-                    AnomalyService.getByCable(id),
+                const searchParams = new URLSearchParams(location.search);
+                const orderIdQuery = searchParams.get('orderId');
+
+                // 1. Charger d'abord les détails de l'inspection/câble
+                const insRes = await InspectionService.getById(id, orderIdQuery ? { orderId: orderIdQuery } : undefined);
+                const cableData = insRes.data;
+                setInspection(cableData);
+
+                // 2. Charger les anomalies avec la référence ou le code résolu
+                const cableIdentifier = cableData?.reference || cableData?.code || id;
+                const resolvedOrderId = orderIdQuery || cableData?.orderId;
+
+                const [anomRes, usersRes] = await Promise.all([
+                    AnomalyService.getByCable(cableIdentifier, resolvedOrderId ? { orderId: resolvedOrderId } : undefined),
                     UserService.getAll(),
                 ]);
-                setInspection(insRes.data);
                 setAnomalies(anomRes.data || []);
                 setUsers(usersRes.data || []);
             } catch (error) {
@@ -101,7 +228,10 @@ const InspectionDetails = () => {
             pdf.text('Smart Quality Control System', headerTextX, 22.5);
 
             // Right side of header
-            const techName = inspection?.technicianName || 'Inconnu';
+            const resolvedTechUser = users.find(u => u.id === inspection?.technicianId || u.username === inspection?.technicianId);
+            const techName = inspection?.technicianName && !inspection.technicianName.startsWith('ID:')
+                ? inspection.technicianName
+                : (resolvedTechUser?.fullName || (inspection?.technicianId ? `ID:${inspection.technicianId.substring(0, 8)}` : 'System IA'));
             const generatedDate = inspection?.inspectionDate || new Date();
             const dateObj = new Date(generatedDate);
             const dateText = dateObj.toLocaleDateString('fr-FR');
@@ -200,7 +330,14 @@ const InspectionDetails = () => {
             drawSectionHeader("OBSERVATIONS TECHNIQUES", currentY);
             currentY += 7;
 
-            const obsHeight = 15;
+            const noteText = inspection?.notes || (isConform 
+                ? "Inspection visuelle : aucune anomalie détectée."
+                : `Inspection visuelle avec ${anomaliesVal} défaut(s) détecté(s).`);
+
+            // Split text to fit the page width dynamically
+            const splitNotes = pdf.splitTextToSize(noteText, pageWidth - 40);
+            const obsHeight = Math.max(15, splitNotes.length * 4 + 6);
+
             pdf.setDrawColor(226, 232, 240);
             pdf.setFillColor(255, 255, 255);
             pdf.rect(15, currentY + 3, pageWidth - 30, obsHeight, 'FD');
@@ -208,34 +345,61 @@ const InspectionDetails = () => {
             pdf.setTextColor(15, 23, 42);
             pdf.setFontSize(8);
             pdf.setFont('helvetica', 'normal');
-            
-            const noteText = inspection?.notes || (isConform 
-                ? "Inspection visuelle : aucune anomalie détectée."
-                : `Inspection visuelle avec ${anomaliesVal} défaut(s) détecté(s).`);
-            pdf.text(noteText, 20, currentY + 11);
+            pdf.text(splitNotes, 20, currentY + 9);
 
             currentY += obsHeight + 8;
 
             // ─── 5. SECTION 3: PREUVE VISUELLE ───
-            const rawImgUrl = anomalies.length > 0 ? anomalies[0].imageUrl : null;
-            const imgUrl = await urlToBase64(rawImgUrl);
+            // Accumuler toutes les images d'anomalies
+            const allImageUrls = [];
+            anomalies.forEach(anom => {
+                const urls = anom.imageUrls && anom.imageUrls.length > 0 
+                    ? anom.imageUrls 
+                    : (anom.imageUrl ? [anom.imageUrl] : []);
+                urls.forEach(url => {
+                    if (url && !allImageUrls.includes(url)) {
+                        allImageUrls.push(url);
+                    }
+                });
+            });
 
-            if (imgUrl) {
+            const base64Images = [];
+            for (const url of allImageUrls) {
+                const b64 = await urlToBase64(url);
+                if (b64) base64Images.push(b64);
+            }
+
+            if (base64Images.length > 0) {
                 drawSectionHeader("PREUVE VISUELLE", currentY);
                 currentY += 7;
 
-                const imgBoxHeight = 65;
+                const rows = Math.ceil(base64Images.length / 2);
+                const imgBoxHeight = rows * 60 + 5;
                 pdf.setDrawColor(226, 232, 240);
                 pdf.setFillColor(255, 255, 255);
                 pdf.rect(15, currentY + 3, pageWidth - 30, imgBoxHeight, 'FD');
 
                 try {
-                    const imgWidth = 85;
-                    const imgHeight = 55;
-                    const xPos = (pageWidth - imgWidth) / 2;
-                    pdf.addImage(imgUrl, 'JPEG', xPos, currentY + 8, imgWidth, imgHeight);
+                    const imgWidth = 75;
+                    const imgHeight = 48;
+                    for (let i = 0; i < base64Images.length; i++) {
+                        const row = Math.floor(i / 2);
+                        const col = i % 2;
+                        
+                        let xPos;
+                        if (base64Images.length === 1) {
+                            xPos = (pageWidth - imgWidth) / 2;
+                        } else {
+                            const startX = 20;
+                            const spacing = (pageWidth - 40 - (imgWidth * 2));
+                            xPos = startX + col * (imgWidth + spacing);
+                        }
+
+                        const yPos = currentY + 8 + row * 55;
+                        pdf.addImage(base64Images[i], 'JPEG', xPos, yPos, imgWidth, imgHeight);
+                    }
                 } catch (e) {
-                    console.error("Error adding anomaly image", e);
+                    console.error("Error adding anomaly images to PDF", e);
                 }
 
                 currentY += imgBoxHeight + 8;
@@ -257,7 +421,7 @@ const InspectionDetails = () => {
             pdf.setDrawColor(226, 232, 240);
             pdf.rect(15, currentY + 4, sigWidth, sigBoxHeight - 4, 'D');
 
-            const techUser = users.find(u => u.id === inspection?.technicianId || u.fullName === inspection?.technicianName);
+            const techUser = users.find(u => u.id === inspection?.technicianId || u.username === inspection?.technicianId || u.fullName === inspection?.technicianName);
             const rawTechSig = inspection?.signatureUrl || techUser?.signatureUrl || (inspection?.technicianId === user?.id ? user?.signatureUrl : null);
             const techSignature = await urlToBase64(rawTechSig);
             
@@ -361,70 +525,103 @@ const InspectionDetails = () => {
                 </div>
             </div>
 
-            {/* Premium Hero Header */}
-            <div className="relative p-12 bg-white rounded-[40px] border border-white shadow-2xl shadow-indigo-900/5 overflow-hidden mb-12">
-                {/* 🎨 Dynamic Background Elements */}
-                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/5 blur-[120px] rounded-full translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-600/5 blur-[80px] rounded-full -translate-x-1/2 translate-y-1/2"></div>
-                
-                <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start gap-12">
-                    <div className="flex-1">
-                        <div className="flex items-center gap-4 mb-6">
-                            <span className={`px-4 py-2 rounded-xl text-sm font-black uppercase tracking-[0.2em] shadow-lg
-                                ${isConforme ? 'bg-emerald-600 text-white shadow-emerald-600/20' : 
-                                  isNonConforme ? 'bg-red-600 text-white shadow-red-600/20 animate-pulse' : 
-                                  'bg-amber-500 text-white shadow-amber-500/20'}`}>
-                                {inspection?.status}
-                            </span>
-                            <div className="h-[2px] w-12 bg-slate-100"></div>
-                            <span className="text-sm font-black text-slate-400 uppercase tracking-widest">Certification Qualité ICEM</span>
-                        </div>
-                        
-                        <h1 className="text-5xl font-black text-slate-900 tracking-normal mb-6">
-                            {anomalies.length > 0 ? "Détails de l'anomalie" : "Détails de l'inspection"} <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-600">#{inspection?.reference || id.substring(0, 8)}</span>
-                        </h1>
-                        
-                        <div className="flex flex-wrap gap-6">
-                            <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
-                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Ordre de Fabrication</p>
-                                <p className="text-lg font-black text-slate-900 underline decoration-indigo-200 decoration-4 underline-offset-4">{inspection?.orderId}</p>
-                            </div>
-                            <div className="px-6 py-4 bg-slate-50 rounded-[24px] border border-slate-100">
-                                <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">Total Anomalies</p>
-                                <p className={`text-lg font-black ${anomalies.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
-                                    {anomalies.length} Détectée{anomalies.length > 1 ? 's' : ''}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
+            {/* Premium Hero Header (Light Theme) */}
+            <div className="relative rounded-[40px] overflow-hidden mb-12 shadow-xl shadow-slate-200/40 border border-white">
 
-                    {/* Metadata Section */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-[320px]">
-                        <div className="p-6 bg-gradient-to-br from-indigo-50 to-white rounded-[32px] border border-indigo-100/50 shadow-sm flex flex-col gap-3">
-                            <div className="w-10 h-10 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-indigo-600/20">
-                                <User size={20} />
+                {/* ── Light gradient banner top ── */}
+                <div className="relative px-12 pt-10 pb-8 overflow-hidden bg-gradient-to-br from-white/95 via-indigo-50/70 to-blue-50/80 backdrop-blur-2xl">
+                    {/* decorative grid lines */}
+                    <div className="absolute inset-0 opacity-[0.1] pointer-events-none bg-[radial-gradient(#6366f1_1px,transparent_1px)] [background-size:20px_20px]"></div>
+                    {/* decorative blobs */}
+                    <div className="absolute top-0 right-0 w-[400px] h-[400px] rounded-full opacity-30 blur-[100px]" style={{ background: 'radial-gradient(circle, #e0e7ff, transparent)' }}></div>
+                    <div className="absolute -bottom-16 -left-16 w-64 h-64 rounded-full opacity-35 blur-[80px]" style={{ background: 'radial-gradient(circle, #dbeafe, transparent)' }}></div>
+
+                    <div className="relative z-10 flex flex-col lg:flex-row justify-between items-start gap-8">
+                        {/* Left: title + badges */}
+                        <div className="flex-1">
+                            {/* Status + label */}
+                            <div className="flex items-center gap-3 mb-5">
+                                <span className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-xl text-xs font-black uppercase tracking-[0.2em] border
+                                    ${isConforme
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                        : isNonConforme
+                                        ? 'bg-red-50 text-red-700 border-red-200 animate-pulse'
+                                        : 'bg-amber-50 text-amber-700 border-amber-200'}`}>
+                                    <span className={`w-1.5 h-1.5 rounded-full ${isConforme ? 'bg-emerald-500' : isNonConforme ? 'bg-red-500' : 'bg-amber-500'}`}></span>
+                                    {inspection?.status}
+                                </span>
+                                <span className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Certification Qualité ICEM</span>
                             </div>
-                            <div>
-                                <p className="text-sm font-black text-indigo-400 uppercase tracking-widest mb-1">Contrôleur</p>
-                                <p className="text-sm font-black text-slate-900 truncate">
-                                    {inspection?.technicianName || (inspection?.technicianId ? `ID:${inspection.technicianId.substring(0, 8)}` : 'System IA')}
-                                </p>
+
+                            {/* Main title */}
+                            <h1 className="text-4xl font-black tracking-tight mb-6 text-slate-900">
+                                {anomalies.length > 0 ? "Détails de l'anomalie" : "Détails de l'inspection"}
+                                <span className="ml-3 font-black text-indigo-600">
+                                    #{inspection?.reference || id?.substring(0, 8) || '—'}
+                                </span>
+                            </h1>
+
+                            {/* Info chips */}
+                            <div className="flex flex-wrap gap-3">
+                                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border border-slate-100 bg-white/70 shadow-sm shadow-indigo-900/5">
+                                    <div className="w-6 h-6 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                                        <Package size={13} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Ordre de Fabrication</p>
+                                        <p className="text-sm font-black text-slate-800">{inspection?.orderId || '—'}</p>
+                                    </div>
+                                </div>
+
+                                <div className={`flex items-center gap-2.5 px-4 py-2.5 rounded-2xl border shadow-sm shadow-indigo-900/5
+                                    ${anomalies.length > 0 ? 'border-red-100 bg-red-50/50' : 'border-emerald-100 bg-emerald-50/50'}`}>
+                                    <div className={`w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 ${anomalies.length > 0 ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                        <AlertCircle size={13} />
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-0.5">Total Anomalies</p>
+                                        <p className={`text-sm font-black ${anomalies.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                                            {anomalies.length} Détectée{anomalies.length > 1 ? 's' : ''}
+                                        </p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div className="p-6 bg-gradient-to-br from-blue-50 to-white rounded-[32px] border border-blue-100/50 shadow-sm flex flex-col gap-3">
-                            <div className="w-10 h-10 bg-blue-600 text-white rounded-xl flex items-center justify-center shadow-lg shadow-blue-600/20">
-                                <Calendar size={20} />
+
+                        {/* Right: metadata cards */}
+                        <div className="flex flex-row lg:flex-col gap-3 min-w-[240px]">
+                            {/* Technicien */}
+                            <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-white/80 border border-slate-100 shadow-sm shadow-indigo-900/5 flex-1">
+                                <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center flex-shrink-0 text-indigo-600">
+                                    <User size={18} />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Contrôleur</p>
+                                    <p className="text-sm font-black text-slate-800 truncate">{getTechnicianName()}</p>
+                                </div>
                             </div>
-                            <div>
-                                <p className="text-sm font-black text-blue-400 uppercase tracking-widest mb-1">Date du Contrôle</p>
-                                <p className="text-sm font-black text-slate-900">
-                                    {inspection?.inspectionDate ? new Date(inspection.inspectionDate).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : 'En attente'}
-                                </p>
+                            {/* Date */}
+                            <div className="flex items-center gap-3 px-5 py-4 rounded-2xl bg-white/80 border border-slate-100 shadow-sm shadow-indigo-900/5 flex-1">
+                                <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center flex-shrink-0 text-blue-600">
+                                    <Calendar size={18} />
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Date du Contrôle</p>
+                                    <p className="text-sm font-black text-slate-800">
+                                        {inspection?.inspectionDate
+                                            ? new Date(inspection.inspectionDate).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                                            : 'En attente'}
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
+
+                {/* ── Bottom colored accent bar ── */}
+                <div className={`h-1.5 w-full ${isConforme ? 'bg-gradient-to-r from-emerald-500 to-teal-400' : isNonConforme ? 'bg-gradient-to-r from-red-500 to-rose-400' : 'bg-gradient-to-r from-amber-500 to-orange-400'}`}></div>
             </div>
+
 
             {/* Defects Analysis Grid */}
             <div className="space-y-8">
@@ -445,35 +642,56 @@ const InspectionDetails = () => {
                                 </div>
 
                                 {/* Visual Data */}
-                                <div className="w-full md:w-[320px] h-[320px] bg-slate-50 relative overflow-hidden">
-                                    {anomaly.imageUrl ? (
-                                        <>
-                                            <img 
-                                                src={anomaly.imageUrl} 
-                                                alt={anomaly.type}
-                                                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-zoom-in"
-                                                onClick={() => setSelectedImage(anomaly.imageUrl)}
-                                            />
-                                            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60"></div>
-                                            <div className="absolute top-6 left-8 bg-white/20 backdrop-blur-md text-white text-sm font-black px-3 py-1.5 rounded-xl uppercase tracking-[0.2em] shadow-xl border border-white/20">
-                                                Visualisation IA
-                                            </div>
-                                            <button 
-                                                onClick={() => setSelectedImage(anomaly.imageUrl)}
-                                                className="absolute bottom-6 left-8 flex items-center gap-3 text-white text-sm font-black uppercase tracking-[0.2em]"
-                                            >
-                                                <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white group-hover:text-indigo-600 transition-all shadow-lg">
-                                                    <ImageIcon size={18} />
+                                <div className="w-full md:w-[320px] md:h-auto h-[320px] bg-slate-50 relative overflow-hidden flex flex-col justify-center">
+                                    {(() => {
+                                        const images = anomaly.imageUrls && anomaly.imageUrls.length > 0 
+                                            ? anomaly.imageUrls 
+                                            : (anomaly.imageUrl ? [anomaly.imageUrl] : []);
+                                        if (images.length === 0) {
+                                            return (
+                                                <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4">
+                                                    <ImageIcon size={64} className="opacity-10" />
+                                                    <span className="text-sm font-black uppercase tracking-widest">Image Indisponible</span>
                                                 </div>
-                                                Agrandir l'image
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 gap-4">
-                                            <ImageIcon size={64} className="opacity-10" />
-                                            <span className="text-sm font-black uppercase tracking-widest">Image Indisponible</span>
-                                        </div>
-                                    )}
+                                            );
+                                        }
+                                        if (images.length === 1) {
+                                            return (
+                                                <>
+                                                    <img 
+                                                        src={images[0]} 
+                                                        alt={anomaly.type}
+                                                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 cursor-zoom-in"
+                                                        onClick={() => setSelectedImage(images[0])}
+                                                    />
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-transparent to-transparent opacity-60"></div>
+                                                    <button 
+                                                        onClick={() => setSelectedImage(images[0])}
+                                                        className="absolute bottom-6 left-8 flex items-center gap-3 text-white text-sm font-black uppercase tracking-[0.2em]"
+                                                    >
+                                                        <div className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center group-hover:bg-white group-hover:text-indigo-600 transition-all shadow-lg">
+                                                            <ImageIcon size={18} />
+                                                        </div>
+                                                        Agrandir l'image
+                                                    </button>
+                                                </>
+                                            );
+                                        }
+                                        return (
+                                            <div className="grid grid-cols-2 gap-1.5 p-2 h-full w-full bg-slate-100">
+                                                {images.map((url, idx) => (
+                                                    <div key={idx} className="relative overflow-hidden rounded-2xl bg-black group-inner h-full w-full">
+                                                        <img 
+                                                            src={url} 
+                                                            alt={`${anomaly.type} - ${idx + 1}`}
+                                                            className="w-full h-full object-cover transition-transform duration-700 hover:scale-115 cursor-zoom-in"
+                                                            onClick={() => setSelectedImage(url)}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        );
+                                    })()}
                                 </div>
 
                                 {/* Descriptive Data */}
@@ -481,21 +699,21 @@ const InspectionDetails = () => {
                                     <div>
                                         <div className="flex justify-between items-start gap-4 mb-8">
                                             <div>
-                                                <h3 className="text-3xl font-black text-slate-900 capitalize tracking-normal mb-2">{anomaly.type}</h3>
+                                                <h3 className="text-3xl font-black text-slate-900 capitalize tracking-normal mb-2">{getCleanDefectName(anomaly.type)}</h3>
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></div>
                                                     <p className="text-sm font-black text-slate-400 uppercase tracking-widest">Zone: {anomaly.location || "Module-A"}</p>
                                                 </div>
                                             </div>
                                             <span className={`px-4 py-2 rounded-2xl text-sm font-black uppercase tracking-widest shadow-lg
-                                                ${anomaly.severity === 'Critique' ? 'bg-red-500 text-white shadow-red-200' : 
-                                                  anomaly.severity === 'Majeur' ? 'bg-amber-500 text-white shadow-amber-200' : 
+                                                ${getDefectSeverity(getCleanDefectName(anomaly.type), anomaly.severity) === 'Critique' ? 'bg-red-500 text-white shadow-red-200' : 
+                                                  getDefectSeverity(getCleanDefectName(anomaly.type), anomaly.severity) === 'Majeur' ? 'bg-amber-500 text-white shadow-amber-200' : 
                                                   'bg-emerald-500 text-white shadow-emerald-200'}`}>
-                                                {anomaly.severity}
+                                                {getDefectSeverity(getCleanDefectName(anomaly.type), anomaly.severity)}
                                             </span>
                                         </div>
-                                        <p className="text-base text-slate-600 font-medium leading-relaxed italic border-l-4 border-indigo-50 pl-6 mb-8">
-                                            "{anomaly.description || "Le système de vision artificielle a détecté une anomalie de conformité nécessitant une intervention immédiate."}"
+                                        <p className="text-base text-slate-600 font-medium leading-relaxed italic border-l-4 border-indigo-200 pl-6 mb-8">
+                                            "{getDefectDescription(getCleanDefectName(anomaly.type), anomaly.description)}"
                                         </p>
                                     </div>
 
@@ -517,15 +735,23 @@ const InspectionDetails = () => {
                         ))}
                     </div>
                 ) : (
-                    <div className="bg-gradient-to-br from-emerald-50 to-white rounded-[50px] border border-emerald-100 p-24 flex flex-col items-center text-center gap-8 shadow-xl shadow-emerald-900/5">
-                        <div className="w-28 h-28 bg-white rounded-full flex items-center justify-center text-emerald-500 shadow-2xl shadow-emerald-200/50 border-4 border-emerald-50 animate-bounce">
-                            <ShieldCheck size={56} strokeWidth={2.5} />
+                    <div className="bg-white rounded-3xl border border-slate-100 p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-md shadow-slate-100/50">
+                        <div className="flex items-center gap-5">
+                            <div className="w-14 h-14 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                                <ShieldCheck size={28} strokeWidth={2} />
+                            </div>
+                            <div>
+                                <h3 className="text-xl font-black text-slate-900 mb-1">Conformité Absolue</h3>
+                                <p className="text-sm text-slate-500 font-medium">
+                                    Le cycle d'inspection est terminé. Aucune déviation par rapport aux standards ICEM n'a été identifiée.
+                                </p>
+                            </div>
                         </div>
-                        <div className="space-y-3">
-                            <h3 className="text-4xl font-black text-slate-900 uppercase tracking-normal">Conformité Absolue</h3>
-                            <p className="text-lg font-bold text-slate-500 max-w-md mx-auto leading-relaxed">
-                                Le cycle d'inspection est terminé. Aucune déviation par rapport aux standards ICEM n'a été identifiée.
-                            </p>
+                        <div className="flex-shrink-0">
+                            <span className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                Pièce Conforme
+                            </span>
                         </div>
                     </div>
                 )}
