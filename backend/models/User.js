@@ -90,6 +90,23 @@ class User {
         this.isActive = isActive !== undefined ? isActive : true;
     }
 
+    // Alignement avec le diagramme de classe de conception (DCC)
+    hasRole(role) {
+        return this.roles.includes(role);
+    }
+
+    activate() {
+        this.isActive = true;
+    }
+
+    deactivate() {
+        this.isActive = false;
+    }
+
+    updateSignature(signatureUrl) {
+        this.signatureUrl = signatureUrl;
+    }
+
     static fromJson(json) {
         return new User({
             id: json.id || '',

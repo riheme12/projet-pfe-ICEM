@@ -98,7 +98,7 @@ try {
         const activeAnomalies = {};
         snapshot.forEach(doc => {
             const data = doc.data();
-            const status = (data.statut || '').toLowerCase();
+            const status = (data.statut || data.status || '').toLowerCase();
             // Statuts actifs (non résolus)
             if (!['traitee', 'archivee', 'resolue'].includes(status)) {
                 activeAnomalies[doc.id] = {
@@ -110,7 +110,8 @@ try {
                     cableId: data.cableId || '',
                     detectedAt: data.detectedAt || data.createdAt || new Date().toISOString(),
                     description: data.description || '',
-                    statut: data.statut || 'detectee',
+                    statut: status || 'detectee',
+                    status: status || 'detectee',
                     technicianName: data.technicianName || 'Auto / IA Roboflow'
                 };
             }
@@ -139,6 +140,7 @@ try {
             if (docSnap.exists) {
                 await docRef.update({
                     statut: 'traitee',
+                    status: 'traitee',
                     resolvedAt: new Date().toISOString(),
                     resolvedBy: 'Station Atelier Pyrebase'
                 });

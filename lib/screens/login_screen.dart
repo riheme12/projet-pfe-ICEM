@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:projeticem/screens/forgot_password_screen.dart';
 import '../providers/auth_provider.dart';
 import 'home_page.dart';
 
@@ -369,29 +368,7 @@ class _LoginScreenState extends State<LoginScreen>
                                           ),
                                           const SizedBox(height: 20),
 
-                                          // Password Label & Forgot link
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              _buildLabel('MOT DE PASSE'),
-                                              GestureDetector(
-                                                onTap: () => Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) => const ForgotPasswordScreen(),
-                                                  ),
-                                                ),
-                                                child: const Text(
-                                                  'Mot de passe oublié ?',
-                                                  style: TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Color(0xFF2563EB),
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
+                                          _buildLabel('MOT DE PASSE'),
                                           const SizedBox(height: 8),
                                           TextFormField(
                                             controller: _passwordCtrl,

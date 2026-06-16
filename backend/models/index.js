@@ -8,6 +8,7 @@ const { Cable } = require('./Cable');
 const { ManufacturingOrder } = require('./ManufacturingOrder');
 const { Report } = require('./Report');
 const { ChecklistItem, ChecklistResult } = require('./ChecklistItem');
+const { TypeAnomaly } = require('./TypeAnomaly');
 
 module.exports = {
     User,
@@ -21,4 +22,5 @@ module.exports = {
     Report,
     ChecklistItem,
     ChecklistResult,
+    TypeAnomaly,
 };

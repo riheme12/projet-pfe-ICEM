@@ -75,6 +75,25 @@ class User {
     required this.stats,
   });
 
+  // Alignement avec le diagramme de classe de conception (DCC)
+  List<String> get roles => [role.toString().split('.').last];
+
+  bool hasRole(UserRole targetRole) {
+    return role == targetRole;
+  }
+
+  void activate() {
+    // Squelette de méthode pour le DCC
+  }
+
+  void deactivate() {
+    // Squelette de méthode pour le DCC
+  }
+
+  void updateSignature(String newSignatureUrl) {
+    // Squelette de méthode pour le DCC
+  }
+
   /// Créer un User depuis un JSON (pour Firebase)
   factory User.fromJson(Map<String, dynamic> json) {
     return User(

@@ -14,6 +14,19 @@ class ChecklistItem {
     this.note = '',
   });
 
+  // Alignement avec le diagramme de classe de conception (DCC)
+  bool hasDefect() {
+    return status.toUpperCase() == 'NOK' || status.toUpperCase() == 'NON CONFORME';
+  }
+
+  int defectsCount() {
+    return hasDefect() ? 1 : 0;
+  }
+
+  void validateChecklist() {
+    // Squelette de méthode pour le DCC
+  }
+
   Map<String, dynamic> toMap() => {
         'codeDefaut': codeDefaut,
         'numeroSerie': numeroSerie,
@@ -32,3 +45,6 @@ class ChecklistItem {
     );
   }
 }
+
+// Alias de type pour l'alignement UML (DCC)
+typedef visualchecklist = ChecklistItem;

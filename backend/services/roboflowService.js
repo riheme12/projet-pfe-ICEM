@@ -30,7 +30,8 @@ const ROBOFLOW_CONFIG = {
  * vers les types et sévérités du système ICEM
  */
 const CLASS_MAPPING = {
-    'composant_mal_insere':  { type: 'Composant mal inséré',    defaultSeverity: 'Critique', code: 'P' },
+    'composant_mal_insere':  { type: 'Composant mal inséré',    defaultSeverity: 'Critique', code: 'P_INS' },
+    'composant_mal _insere': { type: 'Composant mal inséré',    defaultSeverity: 'Critique', code: 'P_INS' }, // variante avec espace du modèle
     'composant_manquant':    { type: 'Composant manquant',      defaultSeverity: 'Critique', code: 'P' },
     'etiquette_anomalie':    { type: 'Anomalie étiquette',      defaultSeverity: 'Mineur',   code: 'V' },
     'protection_anomalie':   { type: 'Anomalie protection',     defaultSeverity: 'Majeur',   code: 'M' },
@@ -41,10 +42,35 @@ const CLASS_MAPPING = {
 };
 
 /**
+ * Normalise le nom de classe (supprime les espaces multiples)
+ */
+function normalizeClassName(className) {
+    return className.toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Recherche le mapping pour un nom de classe, en essayant d'abord la clé exacte
+ * puis la version normalisée (espaces condensés puis supprimés)
+ */
+function findClassMapping(className) {
+    const lower = className.toLowerCase();
+    // Essai 1 : clé exacte
+    if (CLASS_MAPPING[lower]) return CLASS_MAPPING[lower];
+    // Essai 2 : espaces condensés en un seul
+    const normalized = lower.replace(/\s+/g, ' ').trim();
+    if (CLASS_MAPPING[normalized]) return CLASS_MAPPING[normalized];
+    // Essai 3 : tous les espaces supprimés
+    const noSpaces = lower.replace(/\s+/g, '_').replace(/__+/g, '_');
+    if (CLASS_MAPPING[noSpaces]) return CLASS_MAPPING[noSpaces];
+    // Fallback
+    return CLASS_MAPPING['default'];
+}
+
+/**
  * Détermine la sévérité en fonction de la classe et du score de confiance
  */
 function determineSeverity(className, confidence) {
-    const mapping = CLASS_MAPPING[className.toLowerCase()] || CLASS_MAPPING['default'];
+    const mapping = findClassMapping(className);
     return mapping.defaultSeverity;
 }
 
@@ -53,7 +79,7 @@ function determineSeverity(className, confidence) {
  * Mappe un nom de classe Roboflow vers un type d'anomalie ICEM
  */
 function mapClassToAnomalyType(className) {
-    const mapping = CLASS_MAPPING[className.toLowerCase()] || CLASS_MAPPING['default'];
+    const mapping = findClassMapping(className);
     return mapping.type;
 }
 
@@ -141,7 +167,7 @@ async function detectDefects(base64Image) {
 
         // Mapper les prédictions en anomalies ICEM
         const anomalies = predictions.map((pred, index) => {
-            const mapping = CLASS_MAPPING[pred.class.toLowerCase()] || CLASS_MAPPING['default'];
+            const mapping = findClassMapping(pred.class);
             return {
                 detectionId: `det_${index}`,
                 type: mapping.type,
@@ -190,6 +216,8 @@ module.exports = {
     detectDefects,
     mapClassToAnomalyType,
     determineSeverity,
+    findClassMapping,
+    normalizeClassName,
     ROBOFLOW_CONFIG,
     CLASS_MAPPING,
 };

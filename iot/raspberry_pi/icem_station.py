@@ -1,87 +1,69 @@
 #!/usr/bin/env python3
 # =============================================================================
-#  ICEM Quality Control — Station d'Alerte Atelier (Version Autonome)
+#  ICEM Quality Control — Station d'Alerte Atelier
 #  Fichier : icem_station.py
-#
-#  Ce script tourne directement sur le Raspberry Pi.
-#  Il se connecte à Firebase Firestore en temps réel (sans passer par le backend).
-#  Il affiche une interface graphique plein écran sur l'écran HDMI branché au Pi.
-#  Il contrôle le buzzer connecté au GPIO 17.
-#
-#  ┌─────────────────────────────────────────────────────────────────┐
-#  │ Architecture :                                                   │
-#  │   Firebase Firestore ──(on_snapshot)──▶ Raspberry Pi            │
-#  │                                              │                   │
-#  │                               ┌─────────────┴──────────────┐   │
-#  │                               │  Tkinter GUI (HDMI Screen) │   │
-#  │                               │  GPIO 17 → Buzzer          │   │
-#  │                               └────────────────────────────┘   │
-#  └─────────────────────────────────────────────────────────────────┘
 #
 #  Branchement matériel :
 #    Buzzer (+)  →  GPIO 17 (Pin physique n°11)
 #    Buzzer (−)  →  GND     (Pin physique n°9)
 #
-#  Installation des dépendances (une seule fois sur le Raspberry Pi) :
-#    pip3 install firebase-admin
-#    sudo apt install python3-rpi.gpio -y
-#    sudo apt install python3-tk -y
-#
-#  Lancement :
-#    python3 icem_station.py
-#
-#  Le fichier serviceAccountKey.json doit être dans le même dossier que ce script.
+#  Dépendances :
+#    pip3 install pyrebase4
+#    sudo apt install python3-rpi.gpio python3-tk -y
 # =============================================================================
 
-import threading
-import time
-import logging
-import sys
-import os
+import sys, os, threading, time, logging, json
 from datetime import datetime
 
-# Reconfigurer la sortie standard en UTF-8 pour éviter les crashes liés aux emojis sous Windows
-if sys.stdout.encoding != 'utf-8':
-    try:
-        sys.stdout.reconfigure(encoding='utf-8')
-    except Exception:
-        pass
+if hasattr(sys.stdout, "reconfigure"):
+    try: sys.stdout.reconfigure(encoding="utf-8")
+    except: pass
 
-# ── Tkinter (interface graphique) ────────────────────────────────────────────
 import tkinter as tk
 from tkinter import font as tkfont
-
-# ── Pyrebase (SDK tiers) ─────────────────────────────────────────────────────
 import pyrebase
 
-# ── GPIO (buzzer) — importé avec gestion d'erreur pour tester sur PC aussi ──
 try:
     import RPi.GPIO as GPIO
-    RUNNING_ON_PI = True
+    ON_PI = True
 except (ImportError, RuntimeError):
-    RUNNING_ON_PI = False
-    print("[AVERTISSEMENT] RPi.GPIO non disponible. Le buzzer sera simulé (mode PC).")
+    ON_PI = False
 
 # =============================================================================
-#  CONFIGURATION — À MODIFIER SELON VOTRE INSTALLATION
+#  CONFIGURATION
 # =============================================================================
 
-# Configuration Firebase Web pour Pyrebase
 FIREBASE_CONFIG = {
-    "apiKey": "AIzaSyBgtxAYFi2nPvLfyqXemw5R9kjflvnjWyg",
-    "authDomain": "testflutter-de1f5.firebaseapp.com",
-    "projectId": "testflutter-de1f5",
+    "apiKey":        "AIzaSyBgtxAYFi2nPvLfyqXemw5R9kjflvnjWyg",
+    "authDomain":    "testflutter-de1f5.firebaseapp.com",
+    "projectId":     "testflutter-de1f5",
     "storageBucket": "testflutter-de1f5.firebasestorage.app",
-    "databaseURL": "https://testflutter-de1f5-default-rtdb.europe-west1.firebasedatabase.app"
+    "databaseURL":   "https://testflutter-de1f5-default-rtdb.europe-west1.firebasedatabase.app",
 }
 
-# Broche GPIO du buzzer (numérotation BCM)
-# GPIO 17 = Pin physique n°11 sur le Raspberry Pi
-BUZZER_PIN = 17
+BUZZER_PIN    = 17
+BIP_ON        = 0.30
+BIP_OFF       = 0.30
+POLL_INTERVAL = 0.5
 
-# Durée d'un bip (secondes)
-BIP_ON  = 0.35
-BIP_OFF = 0.35
+# Palette
+C = {
+    "bg_ok":       "#060f1e",
+    "bg_alert":    "#100308",
+    "green":       "#00e676",
+    "green2":      "#00c853",
+    "green_bg":    "#002714",
+    "red":         "#ff1744",
+    "red2":        "#b71c1c",
+    "red_bg":      "#1a0208",
+    "white":       "#eef2ff",
+    "gray":        "#546e7a",
+    "gray2":       "#90a4ae",
+    "card_ok":     "#0b1f35",
+    "card_alert":  "#1c0510",
+    "sep_ok":      "#0d2137",
+    "sep_alert":   "#3d0010",
+}
 
 # =============================================================================
 #  LOGGING
@@ -89,644 +71,588 @@ BIP_OFF = 0.35
 
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
+    format="%(asctime)s [%(levelname)-8s] %(message)s",
     datefmt="%H:%M:%S",
     handlers=[
         logging.StreamHandler(sys.stdout),
         logging.FileHandler("/tmp/icem_station.log", encoding="utf-8"),
     ],
 )
-log = logging.getLogger("ICEM_STATION")
+log = logging.getLogger("ICEM")
 
 # =============================================================================
-#  CONTRÔLEUR GPIO (Buzzer)
+#  BUZZER
 # =============================================================================
 
 class BuzzerController:
-    """Gère le buzzer branché sur le GPIO 17 du Raspberry Pi."""
-
     def __init__(self):
-        self._thread = None
-        self._stop_event = threading.Event()
         self._active = False
-
-        if RUNNING_ON_PI:
+        self._stop   = threading.Event()
+        self._thread = None
+        if ON_PI:
             GPIO.setmode(GPIO.BCM)
             GPIO.setwarnings(False)
             GPIO.setup(BUZZER_PIN, GPIO.OUT)
             GPIO.output(BUZZER_PIN, GPIO.LOW)
-            log.info(f"OK Buzzer initialisé sur GPIO {BUZZER_PIN} (BCM)")
+            log.info(f"Buzzer GPIO {BUZZER_PIN} prêt")
         else:
-            log.info("SIMULATION Mode simulation PC : buzzer désactivé")
+            log.info("Mode simulation (non-Pi)")
 
-    def _bip_loop(self):
-        """Boucle de bips qui tourne dans un thread séparé."""
-        log.info("SON Bips d'alerte démarrés")
-        while not self._stop_event.is_set():
-            self._set_buzzer(True)
-            time.sleep(BIP_ON)
-            self._set_buzzer(False)
-            time.sleep(BIP_OFF)
-
-    def _set_buzzer(self, state: bool):
-        if RUNNING_ON_PI:
-            GPIO.output(BUZZER_PIN, GPIO.HIGH if state else GPIO.LOW)
-        else:
-            print("BIP BIP" if state else "   ---", end="\r", flush=True)
-
-    def start_alert(self):
-        """Déclenche les bips en continu (dans un thread)."""
-        if self._active:
-            return
+    def start(self):
+        if self._active: return
         self._active = True
-        self._stop_event.clear()
-        self._thread = threading.Thread(target=self._bip_loop, daemon=True)
+        self._stop.clear()
+        self._thread = threading.Thread(target=self._loop, daemon=True)
         self._thread.start()
 
-    def stop_alert(self):
-        """Arrête les bips et éteint le buzzer."""
-        if not self._active:
-            return
+    def stop(self):
+        if not self._active: return
         self._active = False
-        self._stop_event.set()
-        if self._thread:
-            self._thread.join(timeout=2)
-        self._set_buzzer(False)
-        log.info("SILENCE Buzzer silencieux")
+        self._stop.set()
+        if self._thread: self._thread.join(timeout=2)
+        self._write(False)
 
     def cleanup(self):
-        """Libère les ressources GPIO."""
-        self.stop_alert()
-        if RUNNING_ON_PI:
-            GPIO.cleanup()
-            log.info("NETTOYAGE GPIO nettoyé")
+        self.stop()
+        if ON_PI: GPIO.cleanup()
+
+    def _loop(self):
+        while not self._stop.is_set():
+            self._write(True);  time.sleep(BIP_ON)
+            self._write(False); time.sleep(BIP_OFF)
+
+    def _write(self, high):
+        if ON_PI:
+            GPIO.output(BUZZER_PIN, GPIO.HIGH if high else GPIO.LOW)
 
 # =============================================================================
-#  CONNEXION FIREBASE
+#  FIREBASE
 # =============================================================================
 
 class FirebaseService:
-    """Gère la connexion à Firebase Realtime Database avec Pyrebase."""
-
-    def __init__(self, callback):
-        """
-        callback : fonction appelée à chaque changement de données.
-                   Signature : callback(active_anomalies: list)
-        """
-        self._callback = callback
-        self._active = False
-        self._thread = None
-
-        log.info(f"RESEAU Connexion à Firebase Realtime Database (projet : {FIREBASE_CONFIG['projectId']})...")
-
+    def __init__(self, on_update):
+        self._on_update = on_update
+        self._running   = False
+        log.info(f"Connexion Firebase → {FIREBASE_CONFIG['projectId']}")
         try:
-            self._firebase = pyrebase.initialize_app(FIREBASE_CONFIG)
-            self._db = self._firebase.database()
-            log.info("OK Firebase connecté avec succès")
+            app      = pyrebase.initialize_app(FIREBASE_CONFIG)
+            self._db = app.database()
+            log.info("Firebase OK")
         except Exception as e:
-            log.error(f"ERREUR Impossible d'initialiser Pyrebase : {e}")
+            log.critical(f"Firebase ERREUR : {e}")
             sys.exit(1)
 
     def start_listening(self):
-        """Démarre le thread de sondage en temps réel."""
-        self._active = True
-        self._thread = threading.Thread(target=self._poll_loop, daemon=True)
-        self._thread.start()
+        self._running = True
+        threading.Thread(target=self._poll, daemon=True).start()
 
-    def _poll_loop(self):
-        log.info("ECOUTE Écoute en temps réel de 'active_anomalies' démarrée (sondage 2s)")
-        previous_data = None
-        while self._active:
-            try:
-                res = self._db.child("active_anomalies").get()
-                data = res.val()
-                
-                # On ne met à jour le GUI que si les données ont changé
-                if data != previous_data:
-                    active = []
-                    if data:
-                        # Si c'est un dictionnaire d'anomalies (cas standard)
-                        if isinstance(data, dict):
-                            for doc_id, anomaly_data in data.items():
-                                if isinstance(anomaly_data, dict):
-                                    active.append({"id": doc_id, **anomaly_data})
-                        # Si c'est une liste
-                        elif isinstance(data, list):
-                            for item in data:
-                                if item and isinstance(item, dict):
-                                    active.append(item)
+    def stop(self): self._running = False
 
-                    # Trier par date de détection de manière robuste (la plus récente en premier)
-                    def get_sort_key(x):
-                        val = x.get("detectedAt")
-                        if not val:
-                            return 0.0
-                        try:
-                            return datetime.fromisoformat(str(val).replace("Z", "+00:00")).timestamp()
-                        except Exception:
-                            return 0.0
-
-                    active.sort(key=get_sort_key, reverse=True)
-
-                    log.info(f"MISE A JOUR Realtime Database mis à jour : {len(active)} anomalie(s) active(s)")
-                    self._callback(active)
-                    previous_data = data
-            except Exception as e:
-                log.error(f"ERREUR lors du sondage des données : {e}")
-            
-            time.sleep(2)
-
-    def resolve_anomaly(self, anomaly_id: str):
-        """Écrit la résolution de l'anomalie dans la Realtime Database pour traitement par le backend."""
+    def resolve(self, anomaly_id):
         try:
             self._db.child("resolutions").child(anomaly_id).set({
-                "statut": "traitee",
-                "dateResol": datetime.now().isoformat()
+                "statut": "traitee", "dateResol": datetime.now().isoformat()
             })
-            log.info(f"OK Anomalie {anomaly_id[:8]}... envoyée pour résolution")
+            log.info(f"Résolution envoyée : {anomaly_id[:10]}…")
             return True
         except Exception as e:
-            log.error(f"ERREUR lors de la demande de résolution : {e}")
+            log.error(f"Résolution ERREUR : {e}")
             return False
 
-    def stop(self):
-        self._active = False
-        log.info("DECONNEXION Écoute Firebase arrêtée")
+    def _poll(self):
+        previous_json = None
+        while self._running:
+            try:
+                raw    = self._db.child("active_anomalies").get().val()
+                parsed = self._parse(raw)
+                # Sérialiser en JSON pour une comparaison fiable des dicts
+                current_json = json.dumps(parsed, sort_keys=True, default=str)
+                if current_json != previous_json:
+                    log.info(f"{len(parsed)} anomalie(s) critique(s) active(s)")
+                    self._on_update(parsed)
+                    previous_json = current_json
+            except Exception as e:
+                log.error(f"Sondage ERREUR : {e}")
+            time.sleep(POLL_INTERVAL)
+
+    def _parse(self, raw):
+        items = []
+        if isinstance(raw, dict):
+            for k, v in raw.items():
+                if isinstance(v, dict): items.append({"id": k, **v})
+        elif isinstance(raw, list):
+            items = [x for x in raw if isinstance(x, dict)]
+        
+        # Filtre de gravité : ne déclencher l'alerte que pour les anomalies critiques
+        items = [x for x in items if str(x.get("severity") or "").lower() == "critique"]
+        
+        items.sort(key=self._ts, reverse=True)
+        return items
+
+    @staticmethod
+    def _ts(item):
+        v = item.get("detectedAt") or item.get("createdAt")
+        if not v: return 0.0
+        try: return datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+        except: return 0.0
 
 # =============================================================================
-#  INTERFACE GRAPHIQUE TKINTER (Écran HDMI)
+#  INTERFACE GRAPHIQUE
 # =============================================================================
 
-class WorkshopGUI:
+class WorkshopDisplay:
     """
-    Interface graphique plein écran affichée sur l'écran HDMI du Raspberry Pi.
-    - Fond VERT  : Aucune anomalie active → Production conforme
-    - Fond ROUGE : Anomalie détectée → Affiche les détails + bouton de résolution
+    Interface plein écran robuste pour Raspberry Pi / tablette.
+    Utilise overrideredirect + geometry pour forcer le plein écran même
+    si l'attribut -fullscreen du WM ne fonctionne pas.
     """
 
-    # ── Couleurs ──────────────────────────────────────────────────────────────
-    COLOR_BG_NORMAL   = "#052e16"   # Vert foncé
-    COLOR_BG_ALERT    = "#1a0000"   # Rouge très foncé
-    COLOR_STRIPE_OK   = "#10b981"   # Vert vif
-    COLOR_STRIPE_WARN = "#ef4444"   # Rouge vif
-    COLOR_TEXT_WHITE  = "#ffffff"
-    COLOR_TEXT_GREEN  = "#6ee7b7"
-    COLOR_TEXT_RED    = "#fca5a5"
-    COLOR_BADGE_OK    = "#065f46"
-    COLOR_BADGE_WARN  = "#7f1d1d"
-    COLOR_BTN_RESOLVE = "#059669"
-    COLOR_BTN_CANCEL  = "#334155"
+    def __init__(self, root: tk.Tk, on_resolve):
+        self._root        = root
+        self._on_resolve  = on_resolve
+        self._anomalies   = []
+        self._blink       = False
+        self._confirming  = False
+        self._resolve_id  = None
 
-    def __init__(self, root: tk.Tk, on_resolve_callback):
-        self._root = root
-        self._on_resolve = on_resolve_callback
-        self._current_anomalies = []
-        self._blink_state = True
-        self._confirm_mode = False
-        self._pending_resolve_id = None
+        self._setup_window()
+        self._calc_fonts()
+        self._build()
+        self._tick_clock()
+        self._tick_blink()
 
-        # ── Configuration de la fenêtre ──────────────────────────────────────
-        self._root.title("ICEM Quality Control — Station Atelier")
-        self._root.configure(bg=self.COLOR_BG_NORMAL)
-        self._root.attributes("-fullscreen", True)       # Plein écran
-        self._root.attributes("-topmost", True)          # Toujours au premier plan
-        self._root.bind("<Escape>", self._quit)           # Ctrl+Esc pour quitter
-        self._root.bind("<F11>", self._toggle_fullscreen)
+    # ── Fenêtre plein écran robuste ───────────────────────────────────────────
 
-        # ── Polices ──────────────────────────────────────────────────────────
-        self._font_giant  = tkfont.Font(family="DejaVu Sans", size=52, weight="bold")
-        self._font_title  = tkfont.Font(family="DejaVu Sans", size=38, weight="bold")
-        self._font_large  = tkfont.Font(family="DejaVu Sans", size=26, weight="bold")
-        self._font_medium = tkfont.Font(family="DejaVu Sans", size=20)
-        self._font_small  = tkfont.Font(family="DejaVu Sans", size=14)
-        self._font_clock  = tkfont.Font(family="DejaVu Sans Mono", size=34, weight="bold")
-        self._font_btn    = tkfont.Font(family="DejaVu Sans", size=22, weight="bold")
+    def _setup_window(self):
+        root = self._root
+        root.title("ICEM Quality Control")
+        root.configure(bg=C["bg_ok"])
 
-        # ── Construction de l'interface ──────────────────────────────────────
-        self._build_layout()
+        # Récupérer la taille réelle de l'écran
+        root.update_idletasks()
+        self.SW = root.winfo_screenwidth()
+        self.SH = root.winfo_screenheight()
+        log.info(f"Écran détecté : {self.SW}×{self.SH}")
 
-        # ── Lancer les mises à jour périodiques ─────────────────────────────
-        self._update_clock()
-        self._blink_tick()
+        self.is_small = self.SH < 600
 
-    # ── Construction des widgets ──────────────────────────────────────────────
+        # Marges (paddings) et dimensions adaptatives
+        self.pad_h = max(3 if self.is_small else 6, self.SH // 100)
+        self.pad_w = max(10 if self.is_small else 16, self.SW // 60)
+        self.pad_stripe = max(4 if self.is_small else 6, self.SH // 80)
+        self.pad_title_y = (max(4 if self.is_small else 10, self.SH // 100), 2)
+        self.pad_count_y = (0, 4 if self.is_small else 8)
+        self.pad_card_y = max(5 if self.is_small else 10, self.SH // 70)
+        self.pad_field_y = (0, max(3 if self.is_small else 6, self.SH // 90))
+        self.pad_action_y = max(4 if self.is_small else 8, self.SH // 70)
+        self.pad_btn_y = max(5 if self.is_small else 10, self.SH // 70)
 
-    def _build_layout(self):
-        """Crée tous les widgets de l'interface."""
+        # 1. Utiliser le mode plein écran natif (recommandé pour masquer les barres des tâches et s'adapter exactement à l'écran)
+        try:
+            root.attributes("-fullscreen", True)
+        except Exception as e:
+            log.warning(f"Impossible d'activer le plein écran natif : {e}")
 
-        # Bande de couleur en haut
-        self._stripe_top = tk.Frame(self._root, height=14, bg=self.COLOR_STRIPE_OK)
+        # 2. Si le plein écran natif ne fonctionne pas, appliquer overrideredirect + geometry en fallback
+        if not root.attributes("-fullscreen"):
+            root.overrideredirect(True)
+            root.geometry(f"{self.SW}x{self.SH}+0+0")
+
+        # 3. Mettre au premier plan
+        root.attributes("-topmost", True)
+        root.lift()
+        root.focus_force()
+
+        # Quitter avec Échap (utile pour le debug)
+        root.bind("<Escape>", lambda e: self._quit())
+        root.bind("<F11>",    lambda e: self._quit())
+
+    # ── Polices adaptées à la résolution ─────────────────────────────────────
+
+    def _calc_fonts(self):
+        H = self.SH
+        is_small = self.is_small
+        self._f = {
+            "logo":     tkfont.Font(family="DejaVu Sans", size=max(10 if is_small else 14, H//55),  weight="bold"),
+            "clock":    tkfont.Font(family="DejaVu Sans Mono", size=max(14 if is_small else 18, H//38), weight="bold"),
+            "date":     tkfont.Font(family="DejaVu Sans Mono", size=max(8 if is_small else 10, H//72)),
+            "hero":     tkfont.Font(family="DejaVu Sans", size=max(24 if is_small else 42, H//14),  weight="bold"),
+            "hero_ico": tkfont.Font(family="DejaVu Sans", size=max(36 if is_small else 64, H//9),   weight="bold"),
+            "sub":      tkfont.Font(family="DejaVu Sans", size=max(10 if is_small else 12, H//55)),
+            "tag":      tkfont.Font(family="DejaVu Sans", size=max(8 if is_small else 10, H//65),  weight="bold"),
+            "alert_h":  tkfont.Font(family="DejaVu Sans", size=max(16 if is_small else 22, H//30),  weight="bold"),
+            "alert_c":  tkfont.Font(family="DejaVu Sans", size=max(9 if is_small else 11, H//60)),
+            "lbl":      tkfont.Font(family="DejaVu Sans", size=max(8 if is_small else 9,  H//75)),
+            "val_big":  tkfont.Font(family="DejaVu Sans", size=max(11 if is_small else 15, H//45),  weight="bold"),
+            "val_med":  tkfont.Font(family="DejaVu Sans", size=max(10 if is_small else 13, H//52),  weight="bold"),
+            "btn":      tkfont.Font(family="DejaVu Sans", size=max(10 if is_small else 12, H//55),  weight="bold"),
+            "btn_sm":   tkfont.Font(family="DejaVu Sans", size=max(9 if is_small else 11, H//62),  weight="bold"),
+            "footer":   tkfont.Font(family="DejaVu Sans", size=max(8 if is_small else 9,  H//80)),
+        }
+
+    # ── Construction de l'interface ───────────────────────────────────────────
+
+    def _build(self):
+        r = self._root
+
+        # ── Bande supérieure ─────────────────────────────────────────────────
+        self._stripe_top = tk.Frame(r, height=self.pad_stripe, bg=C["green"])
         self._stripe_top.pack(fill=tk.X, side=tk.TOP)
+        self._stripe_top.pack_propagate(False)
 
-        # En-tête (logo + horloge)
-        self._header = tk.Frame(self._root, bg=self.COLOR_BG_NORMAL, pady=12, padx=30)
-        self._header.pack(fill=tk.X, side=tk.TOP)
+        # ── Header ───────────────────────────────────────────────────────────
+        self._hdr = tk.Frame(r, bg=C["bg_ok"],
+                             padx=self.pad_w,
+                             pady=self.pad_h)
+        self._hdr.pack(fill=tk.X, side=tk.TOP)
 
-        self._lbl_logo = tk.Label(
-            self._header, text="ICEM  Quality Control",
-            font=self._font_large, fg=self.COLOR_TEXT_WHITE,
-            bg=self.COLOR_BG_NORMAL,
+        # Logo gauche
+        logo_frame = tk.Frame(self._hdr, bg=C["bg_ok"])
+        logo_frame.pack(side=tk.LEFT)
+
+        tk.Label(logo_frame, text="⬡  ICEM",
+                 font=self._f["logo"], fg=C["green"], bg=C["bg_ok"]).pack(side=tk.LEFT)
+        tk.Label(logo_frame, text=" Quality Control",
+                 font=self._f["logo"], fg=C["white"], bg=C["bg_ok"]).pack(side=tk.LEFT)
+
+        # Horloge droite
+        clk_frame = tk.Frame(self._hdr, bg=C["bg_ok"])
+        clk_frame.pack(side=tk.RIGHT)
+
+        self._lbl_date = tk.Label(clk_frame, text="",
+                                  font=self._f["date"], fg=C["gray"], bg=C["bg_ok"])
+        self._lbl_date.pack(anchor="e")
+
+        self._lbl_clock = tk.Label(clk_frame, text="--:--:--",
+                                   font=self._f["clock"], fg=C["green"], bg=C["bg_ok"])
+        self._lbl_clock.pack(anchor="e")
+
+        # Séparateur header
+        tk.Frame(r, height=1, bg=C["sep_ok"]).pack(fill=tk.X, side=tk.TOP)
+
+        # ── Corps (expand = occupe tout l'espace restant) ─────────────────────
+        self._body = tk.Frame(r, bg=C["bg_ok"])
+        self._body.pack(fill=tk.BOTH, expand=True, side=tk.TOP)
+
+        self._build_normal_view()
+        self._build_alert_view()
+
+        # ── Séparateur footer ─────────────────────────────────────────────────
+        tk.Frame(r, height=1, bg=C["sep_ok"]).pack(fill=tk.X, side=tk.BOTTOM)
+
+        # ── Footer ────────────────────────────────────────────────────────────
+        self._ftr = tk.Frame(r, bg=C["bg_ok"], padx=self.pad_w, pady=2 if self.is_small else 4)
+        self._ftr.pack(fill=tk.X, side=tk.BOTTOM)
+
+        self._lbl_ftr = tk.Label(
+            self._ftr,
+            text=f"● Firebase Realtime Database  |  GPIO {BUZZER_PIN} (BCM)  |  Station IoT ICEM",
+            font=self._f["footer"], fg=C["gray"], bg=C["bg_ok"], anchor="w",
         )
-        self._lbl_logo.pack(side=tk.LEFT)
+        self._lbl_ftr.pack(side=tk.LEFT)
 
-        self._lbl_clock = tk.Label(
-            self._header, text="--:--:--",
-            font=self._font_clock, fg=self.COLOR_TEXT_GREEN,
-            bg=self.COLOR_BG_NORMAL,
+        btn_quit = tk.Button(
+            self._ftr, text="✕ Quitter",
+            font=self._f["footer"], fg=C["gray"], bg=C["bg_ok"],
+            activebackground=C["red2"], activeforeground=C["white"],
+            bd=0, highlightthickness=0, cursor="hand2",
+            command=self._quit
         )
-        self._lbl_clock.pack(side=tk.RIGHT)
+        btn_quit.pack(side=tk.RIGHT)
 
-        self._lbl_date = tk.Label(
-            self._header, text="",
-            font=self._font_small, fg=self.COLOR_TEXT_GREEN,
-            bg=self.COLOR_BG_NORMAL,
+        # ── Bande inférieure ──────────────────────────────────────────────────
+        self._stripe_bot = tk.Frame(r, height=self.pad_stripe, bg=C["green"])
+        self._stripe_bot.pack(fill=tk.X, side=tk.BOTTOM)
+        self._stripe_bot.pack_propagate(False)
+
+        self._show_normal()
+
+    # ── Vue NORMALE ───────────────────────────────────────────────────────────
+
+    def _build_normal_view(self):
+        self._v_ok = tk.Frame(self._body, bg=C["bg_ok"])
+
+        # Espace flexible au-dessus
+        tk.Frame(self._v_ok, bg=C["bg_ok"]).pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(self._v_ok, text="✓",
+                 font=self._f["hero_ico"], fg=C["green"], bg=C["bg_ok"]).pack()
+
+        tk.Label(self._v_ok, text="PRODUCTION CONFORME",
+                 font=self._f["hero"], fg=C["white"], bg=C["bg_ok"]).pack(pady=(0, 8))
+
+        tk.Label(self._v_ok,
+                 text="Aucune anomalie active — Le système de surveillance est opérationnel",
+                 font=self._f["sub"], fg=C["gray2"], bg=C["bg_ok"]).pack()
+
+        # Badge
+        badge = tk.Frame(self._v_ok, bg=C["green_bg"],
+                         padx=16 if self.is_small else 24,
+                         pady=6 if self.is_small else 10)
+        badge.pack(pady=(10 if self.is_small else 16, 0))
+        self._lbl_ok_badge = tk.Label(badge, text="● Système actif",
+                                      font=self._f["tag"], fg=C["green"], bg=C["green_bg"])
+        self._lbl_ok_badge.pack()
+
+        # Espace flexible en-dessous
+        tk.Frame(self._v_ok, bg=C["bg_ok"]).pack(fill=tk.BOTH, expand=True)
+
+    # ── Vue ALERTE ────────────────────────────────────────────────────────────
+
+    def _build_alert_view(self):
+        W = self.SW
+        self._v_alert = tk.Frame(self._body, bg=C["bg_alert"])
+
+        # Titre
+        self._lbl_al_title = tk.Label(
+            self._v_alert, text="⚠   ANOMALIE DÉTECTÉE",
+            font=self._f["alert_h"], fg=C["red"], bg=C["bg_alert"],
         )
-        self._lbl_date.pack(side=tk.RIGHT, padx=20)
+        self._lbl_al_title.pack(pady=self.pad_title_y)
 
-        # Séparateur
-        tk.Frame(self._root, height=2, bg="#334155").pack(fill=tk.X)
-
-        # Zone de contenu principal (occupe tout l'espace restant)
-        self._content = tk.Frame(self._root, bg=self.COLOR_BG_NORMAL)
-        self._content.pack(fill=tk.BOTH, expand=True)
-
-        # ── Vue "Production normale" ─────────────────────────────────────────
-        self._view_normal = tk.Frame(self._content, bg=self.COLOR_BG_NORMAL)
-
-        tk.Label(self._view_normal, text="OK",
-                 font=tkfont.Font(size=90), bg=self.COLOR_BG_NORMAL).pack(pady=(60, 20))
-
-        tk.Label(self._view_normal,
-                 text="PRODUCTION CONFORME",
-                 font=self._font_giant, fg=self.COLOR_TEXT_WHITE,
-                 bg=self.COLOR_BG_NORMAL).pack()
-
-        tk.Label(self._view_normal,
-                 text="Aucune anomalie active — Le système de surveillance veille",
-                 font=self._font_medium, fg=self.COLOR_TEXT_GREEN,
-                 bg=self.COLOR_BG_NORMAL).pack(pady=14)
-
-        self._lbl_normal_count = tk.Label(
-            self._view_normal,
-            text="● Système actif",
-            font=self._font_small, fg=self.COLOR_TEXT_GREEN,
-            bg=self.COLOR_BG_NORMAL,
+        self._lbl_al_count = tk.Label(
+            self._v_alert, text="1 anomalie active — Intervention requise",
+            font=self._f["alert_c"], fg=C["gray2"], bg=C["bg_alert"],
         )
-        self._lbl_normal_count.pack(pady=8)
+        self._lbl_al_count.pack(pady=self.pad_count_y)
 
-        # ── Vue "Alerte anomalie" ────────────────────────────────────────────
-        self._view_alert = tk.Frame(self._content, bg=self.COLOR_BG_ALERT)
+        # ── Carte de détails ─────────────────────────────────────────────────
+        card_wrap = tk.Frame(self._v_alert, bg=C["bg_alert"],
+                             padx=self.pad_w)
+        card_wrap.pack(fill=tk.X)
 
-        # Titre alerte
-        self._lbl_alert_title = tk.Label(
-            self._view_alert,
-            text="ALERTE  ANOMALIE DÉTECTÉE  ALERTE",
-            font=self._font_title, fg=self.COLOR_TEXT_WHITE,
-            bg=self.COLOR_BG_ALERT,
-        )
-        self._lbl_alert_title.pack(pady=(24, 6))
-
-        self._lbl_alert_count = tk.Label(
-            self._view_alert,
-            text="1 anomalie active — Intervention requise",
-            font=self._font_medium, fg=self.COLOR_TEXT_RED,
-            bg=self.COLOR_BG_ALERT,
-        )
-        self._lbl_alert_count.pack(pady=(0, 16))
-
-        # Carte de détails de l'anomalie
         self._card = tk.Frame(
-            self._view_alert,
-            bg="#2a0000",
-            bd=0, padx=30, pady=20,
-            highlightbackground="#ef4444",
-            highlightthickness=2,
+            card_wrap, bg=C["card_alert"],
+            highlightbackground=C["red2"],
+            highlightthickness=1,
+            padx=max(10 if self.is_small else 14, W // 60),
+            pady=self.pad_card_y,
         )
-        self._card.pack(fill=tk.X, padx=40, pady=8)
+        self._card.pack(fill=tk.X)
+        self._card.columnconfigure(0, weight=1)
+        self._card.columnconfigure(1, weight=1)
 
-        # Grille de détails (2 colonnes)
-        self._details_frame = tk.Frame(self._card, bg="#2a0000")
-        self._details_frame.pack(fill=tk.X)
+        self._d = {}
+        fields = [
+            # (clé, libellé, colonne, ligne, gros?, span)
+            ("type",     "TYPE DE DÉFAUT",  0, 0, True,  1),
+            ("severity", "GRAVITÉ",         1, 0, True,  1),
+            ("cable",    "CÂBLE / REF",     0, 1, False, 2),
+        ]
+        for key, lbl_txt, col, row, big, span in fields:
+            wrap = tk.Frame(self._card, bg=C["card_alert"])
+            wrap.grid(row=row, column=col, columnspan=span, sticky="ew",
+                      padx=(0, max(8 if self.is_small else 12, W // 80)), pady=self.pad_field_y)
 
-        self._lbl_type     = self._make_detail_row(self._details_frame, "TYPE DE DÉFAUT", "—", 0, large=True)
-        self._lbl_severity = self._make_detail_row(self._details_frame, "GRAVITÉ",        "—", 1)
-        self._lbl_cable    = self._make_detail_row(self._details_frame, "CÂBLE / REF",    "—", 2)
-        self._lbl_techname = self._make_detail_row(self._details_frame, "INSPECTÉ PAR",   "—", 3)
-        self._lbl_time     = self._make_detail_row(self._details_frame, "DÉTECTÉ À",      "—", 4)
-        self._lbl_desc     = self._make_detail_row(self._details_frame, "DESCRIPTION",    "—", 5, colspan=2)
+            tk.Label(wrap, text=lbl_txt,
+                     font=self._f["lbl"], fg=C["gray"], bg=C["card_alert"],
+                     anchor="w").pack(anchor="w")
 
-        # ── Zone de bouton (résolution) ──────────────────────────────────────
-        self._btn_area = tk.Frame(self._view_alert, bg=self.COLOR_BG_ALERT, pady=16)
-        self._btn_area.pack(fill=tk.X, padx=40)
+            self._d[key] = tk.Label(
+                wrap, text="—",
+                font=self._f["val_big"] if big else self._f["val_med"],
+                fg=C["white"], bg=C["card_alert"],
+                anchor="w", wraplength=max(200, W // 3) if span == 1 else max(400, W * 2 // 3),
+            )
+            self._d[key].pack(anchor="w")
 
-        # Bouton principal "Marquer comme traité"
+        # ── Zone action ───────────────────────────────────────────────────────
+        self._z_action = tk.Frame(self._v_alert, bg=C["bg_alert"],
+                                  pady=self.pad_action_y,
+                                  padx=self.pad_w)
+        self._z_action.pack(fill=tk.X)
+
         self._btn_resolve = tk.Button(
-            self._btn_area,
-            text="OK   MARQUER COMME TRAITÉ",
-            font=self._btn_font_large(),
-            fg="#ffffff", bg=self.COLOR_BTN_RESOLVE,
-            activebackground="#047857", activeforeground="#ffffff",
-            relief=tk.FLAT, padx=40, pady=18,
-            cursor="hand2",
-            command=self._on_resolve_click,
+            self._z_action, text="✔   MARQUER COMME TRAITÉ",
+            font=self._f["btn"], fg="#fff", bg=C["green2"],
+            activebackground=C["green"], activeforeground="#000",
+            relief=tk.FLAT,
+            padx=max(15 if self.is_small else 20, W // 50), pady=self.pad_btn_y,
+            cursor="hand2", command=self._ask_confirm,
         )
-        self._btn_resolve.pack(side=tk.LEFT, padx=(0, 20))
+        self._btn_resolve.pack(side=tk.LEFT)
 
-        tk.Label(
-            self._btn_area,
-            text="Appuyez après avoir traité le câble défectueux",
-            font=self._font_small, fg="#94a3b8",
-            bg=self.COLOR_BG_ALERT,
+        tk.Label(self._z_action,
+                 text="Appuyez après avoir traité le câble défectueux",
+                 font=self._f["footer"], fg=C["gray"], bg=C["bg_alert"],
+        ).pack(side=tk.LEFT, padx=14)
+
+        # ── Zone confirmation ─────────────────────────────────────────────────
+        self._z_confirm = tk.Frame(self._v_alert, bg=C["bg_alert"],
+                                   pady=self.pad_action_y,
+                                   padx=self.pad_w)
+
+        tk.Label(self._z_confirm,
+                 text="Confirmer la résolution de cette anomalie ?",
+                 font=self._f["btn"], fg=C["white"], bg=C["bg_alert"],
+        ).pack(anchor="w", pady=(0, 8))
+
+        row_btns = tk.Frame(self._z_confirm, bg=C["bg_alert"])
+        row_btns.pack(anchor="w")
+
+        self._btn_yes = tk.Button(
+            row_btns, text="✔   Oui, Confirmer",
+            font=self._f["btn_sm"], fg="#fff", bg="#00c853",
+            activebackground=C["green"], relief=tk.FLAT,
+            padx=max(12 if self.is_small else 16, W // 60), pady=max(6 if self.is_small else 8, self.SH // 80),
+            cursor="hand2", command=self._do_resolve,
+        )
+        self._btn_yes.pack(side=tk.LEFT, padx=(0, 10))
+
+        tk.Button(
+            row_btns, text="✖   Annuler",
+            font=self._f["btn_sm"], fg="#fff", bg="#37474f",
+            activebackground="#546e7a", relief=tk.FLAT,
+            padx=max(12 if self.is_small else 16, W // 60), pady=max(6 if self.is_small else 8, self.SH // 80),
+            cursor="hand2", command=self._cancel_confirm,
         ).pack(side=tk.LEFT)
-
-        # ── Zone de confirmation ─────────────────────────────────────────────
-        self._confirm_area = tk.Frame(self._view_alert, bg=self.COLOR_BG_ALERT, pady=10)
-        self._confirm_area.pack(fill=tk.X, padx=40)
-
-        tk.Label(
-            self._confirm_area,
-            text="Confirmer la résolution de cette anomalie ?",
-            font=self._font_large, fg="#d1fae5",
-            bg=self.COLOR_BG_ALERT,
-        ).pack(pady=(0, 12))
-
-        btn_row = tk.Frame(self._confirm_area, bg=self.COLOR_BG_ALERT)
-        btn_row.pack()
-
-        self._btn_confirm_yes = tk.Button(
-            btn_row,
-            text="OK  Oui, Confirmer",
-            font=self._btn_font_large(),
-            fg="#ffffff", bg="#10b981",
-            activebackground="#059669",
-            relief=tk.FLAT, padx=30, pady=14,
-            cursor="hand2",
-            command=self._do_resolve,
-        )
-        self._btn_confirm_yes.pack(side=tk.LEFT, padx=(0, 16))
-
-        self._btn_confirm_no = tk.Button(
-            btn_row,
-            text="  Annuler",
-            font=self._btn_font_large(),
-            fg="#ffffff", bg=self.COLOR_BTN_CANCEL,
-            activebackground="#1e293b",
-            relief=tk.FLAT, padx=30, pady=14,
-            cursor="hand2",
-            command=self._cancel_confirm,
-        )
-        self._btn_confirm_no.pack(side=tk.LEFT)
-
-        # Bande de couleur en bas
-        self._stripe_bottom = tk.Frame(self._root, height=14, bg=self.COLOR_STRIPE_OK)
-        self._stripe_bottom.pack(fill=tk.X, side=tk.BOTTOM)
-
-        # ── Pied de page ─────────────────────────────────────────────────────
-        self._footer = tk.Frame(self._root, bg=self.COLOR_BG_NORMAL, pady=6)
-        self._footer.pack(fill=tk.X, side=tk.BOTTOM)
-        tk.Label(
-            self._footer,
-            text="Station d'Alerte Atelier IoT — ICEM Quality Control | Firebase Firestore (temps réel)",
-            font=self._font_small, fg="#475569",
-            bg=self.COLOR_BG_NORMAL,
-        ).pack()
-
-        # Afficher la vue normale par défaut
-        self._show_normal_view()
-
-    def _btn_font_large(self):
-        return tkfont.Font(family="DejaVu Sans", size=20, weight="bold")
-
-    def _make_detail_row(self, parent, label_text, value_text, row, large=False, colspan=1):
-        """Crée une ligne label + valeur dans la grille de détails."""
-        col = (row % 2) * 2
-        actual_row = row // 2
-
-        tk.Label(parent, text=label_text,
-                 font=self._font_small, fg="#94a3b8",
-                 bg="#2a0000", anchor="w").grid(
-            row=actual_row * 2, column=col, columnspan=colspan * 2 if colspan > 1 else 1,
-            sticky="w", padx=(0, 30), pady=(8, 0)
-        )
-
-        lbl = tk.Label(parent, text=value_text,
-                       font=tkfont.Font(family="DejaVu Sans",
-                                        size=24 if large else 18,
-                                        weight="bold"),
-                       fg="#ffffff", bg="#2a0000", anchor="w")
-        lbl.grid(
-            row=actual_row * 2 + 1, column=col,
-            columnspan=colspan * 2 if colspan > 1 else 1,
-            sticky="w", padx=(0, 30), pady=(2, 12)
-        )
-        return lbl
 
     # ── Mise à jour des données ───────────────────────────────────────────────
 
-    def update_anomalies(self, active_anomalies: list):
-        """
-        Appelé depuis le thread Firebase via root.after() pour mettre à jour
-        l'interface en toute sécurité depuis le thread principal Tkinter.
-        """
-        self._current_anomalies = active_anomalies
-        self._confirm_mode = False
-
-        if not active_anomalies:
-            self._show_normal_view()
+    def update(self, anomalies: list):
+        self._anomalies  = anomalies
+        self._confirming = False
+        if anomalies:
+            self._fill(anomalies[0], len(anomalies))
+            self._show_alert()
         else:
-            anomaly = active_anomalies[0]
-            self._show_alert_view(anomaly, len(active_anomalies))
+            self._show_normal()
 
-    def _show_normal_view(self):
-        """Passe en mode Production Normale (fond vert)."""
-        self._view_alert.pack_forget()
-        self._view_normal.pack(fill=tk.BOTH, expand=True)
-
-        self._root.configure(bg=self.COLOR_BG_NORMAL)
-        self._header.configure(bg=self.COLOR_BG_NORMAL)
-        self._lbl_logo.configure(bg=self.COLOR_BG_NORMAL, fg=self.COLOR_TEXT_WHITE)
-        self._lbl_clock.configure(bg=self.COLOR_BG_NORMAL, fg=self.COLOR_TEXT_GREEN)
-        self._lbl_date.configure(bg=self.COLOR_BG_NORMAL, fg=self.COLOR_TEXT_GREEN)
-        self._footer.configure(bg=self.COLOR_BG_NORMAL)
-        self._stripe_top.configure(bg=self.COLOR_STRIPE_OK)
-        self._stripe_bottom.configure(bg=self.COLOR_STRIPE_OK)
-
-    def _show_alert_view(self, anomaly: dict, total_count: int):
-        """Passe en mode Alerte (fond rouge) avec les détails de l'anomalie."""
-        self._view_normal.pack_forget()
-        self._pending_resolve_id = anomaly.get("id")
-
-        # Mettre à jour les labels de détails
-        def _safe(val, default="Non spécifié"):
-            return str(val).strip() if val else default
-
-        self._lbl_alert_count.configure(
-            text=f"{total_count} anomalie{'s' if total_count > 1 else ''} active{'s' if total_count > 1 else ''} — Intervention requise"
+    def _fill(self, a: dict, total: int):
+        s = lambda v, d="Non spécifié": str(v).strip() if v else d
+        n = total
+        self._lbl_al_count.configure(
+            text=f"{n} anomalie{'s' if n>1 else ''} active{'s' if n>1 else ''} — Intervention requise"
         )
-        self._lbl_type.configure(text=_safe(anomaly.get("type") or anomaly.get("typeDefaut")))
-        self._lbl_severity.configure(text=_safe(anomaly.get("severity")).upper())
-        self._lbl_cable.configure(
-            text=f"#{anomaly['cableId'][:14]}" if anomaly.get("cableId") else "—"
+        self._d["type"].configure(text=s(a.get("type") or a.get("typeDefaut")))
+        self._d["severity"].configure(text=s(a.get("severity"), "—").upper())
+        self._d["cable"].configure(
+            text=f"#{a['cableId'][:18]}" if a.get("cableId") else "—"
         )
-        self._lbl_techname.configure(text=_safe(anomaly.get("technicianName"), "Auto / IA Roboflow"))
+        self._resolve_id = a.get("id")
 
-        # Formater la date
-        raw_time = anomaly.get("detectedAt") or anomaly.get("createdAt")
-        if raw_time:
-            try:
-                if hasattr(raw_time, "strftime"):  # Timestamp Firestore
-                    time_str = raw_time.strftime("%H:%M:%S")
-                else:
-                    dt = datetime.fromisoformat(str(raw_time).replace("Z", "+00:00"))
-                    time_str = dt.strftime("%H:%M:%S")
-            except Exception:
-                time_str = str(raw_time)[:8]
-        else:
-            time_str = "--:--:--"
-        self._lbl_time.configure(text=time_str)
+    # ── Transitions ───────────────────────────────────────────────────────────
 
-        desc = anomaly.get("description", "")
-        self._lbl_desc.configure(text=f'« {desc} »' if desc else "Anomalie détectée par vision artificielle (IA Roboflow)")
+    def _show_normal(self):
+        self._v_alert.pack_forget()
+        self._v_ok.pack(fill=tk.BOTH, expand=True)
+        self._theme(False)
 
-        # Afficher/masquer la zone de confirmation
-        if self._confirm_mode:
-            self._btn_area.pack_forget()
-            self._confirm_area.pack(fill=tk.X, padx=40)
-        else:
-            self._confirm_area.pack_forget()
-            self._btn_area.pack(fill=tk.X, padx=40)
+    def _show_alert(self):
+        self._v_ok.pack_forget()
+        self._z_confirm.pack_forget()
+        self._z_action.pack(fill=tk.X,
+                            padx=self.pad_w)
+        self._v_alert.pack(fill=tk.BOTH, expand=True)
+        self._theme(True)
 
-        self._view_alert.pack(fill=tk.BOTH, expand=True)
+    def _theme(self, alert: bool):
+        bg     = C["bg_alert"]  if alert else C["bg_ok"]
+        accent = C["red"]       if alert else C["green"]
+        clk    = C["red"]       if alert else C["green"]
+        sep    = C["sep_alert"] if alert else C["sep_ok"]
 
-        # Fond et header en rouge
-        self._root.configure(bg=self.COLOR_BG_ALERT)
-        self._header.configure(bg=self.COLOR_BG_ALERT)
-        self._lbl_logo.configure(bg=self.COLOR_BG_ALERT)
-        self._lbl_clock.configure(bg=self.COLOR_BG_ALERT, fg=self.COLOR_TEXT_RED)
-        self._lbl_date.configure(bg=self.COLOR_BG_ALERT, fg=self.COLOR_TEXT_RED)
-        self._footer.configure(bg=self.COLOR_BG_ALERT)
+        self._root.configure(bg=bg)
+        self._hdr.configure(bg=bg)
+        self._body.configure(bg=bg)
+        self._ftr.configure(bg=bg)
+        self._lbl_ftr.configure(bg=bg)
+        self._lbl_clock.configure(bg=bg, fg=clk)
+        self._lbl_date.configure(bg=bg)
+        for w in self._hdr.winfo_children():
+            if isinstance(w, tk.Frame):
+                w.configure(bg=bg)
+                for c in w.winfo_children():
+                    if isinstance(c, tk.Label): c.configure(bg=bg)
+        self._stripe_top.configure(bg=accent)
+        self._stripe_bot.configure(bg=accent)
 
-    # ── Boutons de résolution ─────────────────────────────────────────────────
+    # ── Boutons ───────────────────────────────────────────────────────────────
 
-    def _on_resolve_click(self):
-        """Premier clic : demande de confirmation."""
-        self._confirm_mode = True
-        self._btn_area.pack_forget()
-        self._confirm_area.pack(fill=tk.X, padx=40)
+    def _ask_confirm(self):
+        self._confirming = True
+        self._z_action.pack_forget()
+        self._z_confirm.pack(fill=tk.X, padx=self.pad_w)
 
     def _cancel_confirm(self):
-        """Annuler la confirmation."""
-        self._confirm_mode = False
-        self._confirm_area.pack_forget()
-        self._btn_area.pack(fill=tk.X, padx=40)
+        self._confirming = False
+        self._z_confirm.pack_forget()
+        self._z_action.pack(fill=tk.X, padx=self.pad_w)
 
     def _do_resolve(self):
-        """Deuxième clic : résolution confirmée → appel au callback."""
-        if self._pending_resolve_id:
-            self._btn_confirm_yes.configure(text="⏳  En cours...", state=tk.DISABLED)
-            threading.Thread(
-                target=self._on_resolve,
-                args=(self._pending_resolve_id,),
-                daemon=True
-            ).start()
+        if not self._resolve_id: return
+        self._btn_yes.configure(text="⏳  En cours…", state=tk.DISABLED)
+        
+        def run():
+            success = self._on_resolve(self._resolve_id)
+            if not success:
+                self._root.after(0, self._resolve_failed)
+        
+        threading.Thread(target=run, daemon=True).start()
+
+    def _resolve_failed(self):
+        self._btn_yes.configure(text="✔   Oui, Confirmer", state=tk.NORMAL)
+        self._cancel_confirm()
 
     # ── Animations ────────────────────────────────────────────────────────────
 
-    def _blink_tick(self):
-        """Fait clignoter les bandes de couleur en mode alerte."""
-        if self._current_anomalies:
-            color = self.COLOR_STRIPE_WARN if self._blink_state else "#7f1d1d"
+    def _tick_blink(self):
+        if self._anomalies:
+            color = C["red"] if self._blink else C["red2"]
             self._stripe_top.configure(bg=color)
-            self._stripe_bottom.configure(bg=color)
-            self._blink_state = not self._blink_state
-        self._root.after(700, self._blink_tick)
+            self._stripe_bot.configure(bg=color)
+            self._blink = not self._blink
+        self._root.after(550, self._tick_blink)
 
-    def _update_clock(self):
-        """Met à jour l'horloge toutes les secondes."""
+    def _tick_clock(self):
         now = datetime.now()
         self._lbl_clock.configure(text=now.strftime("%H:%M:%S"))
-        self._lbl_date.configure(text=now.strftime("%d / %m / %Y"))
-        self._root.after(1000, self._update_clock)
+        self._lbl_date.configure(text=now.strftime("%d/%m/%Y"))
+        self._root.after(1000, self._tick_clock)
 
-    # ── Utilitaires ───────────────────────────────────────────────────────────
-
-    def _quit(self, event=None):
+    def _quit(self):
         self._root.destroy()
 
-    def _toggle_fullscreen(self, event=None):
-        state = self._root.attributes("-fullscreen")
-        self._root.attributes("-fullscreen", not state)
-
 # =============================================================================
-#  APPLICATION PRINCIPALE
+#  ORCHESTRATEUR
 # =============================================================================
 
 class ICEMStation:
-    """Orchestre le GUI, Firebase, et le buzzer."""
-
     def __init__(self):
-        self._buzzer = BuzzerController()
-        self._root = tk.Tk()
-
-        # Créer l'interface graphique
-        self._gui = WorkshopGUI(
-            root=self._root,
-            on_resolve_callback=self._handle_resolve,
-        )
-
-        # Créer la connexion Firebase
-        self._firebase = FirebaseService(callback=self._on_firebase_update)
-
-        # Démarrer l'écoute Firebase
+        self._buzzer   = BuzzerController()
+        self._root     = tk.Tk()
+        self._display  = WorkshopDisplay(self._root, on_resolve=self._handle_resolve)
+        self._firebase = FirebaseService(on_update=self._on_data)
         self._firebase.start_listening()
 
-    def _on_firebase_update(self, active_anomalies: list):
-        """
-        Appelé depuis le thread Firebase.
-        On doit passer dans le thread Tkinter via root.after().
-        """
-        # Contrôle du buzzer
-        if active_anomalies:
-            self._buzzer.start_alert()
-        else:
-            self._buzzer.stop_alert()
+    def _on_data(self, anomalies):
+        if anomalies: self._buzzer.start()
+        else:         self._buzzer.stop()
+        self._root.after(0, self._display.update, anomalies)
 
-        # Mise à jour de l'interface (thread-safe)
-        self._root.after(0, self._gui.update_anomalies, active_anomalies)
-
-    def _handle_resolve(self, anomaly_id: str):
-        """Appelé depuis le thread de résolution quand l'opérateur confirme."""
-        success = self._firebase.resolve_anomaly(anomaly_id)
+    def _handle_resolve(self, anomaly_id):
+        success = self._firebase.resolve(anomaly_id)
         if not success:
-            log.error("ERREUR Échec de la résolution — Vérifiez la connexion internet")
+            log.error("Résolution échouée — vérifiez la connexion")
+        return success
 
     def run(self):
-        """Démarre la boucle principale Tkinter."""
-        log.info("ECRAN  Interface graphique démarrée")
-        log.info("   Appuyez sur Échap pour quitter | F11 pour basculer le plein écran")
+        log.info("Démarrage — Échap/F11 pour quitter")
         try:
             self._root.mainloop()
         finally:
-            self._cleanup()
-
-    def _cleanup(self):
-        """Libère toutes les ressources proprement."""
-        log.info("MISE A JOUR Arrêt propre du système...")
-        self._buzzer.cleanup()
-        self._firebase.stop()
-        log.info("OK Arrêt terminé. Au revoir !")
+            log.info("Arrêt propre…")
+            self._firebase.stop()
+            self._buzzer.cleanup()
 
 # =============================================================================
 #  POINT D'ENTRÉE
 # =============================================================================
 
 if __name__ == "__main__":
-    log.info("=" * 65)
-    log.info("  USINE ICEM Quality Control — Station d'Alerte Atelier")
-    log.info("  RESEAU Connexion directe Firebase Realtime Database (Pyrebase)")
-    log.info("  ECRAN  Interface Tkinter (Plein écran HDMI)")
-    log.info(f"  BIP  Buzzer GPIO {BUZZER_PIN} | Mode Pi: {RUNNING_ON_PI}")
-    log.info("=" * 65)
-
-    station = ICEMStation()
-    station.run()
+    log.info("=" * 55)
+    log.info("  ICEM Quality Control — Station Atelier")
+    log.info(f"  Firebase : {FIREBASE_CONFIG['projectId']}")
+    log.info(f"  Buzzer   : GPIO {BUZZER_PIN} | Pi: {ON_PI}")
+    log.info("=" * 55)
+    ICEMStation().run()

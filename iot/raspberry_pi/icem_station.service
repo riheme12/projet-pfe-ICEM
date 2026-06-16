@@ -11,8 +11,8 @@ Group=icem
 Environment=DISPLAY=:0
 Environment=XAUTHORITY=/home/icem/.Xauthority
 
-WorkingDirectory=/home/icem/Descktop/maram+riheme
-ExecStart=/usr/bin/python3 /home/icem/Descktop/maram+riheme/icem_station.py
+WorkingDirectory=/home/icem/Desktop/rihememaram
+ExecStart=/usr/bin/python3 /home/icem/Desktop/rihememaram/icem_station.py
 
 Restart=on-failure
 RestartSec=10

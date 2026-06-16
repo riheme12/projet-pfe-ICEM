@@ -80,7 +80,7 @@ export default function WorkshopDisplay() {
                     const allDocs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                     // Filtrer les anomalies actives (non traitées)
                     const active = allDocs.filter(a => {
-                        const s = (a.statut || '').toLowerCase();
+                        const s = (a.statut || a.status || '').toLowerCase();
                         return !['traitee', 'archivee', 'resolue'].includes(s);
                     });
                     setAnomalies(active);
@@ -109,7 +109,7 @@ export default function WorkshopDisplay() {
                 const resp = await AnomalyService.getAll();
                 const all = resp.data || [];
                 const active = all.filter(a => {
-                    const s = (a.statut || '').toLowerCase();
+                    const s = (a.statut || a.status || '').toLowerCase();
                     return !['traitee', 'archivee', 'resolue'].includes(s);
                 });
                 setAnomalies(active);
@@ -129,6 +129,7 @@ export default function WorkshopDisplay() {
             const anomalyRef = doc(db, 'anomaly', anomalyId);
             await updateDoc(anomalyRef, {
                 statut: 'traitee',
+                status: 'traitee',
                 dateTraitement: serverTimestamp(),
                 traitePar: 'Station Atelier (IoT)',
             });
@@ -139,6 +140,7 @@ export default function WorkshopDisplay() {
             try {
                 await AnomalyService.update(anomalyId, {
                     statut: 'traitee',
+                    status: 'traitee',
                     traitePar: 'Station Atelier (IoT)',
                 });
                 setShowConfirm(null);

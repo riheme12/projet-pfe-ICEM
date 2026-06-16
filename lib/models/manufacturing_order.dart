@@ -1,11 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modèle représentant un ordre de fabrication
-///
-/// Un ordre de fabrication contient :
-/// - Les informations de production (référence, type, quantité)
-/// - Le statut de l'ordre
-/// - Les statistiques de conformité
+
 class ManufacturingOrder {
   final String id;
   final String numeroOF;
@@ -47,6 +42,20 @@ class ManufacturingOrder {
   int get quantity => qta;
   DateTime get productionDate => dateLiv;
   String? get assignedTechnicianId => ligne;
+
+  // Alignement avec le diagramme de classe de conception (DCC)
+  String get numeroOf => numeroOF;
+  int get qte => qta;
+  bool get RemainingQuantity => inspectedCount < qta;
+  bool get RemainingCableCount => inspectedCount < qta;
+
+  void startOrder() {
+    // Squelette de méthode pour le DCC
+  }
+
+  void completeOrder() {
+    // Squelette de méthode pour le DCC
+  }
 
   /// Calculer le taux de conformité de cet ordre (0-100)
   double get conformityRate {

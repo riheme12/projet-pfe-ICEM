@@ -269,7 +269,7 @@ class _ReportsPageState extends State<ReportsPage> with SingleTickerProviderStat
     'G': 'Fil sans cosse', 'H': 'Ticket élec. NC', 'I': 'Long./couleur NC',
     'J': 'Conn. cassé', 'K': 'Bouchette manq.', 'L': 'Tube thermo NC',
     'M': 'Protection manq.', 'N': 'Tube manqué', 'O': 'Vis mal serrée',
-    'P': 'Composant manq.', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
+    'P': 'Composant manq.', 'P_INS': 'Composant mal inséré', 'Q': 'Fusible manq.', 'R': 'Gamme manq.',
     'S': 'Scotch mal exécuté', 'T': 'Mesure Dériv.', 'V': 'Étiquette manquante',
     'W': 'Étiquette inv.', 'Z': 'Autres défauts',
   };

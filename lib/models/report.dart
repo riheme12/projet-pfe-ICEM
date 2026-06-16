@@ -1,9 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modèle représentant un rapport d'inspection
-/// 
-/// Un rapport est généré après chaque inspection de câble
-/// Il contient toutes les informations de l'inspection
+
 class Report {
   final String id;
   final String cableId;             // ID du câble inspecté
@@ -126,5 +123,14 @@ class Report {
       'imageUrl': imageUrl,
       'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl!] : []),
     };
+  }
+
+  // Alignement avec le diagramme de classe de conception (DCC)
+  void generateReport() {
+    // Squelette de méthode pour le DCC
+  }
+
+  void signReport() {
+    // Squelette de méthode pour le DCC
   }
 }

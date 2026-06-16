@@ -1,9 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// Modèle représentant une anomalie détectée par l'IA
-/// 
-/// Une anomalie est un défaut détecté sur un câble
-/// Elle a un type, une gravité et un score de confiance
+
 class Anomaly {
   final String id;
   final String type;                // 'Rayure', 'Déformation', 'Défaut de surface', etc.
@@ -116,6 +113,7 @@ class Anomaly {
       'imageUrl': imageUrl,
       'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl!] : []),
       'status': status,
+      'statut': status,
       'orderId': orderId,
       'correctiveAction': correctiveAction,
     };
@@ -172,6 +170,7 @@ class Anomaly {
       'imageUrl': imageUrl,
       'imageUrls': imageUrls ?? (imageUrl != null ? [imageUrl!] : []),
       'status': status,
+      'statut': status,
       'orderId': orderId,
       'correctiveAction': correctiveAction,
     };
@@ -211,4 +210,13 @@ class Anomaly {
       correctiveAction: correctiveAction ?? this.correctiveAction,
     );
   }
+
+  // Alignement avec le diagramme de classe de conception (DCC)
+  void resolve() {
+    // Squelette de méthode pour le DCC
+  }
 }
+
+// Alias de type pour l'alignement UML (DCC)
+typedef visualAnomaly = Anomaly;
+typedef ElectricalAnomaly = Anomaly;

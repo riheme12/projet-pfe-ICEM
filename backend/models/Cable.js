@@ -18,6 +18,21 @@ class Cable {
         this.anomaliesCount = anomaliesCount || 0;
     }
 
+    // Alignement avec le diagramme de classe de conception (DCC)
+    get timeInspectionDate() { return this.inspectionDate; }
+
+    addAnomaly(anomaly) {
+        // Squelette de méthode pour le DCC
+    }
+
+    updateStatus(newStatus) {
+        // Squelette de méthode pour le DCC
+    }
+
+    resetInspection() {
+        // Squelette de méthode pour le DCC
+    }
+
     /**
      * Vérifier si le câble a été inspecté
      */

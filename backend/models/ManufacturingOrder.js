@@ -29,6 +29,20 @@ class ManufacturingOrder {
         this.nonConformCount = nonConformCount;          
     }
 
+    // Alignement avec le diagramme de classe de conception (DCC)
+    get numeroOf() { return this.numeroOF; }
+    get qte() { return this.quantity; }
+    get RemainingQuantity() { return this.inspectedCount < this.quantity; }
+    get RemainingCableCount() { return this.inspectedCount < this.quantity; }
+
+    startOrder() {
+        // Squelette de méthode pour le DCC
+    }
+
+    completeOrder() {
+        // Squelette de méthode pour le DCC
+    }
+
     /**
      * Calculer le taux de conformité de cet ordre (0-100)
      */

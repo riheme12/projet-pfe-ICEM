@@ -44,6 +44,15 @@ class Anomaly {
         return this.severity === 'Critique';
     }
 
+    // Alignement avec le diagramme de classe de conception (DCC)
+    resolve() {
+        this.statut = 'traitee';
+    }
+
+    isResolved() {
+        return this.statut === 'traitee';
+    }
+
     /**
      * Créer depuis JSON
      */
@@ -71,7 +80,7 @@ class Anomaly {
             technicianName: json.technicianName || json.technicianFullName || 'Inconnu',
             imageUrl: json.imageUrl || null,
             imageUrls: json.imageUrls || (json.imageUrl ? [json.imageUrl] : []),
-            statut: json.statut || 'detectee',
+            statut: json.statut || json.status || 'detectee',
             orderId: json.orderId || null,
             mesureCorrective: json.mesureCorrective || null,
             resolvedBy: json.resolvedBy || null,
@@ -96,6 +105,7 @@ class Anomaly {
             imageUrl: this.imageUrl,
             imageUrls: this.imageUrls,
             statut: this.statut,
+            status: this.statut,
             orderId: this.orderId,
             mesureCorrective: this.mesureCorrective,
             resolvedBy: this.resolvedBy,

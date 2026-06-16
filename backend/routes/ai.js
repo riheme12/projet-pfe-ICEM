@@ -54,6 +54,7 @@ router.post('/analyze', async (req, res) => {
                         technicianId: technicianId || req.user?.uid || null,
                         technicianName: technicianName || 'Technicien',
                         statut: 'detectee',
+                        status: 'detectee',
                         source: 'roboflow_ai',
                         roboflowClass: detection.roboflowClass,
                         orderId: orderId || null,
@@ -62,6 +63,9 @@ router.post('/analyze', async (req, res) => {
 
                     const docRef = await db.collection('anomaly').add(anomalyData);
                     savedAnomalyIds.push(docRef.id);
+
+                    // Double-écriture dans la collection spécifique visualAnomaly pour l'alignement UML (DCC)
+                    await db.collection('visualAnomaly').doc(docRef.id).set(anomalyData);
 
                     // Créer une notification pour l'admin (Toutes les anomalies IA ou juste critiques ?)
                     // Pour le PFE, notifions tout ce qui est détecté par l'IA

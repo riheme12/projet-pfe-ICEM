@@ -9,12 +9,10 @@ import 'package:projeticem/services/orders_service.dart';
 import 'package:projeticem/services/anomaly_service.dart';
 import 'package:projeticem/services/reports_service.dart';
 import 'package:projeticem/theme/app_theme.dart';
+import 'package:projeticem/models/type_anomaly.dart';
 
-const _defectCategories = [
-  'FMI Conn.', 'FMI Pos.', 'FI Conn.', 'FI Pos.', 'FI Mar/Coul',
-  'Étiq. Manq.', 'Étiq. Inv. C1', 'Étiq. Inv. C2', 'Conn. Dériv.', 'Prot. Manq.',
-];
 const _defectKeys = ['fmiC', 'fmiP', 'fiC', 'fiP', 'fiMC', 'emC', 'eiC1', 'eiC2', 'cDer', 'pmC'];
+final List<String> _defectCategories = _defectKeys.map((key) => TypeAnomaly.getByCode(key).type).toList();
 
 class ElectricalChecklistPage extends StatefulWidget {
   final ManufacturingOrder order;

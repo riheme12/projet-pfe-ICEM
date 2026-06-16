@@ -90,6 +90,15 @@ class ElectricalChecklist {
     return labels;
   }
 
+  // Alignement avec le diagramme de classe de conception (DCC)
+  List<String> getDefectedLabels() {
+    return defectLabels;
+  }
+
+  void validateChecklist() {
+    // Squelette de méthode pour le DCC
+  }
+
   factory ElectricalChecklist.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     return ElectricalChecklist(

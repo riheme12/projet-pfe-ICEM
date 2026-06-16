@@ -7,17 +7,12 @@ import 'package:projeticem/services/anomaly_service.dart';
 import 'package:projeticem/models/anomaly.dart';
 import 'package:projeticem/theme/app_theme.dart';
 import 'package:projeticem/services/reports_service.dart';
+import 'package:projeticem/models/type_anomaly.dart';
 
-const _defectCodes = [
-  ('A','Cosse déformée'), ('B','Cosse ébanchati'), ('C','Cosse ouverte'),
-  ('D','Fil pincé/coupé'), ('E','Fils inversés'), ('F','Fil tendu'),
-  ('G','Fil sans cosse'), ('H','Ticket élec. NC'), ('I','Long./couleur NC'),
-  ('J','Conn. cassé'), ('K','Bouchette manq.'), ('L','Tube thermo NC'),
-  ('M','Protection manq.'), ('N','Tube manqué'), ('O','Vis mal serrée'),
-  ('P','Composant manq.'), ('Q','Fusible manq.'), ('R','Gamme manq.'),
-  ('S','Scotch mal exécuté'), ('T','Mesure Dériv.'), ('V','Étiquette manquante'),
-  ('W','Étiquette inv.'), ('Z','Autres défauts'),
-];
+final List<(String, String)> _defectCodes = TypeAnomaly.getActiveType()
+    .where((a) => !a.anomalyId.startsWith('E_')) // Exclure les défauts électriques
+    .map((a) => (a.anomalyId, a.type))
+    .toList();
 
 class _VisualRow {
   String cableCode;
@@ -195,6 +190,7 @@ class _ChecklistPageState extends State<ChecklistPage> {
   String _getDefectSeverity(String code) {
     switch (code) {
       case 'P': // Composant manq.
+      case 'P_INS': // Composant mal inséré
       case 'J': // Conn. cassé
       case 'E': // Fils inversés
         return 'Critique';

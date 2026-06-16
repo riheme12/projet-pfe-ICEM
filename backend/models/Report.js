@@ -37,6 +37,15 @@ class Report {
         return this.pdfUrl !== null && this.pdfUrl !== '';
     }
 
+    // Alignement avec le diagramme de classe de conception (DCC)
+    generateReport() {
+        // Squelette de méthode pour le DCC
+    }
+
+    signReport() {
+        // Squelette de méthode pour le DCC
+    }
+
     /**
      * Créer depuis JSON
      */

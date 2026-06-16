@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'anomaly.dart';
 
 /// Modèle représentant un câble à inspecter
 class Cable {
@@ -27,6 +28,21 @@ class Cable {
   String get reference => code;
   bool get isInspected => inspectionDate != null;
   bool get isConform => status.toLowerCase() == 'conforme';
+
+  // Alignement avec le diagramme de classe de conception (DCC)
+  DateTime? get timeInspectionDate => inspectionDate;
+
+  void addAnomaly(Anomaly anomaly) {
+    // Squelette de méthode pour le DCC
+  }
+
+  void updateStatus(String newStatus) {
+    // Squelette de méthode pour le DCC
+  }
+
+  void resetInspection() {
+    // Squelette de méthode pour le DCC
+  }
 
   factory Cable.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;

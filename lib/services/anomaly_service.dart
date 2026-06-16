@@ -87,6 +87,12 @@ class AnomalyService {
       };
       final docRef = await _anomaliesCollection.add(payload);
 
+      // Double-écriture dans la collection spécifique pour l'alignement UML (DCC)
+      final bool isElectrical = anomaly.type.toLowerCase().contains('électrique') || 
+                                (anomaly.location != null && anomaly.location!.toLowerCase().contains('électrique'));
+      final String targetCol = isElectrical ? 'ElectricalAnomaly' : 'visualAnomaly';
+      await _db.collection(targetCol).doc(docRef.id).set(payload);
+
       // Créer la notification pour le dashboard Web
       await _db.collection('notifications').add({
         'type': 'anomaly_detected',
@@ -122,14 +128,20 @@ class AnomalyService {
       final cableId = anomalyData['cableId'] as String?;
       final orderId = anomalyData['orderId'] as String?;
 
-      // 2. Mettre à jour l'anomalie comme résolue
-      await _anomaliesCollection.doc(anomalyId).update({
+      // 2. Mettre à jour l'anomalie comme résolue dans les deux collections
+      final updateFields = {
         'status': 'traitee',
         'statut': 'traitee',
         'correctiveAction': correctiveAction,
         'mesureCorrective': correctiveAction,
         'resolvedAt': Timestamp.fromDate(DateTime.now()),
-      });
+      };
+      await _anomaliesCollection.doc(anomalyId).update(updateFields);
+
+      final bool isElectrical = (anomalyData['type'] as String? ?? '').toLowerCase().contains('électrique') || 
+                                (anomalyData['location'] as String? ?? '').toLowerCase().contains('électrique');
+      final String targetCol = isElectrical ? 'ElectricalAnomaly' : 'visualAnomaly';
+      await _db.collection(targetCol).doc(anomalyId).update(updateFields);
 
       // 3. Mettre à jour le câble associé → retour à "Conforme"
       if (cableId != null && cableId.isNotEmpty) {

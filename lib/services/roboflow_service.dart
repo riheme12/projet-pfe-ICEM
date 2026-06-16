@@ -31,7 +31,8 @@ class RoboflowService {
 
   // Mapping des classes Roboflow → types d'anomalies ICEM
   static const Map<String, Map<String, String>> classMapping = {
-    'composant_mal_insere': {'type': 'Composant mal inséré', 'severity': 'Critique', 'code': 'P'},
+    'composant_mal_insere': {'type': 'Composant mal inséré', 'severity': 'Critique', 'code': 'P_INS'},
+    'composant_mal _insere': {'type': 'Composant mal inséré', 'severity': 'Critique', 'code': 'P_INS'}, // variante avec espace du modèle
     'composant_manquant': {'type': 'Composant manquant', 'severity': 'Critique', 'code': 'P'},
     'etiquette_anomalie': {'type': 'Anomalie étiquette', 'severity': 'Mineur', 'code': 'V'},
     'protection_anomalie': {'type': 'Anomalie protection', 'severity': 'Majeur', 'code': 'M'},
@@ -39,6 +40,20 @@ class RoboflowService {
     'cosse_anomalie': {'type': 'Anomalie cosse', 'severity': 'Majeur', 'code': 'A'},
     'scotche_anomalie': {'type': 'Anomalie scotch', 'severity': 'Mineur', 'code': 'S'},
   };
+
+  /// Recherche le mapping pour un nom de classe avec normalisation des espaces
+  static Map<String, String>? findClassMapping(String className) {
+    final lower = className.toLowerCase().trim();
+    // Essai 1 : clé exacte
+    if (classMapping.containsKey(lower)) return classMapping[lower];
+    // Essai 2 : espaces condensés
+    final normalized = lower.replaceAll(RegExp(r'\s+'), ' ');
+    if (classMapping.containsKey(normalized)) return classMapping[normalized];
+    // Essai 3 : tous les espaces → underscores
+    final noSpaces = lower.replaceAll(RegExp(r'\s+'), '_').replaceAll(RegExp(r'__+'), '_');
+    if (classMapping.containsKey(noSpaces)) return classMapping[noSpaces];
+    return null;
+  }
 
   /// Analyse une image via l'API Roboflow
   Future<Map<String, dynamic>> analyzeImage(BuildContext context, String imagePath, {
@@ -160,7 +175,7 @@ class RoboflowService {
       final String rawClass = (pred['class'] as String? ?? 'Inconnu');
       final String className = rawClass.toLowerCase().trim();
       final confidence = (pred['confidence'] as num?)?.toDouble() ?? 0.0;
-      final mapping = classMapping[className];
+      final mapping = findClassMapping(rawClass);
       
       String displayName = mapping != null ? mapping['type']! : rawClass;
       String severity = mapping != null ? mapping['severity']! : 'Majeur';

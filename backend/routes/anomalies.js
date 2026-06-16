@@ -179,7 +179,8 @@ router.post('/', async (req, res) => {
     try {
         const anomaly = Anomaly.fromJson(req.body);
         const data = anomaly.toJson();
-        data.statut = req.body.statut || 'detectee';
+        data.statut = req.body.statut || req.body.status || 'detectee';
+        data.status = data.statut;
         if (req.body.mesureCorrective !== undefined) data.mesureCorrective = req.body.mesureCorrective;
         if (req.body.orderId !== undefined) data.orderId = req.body.orderId;
         if (req.body.inspectionId !== undefined) data.inspectionId = req.body.inspectionId;
@@ -187,6 +188,13 @@ router.post('/', async (req, res) => {
         if (req.body.imageUrls !== undefined) data.imageUrls = req.body.imageUrls;
         delete data.id;
         const docRef = await db.collection('anomaly').add(data);
+
+        // Double-écriture dans la collection spécifique pour l'alignement UML (DCC)
+        const isElectrical = (data.type && data.type.toLowerCase().includes('électrique')) ||
+                            (data.location && data.location.toLowerCase().includes('électrique'));
+        const targetCol = isElectrical ? 'ElectricalAnomaly' : 'visualAnomaly';
+        await db.collection(targetCol).doc(docRef.id).set(data);
+
         const createdAnomaly = { id: docRef.id, ...data };
 
         await db.collection('notifications').add({
@@ -291,9 +299,9 @@ router.patch('/:id', async (req, res) => {
         const existingData = { id: doc.id, ...doc.data() };
         const data = { ...existingData, ...req.body };
         data.updatedAt = new Date().toISOString();
-        if (req.body.statut === 'traitee') {
+        if (req.body.statut === 'traitee' || req.body.status === 'traitee') {
             data.resolvedAt = new Date().toISOString();
-            if (!existingData.statut || existingData.statut !== 'traitee') {
+            if (!existingData.statut || (existingData.statut !== 'traitee' && existingData.status !== 'traitee')) {
                 await db.collection('notifications').add({
                     type: 'anomaly_resolved',
                     title: 'Anomalie traitée',
@@ -349,12 +357,26 @@ router.patch('/:id', async (req, res) => {
             ...req.body,
             updatedAt: new Date().toISOString()
         };
+
+        // Synchroniser status <-> statut dans les deux sens
+        const targetStatut = req.body.statut || req.body.status;
+        if (targetStatut) {
+            updatePayload.statut = targetStatut;
+            updatePayload.status = targetStatut;
+        }
         
-        if (req.body.statut === 'traitee') {
+        if ((updatePayload.statut || updatePayload.status) === 'traitee') {
             updatePayload.resolvedAt = new Date().toISOString();
         }
 
         await db.collection('anomaly').doc(req.params.id).update(updatePayload);
+
+        // Mettre à jour également dans la collection spécifique pour l'alignement UML (DCC)
+        const isElectrical = (existingData.type && existingData.type.toLowerCase().includes('électrique')) ||
+                            (existingData.location && existingData.location.toLowerCase().includes('électrique'));
+        const targetCol = isElectrical ? 'ElectricalAnomaly' : 'visualAnomaly';
+        await db.collection(targetCol).doc(req.params.id).update(updatePayload);
+
         res.status(200).json({ id: req.params.id, ...existingData, ...updatePayload });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -369,6 +391,13 @@ router.delete('/:id', async (req, res) => {
             return res.status(404).json({ error: 'Anomaly not found' });
         }
         await db.collection('anomaly').doc(req.params.id).delete();
+
+        // Supprimer également de la collection spécifique pour l'alignement UML (DCC)
+        const isElectrical = (doc.data().type && doc.data().type.toLowerCase().includes('électrique')) ||
+                            (doc.data().location && doc.data().location.toLowerCase().includes('électrique'));
+        const targetCol = isElectrical ? 'ElectricalAnomaly' : 'visualAnomaly';
+        await db.collection(targetCol).doc(req.params.id).delete();
+
         res.status(200).json({ message: 'Anomaly deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
